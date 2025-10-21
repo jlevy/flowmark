@@ -102,3 +102,88 @@ def reformat_file(
         else:
             with atomic_output_file(output, make_parents=make_parents) as tmp_path:
                 tmp_path.write_text(result)
+
+
+def reformat_files(
+    files: list[str],
+    output: str | None = None,
+    width: int = 88,
+    inplace: bool = False,
+    nobackup: bool = False,
+    plaintext: bool = False,
+    semantic: bool = False,
+    cleanups: bool = True,
+    smartquotes: bool = False,
+    ellipses: bool = False,
+    make_parents: bool = True,
+) -> None:
+    """
+    Reformat multiple files with the same options.
+
+    Args:
+        files: List of file paths to process, or ["-"] for stdin.
+        output: Output file path (ignored when inplace=True, use "-" for stdout).
+        width: The width to wrap lines to.
+        inplace: Whether to write files back to their original paths.
+        nobackup: Whether to not make backups of original files.
+        plaintext: Use plaintext instead of Markdown mode wrapping.
+        semantic: Use semantic line breaks (based on sentences) heuristic.
+        cleanups: Enable (safe) cleanups for common issues.
+        smartquotes: Convert straight quotes to typographic quotes.
+        ellipses: Convert three dots to ellipsis character.
+        make_parents: Whether to make parent directories if they don't exist.
+    """
+    if len(files) == 1 and files[0] == "-":
+        # Single stdin case - use original function
+        reformat_file(
+            path=files[0],
+            output=output,
+            width=width,
+            inplace=inplace,
+            nobackup=nobackup,
+            plaintext=plaintext,
+            semantic=semantic,
+            cleanups=cleanups,
+            smartquotes=smartquotes,
+            ellipses=ellipses,
+            make_parents=make_parents,
+        )
+        return
+
+    # Multiple files case
+    if not inplace and output and output != "-":
+        raise ValueError(
+            "Cannot specify output file when processing multiple files (use --inplace instead)"
+        )
+
+    for file_path in files:
+        if inplace:
+            # Process each file in-place
+            reformat_file(
+                path=file_path,
+                output=None,
+                width=width,
+                inplace=True,
+                nobackup=nobackup,
+                plaintext=plaintext,
+                semantic=semantic,
+                cleanups=cleanups,
+                smartquotes=smartquotes,
+                ellipses=ellipses,
+                make_parents=make_parents,
+            )
+        else:
+            # Process each file to stdout
+            reformat_file(
+                path=file_path,
+                output="-",
+                width=width,
+                inplace=False,
+                nobackup=nobackup,
+                plaintext=plaintext,
+                semantic=semantic,
+                cleanups=cleanups,
+                smartquotes=smartquotes,
+                ellipses=ellipses,
+                make_parents=make_parents,
+            )

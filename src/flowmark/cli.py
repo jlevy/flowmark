@@ -19,6 +19,9 @@ Command-line usage examples:
   # Format a Markdown file to stdout
   flowmark README.md
 
+  # Format multiple Markdown files in-place
+  flowmark --inplace README.md CHANGELOG.md docs/*.md
+
   # Format a Markdown file in-place without backups and all auto-formatting
   # options enabled
   flowmark --auto README.md
@@ -40,19 +43,21 @@ Command-line usage examples:
 For more details, see: https://github.com/jlevy/flowmark
 """
 
+from __future__ import annotations
+
 import argparse
 import importlib.metadata
 import sys
 from dataclasses import dataclass
 
-from flowmark.reformat_api import reformat_file
+from flowmark.reformat_api import reformat_files
 
 
 @dataclass
 class Options:
     """Command-line options for the flowmark tool."""
 
-    file: str
+    files: list[str]
     output: str
     width: int
     plaintext: bool
@@ -79,11 +84,11 @@ def _parse_args(args: list[str] | None = None) -> Options:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "file",
-        nargs="?",
+        "files",
+        nargs="*",
         type=str,
-        default="-",
-        help="Input file (use '-' for stdin)",
+        default=["-"],
+        help="Input files (use '-' for stdin, multiple files supported)",
     )
     parser.add_argument(
         "-o",
@@ -161,7 +166,7 @@ def _parse_args(args: list[str] | None = None) -> Options:
         opts.ellipses = True
 
     return Options(
-        file=opts.file,
+        files=opts.files,
         output=opts.output,
         width=opts.width,
         plaintext=opts.plaintext,
@@ -197,8 +202,8 @@ def main(args: list[str] | None = None) -> int:
         return 0
 
     try:
-        reformat_file(
-            path=options.file,
+        reformat_files(
+            files=options.files,
             output=options.output,
             width=options.width,
             inplace=options.inplace,
