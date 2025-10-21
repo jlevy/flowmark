@@ -159,31 +159,20 @@ def reformat_files(
     for file_path in files:
         if inplace:
             # Process each file in-place
-            reformat_file(
-                path=file_path,
-                output=None,
-                width=width,
-                inplace=True,
-                nobackup=nobackup,
-                plaintext=plaintext,
-                semantic=semantic,
-                cleanups=cleanups,
-                smartquotes=smartquotes,
-                ellipses=ellipses,
-                make_parents=make_parents,
-            )
+            output = None
         else:
             # Process each file to stdout
-            reformat_file(
-                path=file_path,
-                output="-",
-                width=width,
-                inplace=False,
-                nobackup=nobackup,
-                plaintext=plaintext,
-                semantic=semantic,
-                cleanups=cleanups,
-                smartquotes=smartquotes,
-                ellipses=ellipses,
-                make_parents=make_parents,
-            )
+            output = "-"
+        reformat_file(
+            path=file_path,
+            output=output,
+            width=width,
+            inplace=inplace,
+            nobackup=nobackup,
+            plaintext=plaintext,
+            semantic=semantic,
+            cleanups=cleanups,
+            smartquotes=smartquotes,
+            ellipses=ellipses,
+            make_parents=make_parents,
+        )
