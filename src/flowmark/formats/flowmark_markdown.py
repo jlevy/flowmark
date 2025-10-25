@@ -186,6 +186,9 @@ class MarkdownNormalizer(Renderer):
     def render_heading(self, element: block.Heading) -> str:
         result = f"{self._prefix}{'#' * element.level} {self.render_children(element)}\n"
         self._prefix = self._second_prefix
+        # After rendering a heading, don't suppress the next item break
+        # This ensures proper spacing before list items that follow headings
+        self._suppress_item_break = False
         return result
 
     def render_setext_heading(self, element: block.SetextHeading) -> str:

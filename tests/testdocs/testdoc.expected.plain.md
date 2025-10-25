@@ -37,6 +37,7 @@ high-stakes decisions for those who give and *receive it*. Blah blah blah and bl
   conventions)
 
 ### A subsection with some citations
+
 - Mark P. Cussen, Investopedia, [*Introduction To Incentive Stock
   Options*](http://www.investopedia.com/articles/stocks/12/introduction-incentive-stock-options.asp),
   updated 2017.
@@ -48,6 +49,7 @@ high-stakes decisions for those who give and *receive it*. Blah blah blah and bl
   Options*](https://blog.wealthfront.com/stock-options-14-crucial-questions), 2014.
 
 ### Command Execution
+
 - `command` - Name of kash command or action to execute
 
 - `args` - Arguments as comma-separated string or individual `arg_0`, `arg_1`, etc.
