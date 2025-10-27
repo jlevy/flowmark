@@ -83,13 +83,9 @@ class MarkdownNormalizer(Renderer):
         self._prefix, self._second_prefix = old_prefix, old_second_prefix
 
     def render_paragraph(self, element: block.Paragraph) -> str:
-        # Suppress item breaks on list items following a top-level paragraph.
-        if not self._prefix:
-            self._suppress_item_break = True
-        else:
-            # For paragraphs within list items, ensure proper spacing after multi-paragraph items
-            # This handles the case where a paragraph follows a BlankLine within a list item
-            self._suppress_item_break = False
+        # After rendering a paragraph, don't suppress the next item break
+        # This ensures proper spacing before list items that follow paragraphs
+        self._suppress_item_break = False
 
         children: Any = self.render_children(element)
 
