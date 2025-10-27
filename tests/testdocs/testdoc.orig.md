@@ -751,3 +751,6 @@ another.
   [Pricing](https://aws.amazon.com/cloudwatch/pricing/)
       - 🔹Blahxxx
       - ❗Blahxxx
+
+**Related Architecture**:
+- [arch-execution.md](../architecture/arch-execution.md) - Execution model context
