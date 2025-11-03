@@ -68,6 +68,8 @@ class MarkdownNormalizer(Renderer):
         self._suppress_item_break: bool = True
         self._line_wrapper: LineWrapper = line_wrapper
         self._skip_next_blank_line: bool = False  # Skip blank line following heading
+        self._current_inline_text: str = ""  # Track accumulated inline text for escape context
+        self._in_heading: bool = False  # Track if we're rendering a heading
 
     @override
     def __enter__(self) -> MarkdownNormalizer:
@@ -90,6 +92,8 @@ class MarkdownNormalizer(Renderer):
         # This ensures proper spacing before list items that follow paragraphs
         self._suppress_item_break = False
 
+        # Reset inline text tracking for this paragraph
+        self._current_inline_text = ""
         children: Any = self.render_children(element)
 
         # GFM checkbox support.
@@ -103,6 +107,7 @@ class MarkdownNormalizer(Renderer):
             self._second_prefix,
         )
         self._prefix = self._second_prefix
+        self._current_inline_text = ""
         return wrapped_text + "\n"
 
     def render_list(self, element: block.List) -> str:
@@ -192,7 +197,11 @@ class MarkdownNormalizer(Renderer):
         return result
 
     def render_heading(self, element: block.Heading) -> str:
+        self._in_heading = True
+        self._current_inline_text = ""
         children_content = self.render_children(element)
+        self._in_heading = False
+        self._current_inline_text = ""
         # If heading ends with hard break, don't add extra newline
         if children_content.endswith("\\"):
             result = f"{self._prefix}{'#' * element.level} {children_content}\n"
@@ -268,12 +277,63 @@ class MarkdownNormalizer(Renderer):
         return template.format(self.render_children(element), element.dest, title)
 
     def render_literal(self, element: inline.Literal) -> str:
-        return f"\\{element.children}"
+        """
+        Render escaped characters, only preserving the escape when necessary.
+
+        Per CommonMark spec (https://spec.commonmark.org/0.31.2/#backslash-escapes):
+        - Any ASCII punctuation character may be backslash-escaped
+        - Escapes prevent the character from having its special Markdown meaning
+        - See Example 14: "1\\. not a list" - escape needed to prevent list interpretation
+
+        Our approach (smart escaping):
+        - Periods: Only escape when needed to prevent list markers (e.g., "1\\." at line start)
+          - Remove in headings: "## 1\\." → "## 1." (can't start list in heading)
+          - Remove in middle of text: "text 1\\. more" → "text 1. more" (not at line start)
+          - Keep at line start: "1\\. not a list" → "1\\. not a list" (prevents list)
+        - Other characters (*, #, -, _, etc.): Always preserve escapes
+          - These may have meaning in various contexts (emphasis, lists, etc.)
+          - Conservative approach: keep escape unless we're certain it's unnecessary
+
+        Related discussions:
+        - cmark issue #131: https://github.com/commonmark/cmark/issues/131
+          (discusses overly aggressive escaping in renderers)
+        """
+        # For Literal elements, children is always a string (the escaped character)
+        char = cast(str, element.children)
+
+        # Only handle period escapes - leave all other escapes as-is
+        # Other punctuation escapes (*, #, -, _, etc.) may be needed for various syntax
+        if char != ".":
+            self._current_inline_text += f"\\{char}"
+            return f"\\{char}"
+
+        # For periods: remove escape in headings
+        # Rationale: Can't start a list inside a heading, so period is never special syntax
+        if self._in_heading:
+            self._current_inline_text += char
+            return char
+
+        # For periods: check if this would form a list marker
+        # CommonMark requires: 1-9 digits + "." + space to create ordered list
+        # Need to escape if:
+        # 1. We're at or near the start of a line
+        # 2. The accumulated text is just digits (matches list marker pattern: "1.")
+        stripped = self._current_inline_text.lstrip()
+        if stripped and stripped.isdigit():
+            # This is "1\." at line start - preserve escape to prevent list interpretation
+            self._current_inline_text += f"\\{char}"
+            return f"\\{char}"
+
+        # For all other period cases, the escape is not needed
+        self._current_inline_text += char
+        return char
 
     def render_raw_text(self, element: inline.RawText) -> str:
         from marko.ext.pangu import PANGU_RE
 
-        return re.sub(PANGU_RE, " ", element.children)
+        text = re.sub(PANGU_RE, " ", element.children)
+        self._current_inline_text += text
+        return text
 
     def render_line_break(self, element: inline.LineBreak) -> str:
         return "\n" if element.soft else "\\\n"

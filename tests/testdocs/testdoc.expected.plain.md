@@ -131,7 +131,7 @@ be paying $\$0.55116 \times \$0.80$ per share, or $0.44093 per share. And $\$420
 > proper venue. The parties to this Note irrevocably consent to personal jurisdiction in
 > the state and federal courts of the state of Washington.
 
-> iv\. **Further Limitations on Disposition.** Without in any way limiting the
+> iv. **Further Limitations on Disposition.** Without in any way limiting the
 > representations set forth above, the Holder further agrees not to make any disposition
 > of all or any portion of the Securities unless and until:
 > 
@@ -550,12 +550,12 @@ evaluated against the core requirements:
 | **Programmatic Invalidation API** | Automatic / Limited | Automatic / Limited | Yes (Cloudflare API) | Yes (CloudFront API) 15-16 |
 | **Basic Cost Model** | Per User / Usage 5 | Per User / Usage 5 | Generous Free Tier / Usage | Usage-Based Components 20-64 |
 
-## **3\. Platform\-Specific Mechanisms**
+## **3. Platform\-Specific Mechanisms**
 
 Each major operating system provides its own set of system calls, APIs, and conventions
 for managing temporary files and directories.
 
-### **3\.1\. Linux**
+### **3.1. Linux**
 
 Linux offers a rich set of POSIX\-compliant and Linux\-specific mechanisms.
 
