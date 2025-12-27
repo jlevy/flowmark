@@ -133,7 +133,7 @@ class CustomFencedCode(block.FencedCode):
         parse_info: ExtendedParseInfo = source.context.code_info
         while not source.exhausted:
             line = source.next_line()
-            if line is None:
+            if line is None:  # pyright: ignore[reportUnnecessaryComparison]
                 break
             source.consume()
             m = re.match(r" {,3}(~+|`+)[^\n\S]*$", line, flags=re.M)
@@ -272,9 +272,7 @@ class MarkdownNormalizer(Renderer):
         self._suppress_item_break = False
         return f"{result}\n"
 
-    def _render_code(
-        self, element: block.CodeBlock | block.FencedCode | CustomFencedCode
-    ) -> str:
+    def _render_code(self, element: block.CodeBlock | block.FencedCode | CustomFencedCode) -> str:
         # Reset the skip flag since we're not rendering a blank line
         self._skip_next_blank_line = False
 
