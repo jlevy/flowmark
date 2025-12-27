@@ -1215,6 +1215,46 @@ A fenced block.
 
 - List item two
 
+## 14. Nested Fenced Code Blocks
+
+Fenced code blocks that contain other fenced code blocks need extra backticks.
+
+### Markdoc Style (4 backticks)
+
+````value {% process=false %}
+Use {% callout %} for emphasis.
+````
+
+### Nested Markdown Code (4 backticks)
+
+````markdown
+This is a code block with nested markdown:
+
+```python
+print('hello')
+```
+````
+
+### Deeply Nested (5 backticks)
+
+`````markdown
+Here's an example with 4-backtick code block:
+
+````python
+print('hello')
+````
+`````
+
+### Tilde Fences Preserved
+
+~~~markdown
+Here's some code:
+
+```python
+print('hello')
+```
+~~~
+
 ## Summary
 
 All these corner cases should format consistently and predictably.

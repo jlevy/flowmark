@@ -3,13 +3,14 @@ from __future__ import annotations
 import re
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 from marko import Markdown, Renderer, block, inline
 from marko.block import HTMLBlock
 from marko.ext import footnote
 from marko.ext.gfm import GFM
 from marko.ext.gfm import elements as gfm_elements
+from marko.helpers import partition_by_spaces
 from marko.parser import Parser
 from marko.source import Source
 from typing_extensions import override
@@ -30,6 +31,28 @@ def _normalize_title_quotes(title: str) -> str:
     return f'"{escaped}"'
 
 
+def _min_fence_length(code_content: str, fence_char: str = "`") -> int:
+    """
+    Calculate the minimum fence length needed for code content.
+
+    Scans the content for sequences of the fence character at the start of lines
+    and returns one more than the longest sequence found (minimum 3).
+
+    Per CommonMark spec, the closing fence must have at least as many fence
+    characters as the opening fence. Sequences only matter at the start of
+    lines (with up to 3 spaces of indentation).
+    """
+    max_len = 0
+    # Find all sequences of 3+ fence chars at start of line (with optional indent)
+    pattern = rf"^[ ]{{0,3}}({re.escape(fence_char)}{{3,}})"
+    for match in re.finditer(pattern, code_content, re.MULTILINE):
+        fence = match.group(1)
+        max_len = max(max_len, len(fence))
+
+    # Need at least one more than the longest found, minimum 3
+    return max(3, max_len + 1)
+
+
 # XXX Turn off Marko's parsing of block HTML.
 # Block parsing with comments or block elements has some counterintuitive issues:
 # https://github.com/frostming/marko/issues/202
@@ -43,10 +66,100 @@ class CustomHTMLBlock(HTMLBlock):
         return False
 
 
+class ExtendedParseInfo(NamedTuple):
+    """Extended parse info that includes fence character and length."""
+
+    prefix: str
+    leading: str
+    lang: str
+    extra: str
+    fence_char: str
+    fence_len: int
+
+
+class CustomFencedCode(block.FencedCode):
+    """
+    Extended FencedCode that preserves the fence character and length.
+
+    This allows us to preserve the original fence style (backticks vs tildes)
+    and length (3+ characters) when normalizing markdown.
+    """
+
+    lang: str
+    extra: str
+    children: list[inline.RawText]
+    fence_char: str = "`"
+    fence_len: int = 3
+
+    def __init__(  # pyright: ignore[reportMissingSuperCall]
+        self, match: tuple[str, str, str, str, int]
+    ) -> None:
+        # We intentionally don't call super().__init__ because we need a different
+        # tuple format that includes fence_char and fence_len
+        self.lang = inline.Literal.strip_backslash(match[0])
+        self.extra = match[1]
+        self.children = [inline.RawText(match[2], False)]
+        self.fence_char = match[3]
+        self.fence_len = match[4]
+
+    @override
+    @classmethod
+    def match(cls, source: Source) -> re.Match[str] | None:
+        m = source.expect_re(cls.pattern)
+        if not m:
+            return None
+        prefix, leading, info = m.groups()
+        if leading[0] == "`" and "`" in info:
+            return None
+        lang, _, extra = partition_by_spaces(info)
+        # Store extended info including fence_char and fence_len
+        fence_char = leading[0]
+        fence_len = len(leading)
+        source.context.code_info = ExtendedParseInfo(
+            prefix, leading, lang, extra, fence_char, fence_len
+        )
+        return m
+
+    @override
+    @classmethod
+    def parse(  # pyright: ignore[reportIncompatibleMethodOverride]
+        cls, source: Source
+    ) -> tuple[str, str, str, str, int]:
+        # We intentionally return a different tuple format than the parent class
+        # to include fence_char and fence_len
+        source.next_line()
+        source.consume()
+        lines: list[str] = []
+        parse_info: ExtendedParseInfo = source.context.code_info
+        while not source.exhausted:
+            line = source.next_line()
+            if line is None:
+                break
+            source.consume()
+            m = re.match(r" {,3}(~+|`+)[^\n\S]*$", line, flags=re.M)
+            if m and parse_info.leading in m.group(1):
+                break
+
+            prefix_len = source.match_prefix(parse_info.prefix, line)
+            if prefix_len >= 0:
+                line = line[prefix_len:]
+            else:
+                line = line.lstrip()
+            lines.append(line)
+        return (
+            parse_info.lang,
+            parse_info.extra,
+            "".join(lines),
+            parse_info.fence_char,
+            parse_info.fence_len,
+        )
+
+
 class CustomParser(Parser):
     def __init__(self) -> None:
         super().__init__()
         self.block_elements["HTMLBlock"] = CustomHTMLBlock
+        self.block_elements["FencedCode"] = CustomFencedCode
 
 
 class MarkdownNormalizer(Renderer):
@@ -159,7 +272,9 @@ class MarkdownNormalizer(Renderer):
         self._suppress_item_break = False
         return f"{result}\n"
 
-    def _render_code(self, element: block.CodeBlock | block.FencedCode) -> str:
+    def _render_code(
+        self, element: block.CodeBlock | block.FencedCode | CustomFencedCode
+    ) -> str:
         # Reset the skip flag since we're not rendering a blank line
         self._skip_next_blank_line = False
 
@@ -170,9 +285,26 @@ class MarkdownNormalizer(Renderer):
         extra = element.extra if isinstance(element, block.FencedCode) else ""
         extra_text = f" {extra}" if extra else ""
         lang_text = f"{lang}{extra_text}" if lang else ""
-        lines = [f"{self._prefix}```{lang_text}"]
+
+        # Get fence character and length from CustomFencedCode, or use defaults
+        if isinstance(element, CustomFencedCode):
+            fence_char = element.fence_char
+            original_fence_len = element.fence_len
+        else:
+            fence_char = "`"
+            original_fence_len = 3
+
+        # Calculate minimum fence length needed based on content
+        # (must be longer than any fence-like sequences in the content)
+        min_fence_len = _min_fence_length(code_content, fence_char)
+
+        # Use the maximum of original and minimum fence lengths
+        fence_len = max(original_fence_len, min_fence_len)
+        fence = fence_char * fence_len
+
+        lines = [f"{self._prefix}{fence}{lang_text}"]
         lines.extend(f"{self._second_prefix}{line}" for line in code_content.splitlines())
-        lines.append(f"{self._second_prefix}```")
+        lines.append(f"{self._second_prefix}{fence}")
         self._prefix = self._second_prefix
         # After rendering a code block, don't suppress the next item break
         # This ensures proper spacing after list items with code blocks
@@ -180,6 +312,9 @@ class MarkdownNormalizer(Renderer):
         return "\n".join(lines) + "\n"
 
     def render_fenced_code(self, element: block.FencedCode) -> str:
+        return self._render_code(element)
+
+    def render_custom_fenced_code(self, element: CustomFencedCode) -> str:
         return self._render_code(element)
 
     def render_code_block(self, element: block.CodeBlock) -> str:
