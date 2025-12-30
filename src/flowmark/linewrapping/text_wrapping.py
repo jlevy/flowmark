@@ -26,12 +26,33 @@ class _HtmlMdWordSplitter:
         # Sequences of whitespace-delimited words that should be coalesced and treated
         # like a single word.
         self.patterns: list[tuple[str, ...]] = [
-            # HTML tags:
+            # HTML/XML tags:
             (r"<[^>]+", r"[^<>]+>[^<>]*"),
             (r"<[^>]+", r"[^<>]+", r"[^<>]+>[^<>]*"),
             # Markdown links:
             (r"\[", r"[^\[\]]+\][^\[\]]*"),
             (r"\[", r"[^\[\]]+", r"[^\[\]]+\][^\[\]]*"),
+            # Template tags {% ... %} (Markdoc/Jinja/Nunjucks)
+            # Support tags spanning 2-7 words (covers most practical cases)
+            (r"\{%", r".*%\}"),
+            (r"\{%", r".+", r".*%\}"),
+            (r"\{%", r".+", r".+", r".*%\}"),
+            (r"\{%", r".+", r".+", r".+", r".*%\}"),
+            (r"\{%", r".+", r".+", r".+", r".+", r".*%\}"),
+            (r"\{%", r".+", r".+", r".+", r".+", r".+", r".*%\}"),
+            (r"\{%", r".+", r".+", r".+", r".+", r".+", r".+", r".*%\}"),
+            # Template comments {# ... #} (Jinja/Nunjucks)
+            (r"\{#", r".*#\}"),
+            (r"\{#", r".+", r".*#\}"),
+            (r"\{#", r".+", r".+", r".*#\}"),
+            (r"\{#", r".+", r".+", r".+", r".*#\}"),
+            (r"\{#", r".+", r".+", r".+", r".+", r".*#\}"),
+            (r"\{#", r".+", r".+", r".+", r".+", r".+", r".*#\}"),
+            # Template variables {{ ... }} (Jinja/Nunjucks)
+            (r"\{\{", r".*\}\}"),
+            (r"\{\{", r".+", r".*\}\}"),
+            (r"\{\{", r".+", r".+", r".*\}\}"),
+            (r"\{\{", r".+", r".+", r".+", r".*\}\}"),
         ]
         self.compiled_patterns: list[tuple[re.Pattern[str], ...]] = [
             tuple(re.compile(pattern) for pattern in pattern_group)

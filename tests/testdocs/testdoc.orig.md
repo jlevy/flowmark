@@ -942,6 +942,44 @@ print('hello')
 ```
 ~~~
 
+## 15. Template Tags (Markdoc/Jinja/Nunjucks)
+
+Template-style tags should be kept as atomic units during line wrapping.
+
+### Inline Template Tags
+
+This paragraph contains {% if $condition %} inline template tags {% endif %} that should stay intact and not be split across lines even when wrapping occurs in a long paragraph like this one.
+
+A Jinja comment {# this is a comment #} should not be split across lines.
+
+Variable interpolation like {{ user.name }} should stay together as one unit.
+
+### Block Template Tags
+
+{% callout type="warning" %}
+This is a callout block. The content inside should wrap normally, but the opening and closing tags should remain on their own lines and not be joined with surrounding text.
+{% /callout %}
+
+{% if $showAdvanced %}
+
+This conditional content is between block tags. It should be wrapped but the tags themselves should stay on their own lines.
+
+{% /if %}
+
+### Self-Closing and Complex Tags
+
+Some text with {% partial file="snippet.md" /%} self-closing tags inline in a longer paragraph that will wrap.
+
+Complex attributes {% city name="San Francisco" coordinates=[37.7749, -122.4194] %} should stay atomic even with arrays and objects.
+
+### Edge Cases
+
+Long tag: {% very_long_tag_name with="many" attributes="here" and="more" values="too" /%}
+
+Jinja blocks: {% block content %}This is the content{% endblock %}
+
+Nunjucks raw block: {% raw %}This {{ won't }} be {% processed %}{% endraw %}
+
 ## Summary
 
 

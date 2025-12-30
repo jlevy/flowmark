@@ -271,3 +271,79 @@ def test_line_wrap_to_width_with_markdown_breaks():
     single_segment = "Text with no breaks"
     wrapped_single = wrapper(single_segment, initial_indent="> ", subsequent_indent="  ")
     assert wrapped_single == "> Text with no breaks"
+
+
+def test_template_tag_splitter():
+    """Test that template tags (Markdoc/Jinja/Nunjucks) are kept as atomic tokens."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Markdoc-style tags: {% tag %}
+    markdoc_text = "Text with {% if $condition %} template tags {% endif %} here."
+    result = splitter(markdoc_text)
+    assert "{% if $condition %}" in result
+    assert "{% endif %}" in result
+
+    # Self-closing Markdoc tags: {% tag /%}
+    self_closing = "Include {% partial file='header.md' /%} here."
+    result = splitter(self_closing)
+    assert "{% partial file='header.md' /%}" in result
+
+    # Jinja/Nunjucks comments: {# comment #}
+    comment_text = "Text with {# this is a comment #} inline."
+    result = splitter(comment_text)
+    assert "{# this is a comment #}" in result
+
+    # Jinja/Nunjucks variables: {{ variable }}
+    variable_text = "Hello {{ user.name }} welcome."
+    result = splitter(variable_text)
+    assert "{{ user.name }}" in result
+
+    # Complex Markdoc tag with attributes
+    complex_tag = "Use {% callout type='warning' title='Note' %} for emphasis."
+    result = splitter(complex_tag)
+    assert "{% callout type='warning' title='Note' %}" in result
+
+    # Multiple template tags in sequence (with spaces between)
+    multi_tag = "{% if $a %} {% if $b %}nested{% /if %} {% /if %}"
+    result = splitter(multi_tag)
+    # Tags should be kept together
+    assert "{% if $a %}" in result
+    assert "{% /if %}" in result
+
+
+def test_template_tag_wrapping():
+    """Test that template tags don't break across lines during wrapping."""
+
+    # Template tag should stay together even if it's long
+    text_with_tag = "Some text {% callout type='warning' %} more text after the tag."
+    result = wrap_paragraph_lines(text=text_with_tag, width=30, is_markdown=True)
+
+    # The tag should not be split across lines
+    full_result = " ".join(result)
+    assert "{% callout type='warning' %}" in full_result
+
+    # Jinja variable should stay together
+    text_with_var = "Hello {{ user.first_name }} and welcome to the site."
+    result = wrap_paragraph_lines(text=text_with_var, width=25, is_markdown=True)
+    full_result = " ".join(result)
+    assert "{{ user.first_name }}" in full_result
+
+    # Comment should stay together
+    text_with_comment = "Text {# TODO: fix this later #} and more text here."
+    result = wrap_paragraph_lines(text=text_with_comment, width=20, is_markdown=True)
+    full_result = " ".join(result)
+    assert "{# TODO: fix this later #}" in full_result
+
+
+def test_mixed_html_and_template_tags():
+    """Test that HTML tags and template tags work together."""
+    splitter = _HtmlMdWordSplitter()
+
+    mixed = "Text <span class='x'>html</span> and {% if $y %} template {% endif %} here."
+    result = splitter(mixed)
+
+    # HTML should be coalesced
+    assert "<span class='x'>html</span>" in result
+    # Template tags should be kept together
+    assert "{% if $y %}" in result
+    assert "{% endif %}" in result
