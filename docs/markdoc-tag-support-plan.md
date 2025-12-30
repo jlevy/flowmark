@@ -1,5 +1,18 @@
 # Markdoc/Jinja/Nunjucks Tag Support in Flowmark
 
+## Implementation Status
+
+**✅ Phase 1 Complete** - Template tags are now kept as atomic units during line wrapping.
+
+Changes implemented:
+- Extended `_HtmlMdWordSplitter` with patterns for `{% %}`, `{# #}`, and `{{ }}`
+- Added unit tests for template tag handling
+- Added integration tests in testdoc.orig.md
+
+Remaining work (future enhancements):
+- Phase 2: Tag boundary detection for preventing line joining around block tags
+- Phase 4: Block-level tag handling (recognizing block tags at Marko parser level)
+
 ## Overview
 
 This document outlines the plan to add support for template-style tags (`{% %}` and `{# #}`) in
