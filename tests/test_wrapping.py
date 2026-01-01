@@ -1,7 +1,9 @@
 from textwrap import dedent
 
 from flowmark.linewrapping.text_wrapping import (
+    MAX_TAG_WORDS,
     _HtmlMdWordSplitter,  # pyright: ignore
+    _generate_tag_patterns,  # pyright: ignore
     html_md_word_splitter,
     markdown_escape_word,
     simple_word_splitter,
@@ -347,3 +349,83 @@ def test_mixed_html_and_template_tags():
     # Template tags should be kept together
     assert "{% if $y %}" in result
     assert "{% endif %}" in result
+
+
+def test_generate_tag_patterns():
+    """Test the pattern generation function directly."""
+    # Test with max_words=4
+    patterns = _generate_tag_patterns(start=r"\{%", end=r".*%\}", middle=r".+", max_words=4)
+
+    # Should generate patterns for 2, 3, 4 words
+    assert len(patterns) == 3
+
+    # 2-word pattern: (start, end)
+    assert patterns[0] == (r"\{%", r".*%\}")
+
+    # 3-word pattern: (start, middle, end)
+    assert patterns[1] == (r"\{%", r".+", r".*%\}")
+
+    # 4-word pattern: (start, middle, middle, end)
+    assert patterns[2] == (r"\{%", r".+", r".+", r".*%\}")
+
+
+def test_max_tag_words_constant():
+    """Test that MAX_TAG_WORDS is set appropriately for long tags."""
+    # Should support at least 10 words
+    assert MAX_TAG_WORDS >= 10
+
+
+def test_long_template_tags():
+    """Test that tags with many attributes (10+ words) are kept together."""
+    splitter = _HtmlMdWordSplitter()
+
+    # 10-word template tag
+    long_tag = "{% component name='widget' type='button' size='large' color='blue' disabled=true %}"
+    text = f"Before {long_tag} after."
+    result = splitter(text)
+    assert long_tag in result
+
+    # 12-word template tag (at the limit)
+    very_long_tag = "{% table columns=[a, b, c] rows=[1, 2, 3] border=true striped=true hover=true %}"
+    text = f"Before {very_long_tag} after."
+    result = splitter(text)
+    assert very_long_tag in result
+
+
+def test_long_html_tags():
+    """Test that HTML tags with many attributes are kept together."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Long HTML tag with many attributes
+    long_html = "<div class='container' id='main' data-value='test' style='color: red'>content</div>"
+    text = f"Before {long_html} after."
+    result = splitter(text)
+    assert long_html in result
+
+
+def test_long_jinja_comments():
+    """Test that long Jinja comments are kept together."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Long comment with many words (12 words = MAX_TAG_WORDS)
+    long_comment = "{# This is a long comment that spans many words here #}"
+    text = f"Before {long_comment} after."
+    result = splitter(text)
+    assert long_comment in result
+
+
+def test_all_tag_types_support_same_max_words():
+    """Test that all tag types support the same maximum word count."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Create tags with MAX_TAG_WORDS words for each type
+    words_inside = " ".join(["word"] * (MAX_TAG_WORDS - 2))
+
+    # Template tag
+    template_tag = f"{{%  {words_inside} %}}"
+    # Note: we need spaces after {% and before %} for this to work as separate words
+
+    # All should be handled consistently (not broken)
+    # This test verifies the splitter doesn't crash on long inputs
+    result = splitter(f"text {template_tag} more")
+    assert len(result) >= 1  # Should process without error

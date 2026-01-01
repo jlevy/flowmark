@@ -21,38 +21,66 @@ def simple_word_splitter(text: str) -> list[str]:
     return text.split()
 
 
+# Maximum number of whitespace-separated words to coalesce into a single token.
+# This applies to HTML/XML tags, Markdown links, and template tags.
+MAX_TAG_WORDS = 12
+
+
+def _generate_tag_patterns(
+    start: str, end: str, middle: str = r".+", max_words: int = MAX_TAG_WORDS
+) -> list[tuple[str, ...]]:
+    """
+    Generate coalescing patterns for tags with a given start/end delimiter.
+
+    For example, for template tags {% ... %}:
+        start=r"\\{%", end=r".*%\\}", middle=r".+"
+
+    This generates patterns for 2, 3, 4, ... max_words word spans.
+    """
+    patterns: list[tuple[str, ...]] = []
+    for num_words in range(2, max_words + 1):
+        # Pattern: start, (middle repeated n-2 times), end
+        middle_count = num_words - 2
+        pattern = (start,) + (middle,) * middle_count + (end,)
+        patterns.append(pattern)
+    return patterns
+
+
 class _HtmlMdWordSplitter:
     def __init__(self):
         # Sequences of whitespace-delimited words that should be coalesced and treated
-        # like a single word.
+        # like a single word. All tag types support up to MAX_TAG_WORDS words.
         self.patterns: list[tuple[str, ...]] = [
-            # HTML/XML tags:
-            (r"<[^>]+", r"[^<>]+>[^<>]*"),
-            (r"<[^>]+", r"[^<>]+", r"[^<>]+>[^<>]*"),
-            # Markdown links:
-            (r"\[", r"[^\[\]]+\][^\[\]]*"),
-            (r"\[", r"[^\[\]]+", r"[^\[\]]+\][^\[\]]*"),
+            # HTML/XML tags: <tag attr="value">content</tag>
+            *_generate_tag_patterns(
+                start=r"<[^>]+",
+                end=r"[^<>]+>[^<>]*",
+                middle=r"[^<>]+",
+            ),
+            # Markdown links: [text](url) or [text][ref]
+            *_generate_tag_patterns(
+                start=r"\[",
+                end=r"[^\[\]]+\][^\[\]]*",
+                middle=r"[^\[\]]+",
+            ),
             # Template tags {% ... %} (Markdoc/Jinja/Nunjucks)
-            # Support tags spanning 2-7 words (covers most practical cases)
-            (r"\{%", r".*%\}"),
-            (r"\{%", r".+", r".*%\}"),
-            (r"\{%", r".+", r".+", r".*%\}"),
-            (r"\{%", r".+", r".+", r".+", r".*%\}"),
-            (r"\{%", r".+", r".+", r".+", r".+", r".*%\}"),
-            (r"\{%", r".+", r".+", r".+", r".+", r".+", r".*%\}"),
-            (r"\{%", r".+", r".+", r".+", r".+", r".+", r".+", r".*%\}"),
+            *_generate_tag_patterns(
+                start=r"\{%",
+                end=r".*%\}",
+                middle=r".+",
+            ),
             # Template comments {# ... #} (Jinja/Nunjucks)
-            (r"\{#", r".*#\}"),
-            (r"\{#", r".+", r".*#\}"),
-            (r"\{#", r".+", r".+", r".*#\}"),
-            (r"\{#", r".+", r".+", r".+", r".*#\}"),
-            (r"\{#", r".+", r".+", r".+", r".+", r".*#\}"),
-            (r"\{#", r".+", r".+", r".+", r".+", r".+", r".*#\}"),
+            *_generate_tag_patterns(
+                start=r"\{#",
+                end=r".*#\}",
+                middle=r".+",
+            ),
             # Template variables {{ ... }} (Jinja/Nunjucks)
-            (r"\{\{", r".*\}\}"),
-            (r"\{\{", r".+", r".*\}\}"),
-            (r"\{\{", r".+", r".+", r".*\}\}"),
-            (r"\{\{", r".+", r".+", r".+", r".*\}\}"),
+            *_generate_tag_patterns(
+                start=r"\{\{",
+                end=r".*\}\}",
+                middle=r".+",
+            ),
         ]
         self.compiled_patterns: list[tuple[re.Pattern[str], ...]] = [
             tuple(re.compile(pattern) for pattern in pattern_group)
