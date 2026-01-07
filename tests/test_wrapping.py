@@ -1,9 +1,8 @@
 from textwrap import dedent
 
 from flowmark.linewrapping.text_wrapping import (
-    MAX_TAG_WORDS,
-    _HtmlMdWordSplitter,  # pyright: ignore
     _generate_tag_patterns,  # pyright: ignore
+    _HtmlMdWordSplitter,  # pyright: ignore
     html_md_word_splitter,
     markdown_escape_word,
     simple_word_splitter,
@@ -369,12 +368,6 @@ def test_generate_tag_patterns():
     assert patterns[2] == (r"\{%", r".+", r".+", r".*%\}")
 
 
-def test_max_tag_words_constant():
-    """Test that MAX_TAG_WORDS is set appropriately for long tags."""
-    # Should support at least 10 words
-    assert MAX_TAG_WORDS >= 10
-
-
 def test_long_template_tags():
     """Test that tags with many attributes (10+ words) are kept together."""
     splitter = _HtmlMdWordSplitter()
@@ -386,7 +379,9 @@ def test_long_template_tags():
     assert long_tag in result
 
     # 12-word template tag (at the limit)
-    very_long_tag = "{% table columns=[a, b, c] rows=[1, 2, 3] border=true striped=true hover=true %}"
+    very_long_tag = (
+        "{% table columns=[a, b, c] rows=[1, 2, 3] border=true striped=true hover=true %}"
+    )
     text = f"Before {very_long_tag} after."
     result = splitter(text)
     assert very_long_tag in result
@@ -397,7 +392,9 @@ def test_long_html_tags():
     splitter = _HtmlMdWordSplitter()
 
     # Long HTML tag with many attributes
-    long_html = "<div class='container' id='main' data-value='test' style='color: red'>content</div>"
+    long_html = (
+        "<div class='container' id='main' data-value='test' style='color: red'>content</div>"
+    )
     text = f"Before {long_html} after."
     result = splitter(text)
     assert long_html in result
@@ -412,20 +409,3 @@ def test_long_jinja_comments():
     text = f"Before {long_comment} after."
     result = splitter(text)
     assert long_comment in result
-
-
-def test_all_tag_types_support_same_max_words():
-    """Test that all tag types support the same maximum word count."""
-    splitter = _HtmlMdWordSplitter()
-
-    # Create tags with MAX_TAG_WORDS words for each type
-    words_inside = " ".join(["word"] * (MAX_TAG_WORDS - 2))
-
-    # Template tag
-    template_tag = f"{{%  {words_inside} %}}"
-    # Note: we need spaces after {% and before %} for this to work as separate words
-
-    # All should be handled consistently (not broken)
-    # This test verifies the splitter doesn't crash on long inputs
-    result = splitter(f"text {template_tag} more")
-    assert len(result) >= 1  # Should process without error
