@@ -21,7 +21,8 @@ The key differences from [other Markdown formatters](#why-another-markdown-forma
   It parses and normalizes standard links and special characters, headings, tables,
   footnotes, and horizontal rules and performing Markdown-aware line wrapping.
 
-- “Just works” support for GFM-style tables, footnotes, and as YAML frontmatter.
+- “Just works” support for GFM-style tables, footnotes, YAML frontmatter, and template
+  tags (Markdoc, Jinja, Nunjucks).
 
 - Advanced and customizable line-wrapping capabilities, including
   [semantic line breaks](#semantic-line-breaks), a feature that is especially helpful in
@@ -84,9 +85,9 @@ The main ways to use Flowmark are:
   [`textwrap`](https://docs.python.org/3/library/textwrap.html)** but with more options.
   It simplifies and generalizes that library, offering better control over **initial and
   subsequent indentation** and **when to split words and lines**, e.g. using a word
-  splitter that won’t break lines within HTML tags.
-  See
-  [`wrap_paragraph_lines`](https://github.com/jlevy/flowmark/blob/main/src/flowmark/text_wrapping.py#L97-L118).
+  splitter that won’t break lines within HTML tags or template tags (`{% %}`, `{# #}`,
+  `{{ }}`). See
+  [`wrap_paragraph_lines`](https://github.com/jlevy/flowmark/blob/main/src/flowmark/linewrapping/text_wrapping.py).
 
 ## Semantic Line Breaks
 
