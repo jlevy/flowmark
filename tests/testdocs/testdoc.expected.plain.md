@@ -1257,7 +1257,94 @@ print('hello')
 ```
 ~~~
 
-## 15. Template Tags (Markdoc/Jinja/Nunjucks)
+## 15. GitHub Alerts/Callouts
+
+GitHub-flavored Markdown supports alert blocks (callouts) for highlighting important
+information.
+
+### Basic Alerts
+
+> [!NOTE]
+> This is a note alert for highlighting information.
+
+> [!TIP]
+> This is a tip alert for helpful suggestions.
+
+> [!IMPORTANT]
+> This is an important alert for crucial information.
+
+> [!WARNING]
+> This is a warning alert for potential issues.
+
+> [!CAUTION]
+> This is a caution alert for dangerous actions.
+
+### Multi-line Alert Content
+
+> [!NOTE]
+> This is a note with multiple lines of content. The content continues on the next line.
+> And keeps going on this third line.
+
+### Alert with Multiple Paragraphs
+
+> [!TIP]
+> First paragraph of the tip.
+> 
+> Second paragraph with more details.
+
+### Alert with Code Block
+
+> [!WARNING]
+> Be careful with this code:
+> 
+> ```python
+> dangerous_operation()
+> ```
+
+### Alert with List
+
+> [!IMPORTANT]
+> Remember these items:
+> 
+> - First item
+>
+> - Second item
+>
+> - Third item
+
+### Lowercase Alert Type (normalized to uppercase)
+
+> [!NOTE]
+> This lowercase alert should be normalized to uppercase.
+
+### Non-standard Alert Types (preserved as regular quotes)
+
+Non-standard alert types like `[!FOO]` are not recognized by GitHub but should be
+preserved as regular block quotes without losing any content.
+
+> [!FOO] This uses a non-standard alert type. It should be preserved as a regular quote.
+
+> [!CUSTOM] Another non-standard type that should be preserved.
+
+> [!INFO] Info is not a standard GitHub alert type.
+
+### Misspelled Alert Types (preserved as regular quotes)
+
+Misspelled standard types should also be preserved as regular quotes.
+
+> [!NOOT] This misspelled NOTE should be a regular quote.
+
+> [!WARNNG] This misspelled WARNING should be a regular quote.
+
+### Malformed Alert Syntax (preserved as regular quotes)
+
+Various malformed alert syntaxes should be preserved as regular quotes.
+
+> [NOTE] Missing exclamation mark - regular quote.
+
+> [!] Empty alert type - regular quote.
+
+## 16. Template Tags (Markdoc/Jinja/Nunjucks)
 
 Template-style tags should be kept as atomic units during line wrapping.
 
