@@ -1436,6 +1436,49 @@ Jinja blocks: {% block content %}This is the content{% endblock %}
 
 Nunjucks raw block: {% raw %}This {{ won’t }} be {% processed %}{% endraw %}
 
+## 17. HTML Comments and Inline Code Preservation
+
+HTML comments and inline code should be preserved correctly without being forced to
+separate lines.
+
+### Inline HTML Comments
+
+This is text with <!-- a comment --> inline that should stay on the same line.
+
+A paragraph with <!-- an inline comment --> should keep the comment together with
+surrounding text during wrapping.
+
+### Block HTML Comments
+
+Block comments on their own line stay separate:
+
+<!-- This is a block comment -->
+
+### Inline Code with Special Syntax
+
+Inline code with template-like syntax must be preserved exactly:
+
+| Markdoc Form | Comment Form |
+| --- | --- |
+| `{% tag attr="val" %}` | `<!--% tag attr="val" -->` |
+| `{% /tag %}` | `<!--% /tag -->` |
+| `{% tag /%}` | `<!--% tag /-->` |
+
+**Recommended approach: Preprocessor (Approach 1) with Option A syntax
+(`<!--% ... -->`)**
+
+Consider if editor support for `<!--{% %}-->` wrapper syntax is valuable.
+
+### Edge Cases for Code Spans
+
+Simple code: `some-code` stays together.
+
+Code with spaces: `code with spaces inside` stays together.
+
+Code with HTML-like content: `<div class="foo">bar</div>` stays together.
+
+Code with comment-like content: `<!-- not a real comment -->` stays together.
+
 ## Summary
 
 All these corner cases should format consistently and predictably.

@@ -2,18 +2,7 @@ from textwrap import dedent
 
 import marko
 
-from flowmark.linewrapping.markdown_filling import (
-    _normalize_html_comments,  # pyright: ignore[reportPrivateUsage]
-    fill_markdown,
-)
-
-
-def test_normalize_html_comments():
-    input_text_1 = "<!--window-br--> Words and words"
-    expected_output_1 = "<!--window-br-->\n\nWords and words"
-    print(_normalize_html_comments(input_text_1))
-    assert _normalize_html_comments(input_text_1) == expected_output_1
-
+from flowmark.linewrapping.markdown_filling import fill_markdown
 
 _original_doc = dedent(
     """
@@ -167,10 +156,9 @@ A third paragraph.
 
 <!--window-br-->
 
-<!--window-br-->
-
-Words and words and words and words and words and <span data-foo="bar">some HTML</span>
-and words and words and words and words and words and words.
+<!--window-br--> Words and words and words and words and words and
+<span data-foo="bar">some HTML</span> and words and words and words and words and words
+and words.
 
 <span data-foo="bar">Inline HTML.</span> And some following words and words and words
 and words and words and words.

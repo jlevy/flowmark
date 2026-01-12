@@ -409,3 +409,52 @@ def test_long_jinja_comments():
     text = f"Before {long_comment} after."
     result = splitter(text)
     assert long_comment in result
+
+
+def test_inline_code_with_spaces():
+    """Test that inline code spans with spaces are kept together."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Simple inline code with spaces
+    code = "`code with spaces`"
+    text = f"Some {code} here."
+    result = splitter(text)
+    assert code in result
+
+    # Inline code with HTML-like content
+    code2 = "`<!-- not a real comment -->`"
+    text2 = f"Check {code2} for details."
+    result2 = splitter(text2)
+    assert code2 in result2
+
+
+def test_inline_code_with_surrounding_punctuation():
+    """Test that inline code with surrounding punctuation stays together."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Inline code with parentheses
+    text = "syntax (`<!--% ... -->`)**"
+    result = splitter(text)
+    assert "(`<!--% ... -->`)**" in result
+
+    # Inline code followed by punctuation
+    text2 = "Use `foo bar`."
+    result2 = splitter(text2)
+    assert "`foo bar`." in result2
+
+
+def test_html_comments_kept_together():
+    """Test that HTML comments are kept as atomic units."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Simple HTML comment
+    comment = "<!-- a comment -->"
+    text = f"Text with {comment} inline."
+    result = splitter(text)
+    assert comment in result
+
+    # Longer HTML comment
+    long_comment = "<!-- this is a longer comment with more words -->"
+    text2 = f"Before {long_comment} after."
+    result2 = splitter(text2)
+    assert long_comment in result2

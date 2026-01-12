@@ -11,8 +11,6 @@ discussion on why line wrapping this way is convenient.)
 
 from __future__ import annotations
 
-import re
-from collections.abc import Callable
 from textwrap import dedent
 
 from flowmark.formats.flowmark_markdown import flowmark_markdown
@@ -28,52 +26,6 @@ from flowmark.transforms.doc_cleanups import doc_cleanups
 from flowmark.transforms.doc_transforms import rewrite_text_content
 from flowmark.typography.ellipses import ellipses as apply_ellipses
 from flowmark.typography.smartquotes import smart_quotes
-
-
-def _normalize_html_comments(text: str, break_str: str = "\n\n") -> str:
-    """
-    Put HTML comments as standalone paragraphs.
-    """
-
-    # Small hack to avoid changing frontmatter format, for the rare corner
-    # case where Markdown contains HTML-style frontmatter.
-    # https://github.com/jlevy/frontmatter-format
-    def not_frontmatter(text: str) -> bool:
-        return "<!---" not in text  # Three dashes for frontmatter format.
-
-    # TODO: Perhaps could add support to do this for block elements like <div>s too?
-    return _ensure_surrounding_breaks(
-        text, [("<!--", "-->")], break_str=break_str, filter=not_frontmatter
-    )
-
-
-def _ensure_surrounding_breaks(
-    html: str,
-    tag_pairs: list[tuple[str, str]],
-    filter: Callable[[str], bool] = lambda _: True,
-    break_str: str = "\n\n",
-) -> str:
-    html_len = len(html)
-    for start_tag, end_tag in tag_pairs:
-        pattern = re.compile(rf"(\s*{re.escape(start_tag)}.*?{re.escape(end_tag)}\s*)", re.DOTALL)
-
-        def replacer(match: re.Match[str]) -> str:
-            if not filter(match.group(0)):
-                return match.group(0)
-
-            content = match.group(1).strip()
-            before = after = break_str
-
-            if match.start() == 0:
-                before = ""
-            if match.end() == html_len:
-                after = ""
-
-            return f"{before}{content}{after}"
-
-        html = re.sub(pattern, replacer, html)
-
-    return html
 
 
 def split_sentences_no_min_length(text: str) -> list[str]:
@@ -125,9 +77,6 @@ def fill_markdown(
         markdown_text = dedent(markdown_text).strip()
 
     markdown_text = markdown_text.strip() + "\n"
-
-    # If we want to normalize HTML blocks or comments.
-    markdown_text = _normalize_html_comments(markdown_text)
 
     # Parse and render.
     marko = flowmark_markdown(line_wrapper)

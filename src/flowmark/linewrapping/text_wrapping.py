@@ -53,6 +53,22 @@ class _HtmlMdWordSplitter:
         # Sequences of whitespace-delimited words that should be coalesced and treated
         # like a single word. All tag types support up to MAX_TAG_WORDS words.
         self.patterns: list[tuple[str, ...]] = [
+            # Inline code spans: `content with spaces`
+            # These must be kept atomic to preserve code formatting.
+            # Allow optional leading punctuation (like opening parens) before backtick,
+            # and trailing punctuation after closing backtick.
+            *_generate_tag_patterns(
+                start=r"[^\s]*`[^`]*",
+                end=r"[^`]*`[^\s]*",
+                middle=r"[^`]+",
+            ),
+            # HTML comments: <!-- comment text -->
+            # Keep inline comments together, don't force to separate lines
+            *_generate_tag_patterns(
+                start=r"<!--.*",
+                end=r".*-->",
+                middle=r".+",
+            ),
             # HTML/XML tags: <tag attr="value">content</tag>
             *_generate_tag_patterns(
                 start=r"<[^>]+",
