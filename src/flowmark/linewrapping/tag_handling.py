@@ -327,36 +327,55 @@ def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
 
         result = "\n".join(result_parts)
 
-        # Post-process: remove incorrect indentation from closing tags.
+        # Post-process: ensure closing tags have proper spacing and no indentation.
         # The Markdown parser may indent closing tags due to lazy continuation.
-        result = _fix_tag_indentation(result)
+        result = _fix_closing_tag_spacing(result)
 
         return result
 
     return enhanced_wrapper
 
 
-def _fix_tag_indentation(text: str) -> str:
-    """
-    Remove incorrect indentation from closing tags.
+def _is_closing_tag(line: str) -> bool:
+    """Check if a line is a closing tag."""
+    stripped = line.lstrip()
+    return (
+        stripped.startswith("{% /")
+        or stripped.startswith("{# /")
+        or stripped.startswith("{{ /")
+        or stripped.startswith("<!-- /")
+    )
 
-    When a closing tag follows a list item, the Markdown parser may indent it
-    as list continuation. This function strips leading whitespace from lines
-    that are closing tags (start with {% /, {# /, {{ /, or <!-- /).
+
+def _fix_closing_tag_spacing(text: str) -> str:
+    """
+    Ensure closing tags have a blank line before them and no incorrect indentation.
+
+    When a closing tag follows block content (like a list item), the Markdown
+    parser may indent it as list continuation. This function:
+    1. Adds a blank line before closing tags if not already present
+    2. Strips any incorrect indentation from closing tags
+
+    By adding the blank line first, the indentation naturally becomes correct
+    because the closing tag is no longer treated as list continuation.
     """
     lines = text.split("\n")
     fixed_lines: list[str] = []
 
-    for line in lines:
-        stripped = line.lstrip()
-        # Check if this is a closing tag that got incorrectly indented
-        if (
-            stripped.startswith("{% /")
-            or stripped.startswith("{# /")
-            or stripped.startswith("{{ /")
-            or stripped.startswith("<!-- /")
-        ):
-            # Strip the indentation
+    for i, line in enumerate(lines):
+        if _is_closing_tag(line):
+            stripped = line.lstrip()
+            # Check if we need to add a blank line before this closing tag
+            if i > 0 and fixed_lines:
+                prev_line = fixed_lines[-1]
+                prev_is_empty = prev_line.strip() == ""
+                # Only skip blank line if prev is a standalone tag (starts with tag opener)
+                # Don't skip for list items that happen to have inline tags
+                prev_is_standalone_tag = line_starts_with_tag(prev_line)
+                if not prev_is_empty and not prev_is_standalone_tag:
+                    # Add blank line before closing tag
+                    fixed_lines.append("")
+            # Add the closing tag without indentation
             fixed_lines.append(stripped)
         else:
             fixed_lines.append(line)

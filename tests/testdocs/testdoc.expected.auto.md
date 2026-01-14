@@ -1411,6 +1411,7 @@ Variable interpolation like {{ user.name }} should stay together as one unit.
 This is a callout block.
 The content inside should wrap normally, but the opening and closing tags should remain
 on their own lines and not be joined with surrounding text.
+
 {% /callout %}
 
 {% if $showAdvanced %}
@@ -1503,11 +1504,13 @@ Opening tags should preserve the newline after them:
 {% description ref="example" %}
 This is a multi-line description.
 It should remain on separate lines after the tag.
+
 {% /description %}
 
 <!-- f:description ref="example" -->
 HTML comment opening tag should also preserve newlines.
 Content should start on a new line.
+
 <!-- /f:description -->
 
 ### Issue 2: Closing Tags After Lists
@@ -1521,6 +1524,7 @@ Closing tags should NOT be merged onto list item lines:
 - [ ] Option B {% #option_b %}
 
 - [ ] Option C {% #option_c %}
+
 {% /field %}
 
 <!-- f:field kind="select" id="choice" -->
@@ -1530,6 +1534,7 @@ Closing tags should NOT be merged onto list item lines:
 - Option 2 <!-- #opt2 -->
 
 - Option 3 <!-- #opt3 -->
+
 <!-- /f:field -->
 
 ### Issue 3: Same-Line Tag Pairs
@@ -1590,6 +1595,7 @@ A form with various content types:
 {% description %}
 Please complete this survey to help us improve our service.
 Your feedback is valuable to us.
+
 {% /description %}
 
 {% field kind="single_select" id="rating" label="Overall Rating" required=true %}
@@ -1601,6 +1607,7 @@ Your feedback is valuable to us.
 - [ ] Fair {% #fair %}
 
 - [ ] Poor {% #poor %}
+
 {% /field %}
 
 {% field kind="text" id="comments" label="Additional Comments" placeholder="Enter your comments here..." %}
