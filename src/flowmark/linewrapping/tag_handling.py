@@ -7,10 +7,14 @@ Markdoc, Markform, Jinja, Nunjucks, and WordPress Gutenberg.
 The main concerns are:
 1. Detecting tag boundaries to preserve newlines around them
 2. Providing constants for tag delimiters used in word splitting patterns
+3. Normalizing and denormalizing adjacent tags for proper tokenization
 """
 
 from __future__ import annotations
 
+import re
+
+from flowmark.linewrapping.block_heuristics import line_is_block_content
 from flowmark.linewrapping.protocols import LineWrapper
 
 # Tag delimiters - all tag syntax defined in one place for consistency.
@@ -41,6 +45,128 @@ JINJA_VAR_OPEN_RE = r"\{\{"
 JINJA_VAR_CLOSE_RE = r"\}\}"
 HTML_COMMENT_OPEN_RE = r"<!--"
 HTML_COMMENT_CLOSE_RE = r"-->"
+
+
+# Pattern to detect adjacent tags (closing tag immediately followed by opening tag)
+# This handles cases like %}{% or --><!-- where there's no space between
+_adjacent_tags_re: re.Pattern[str] = re.compile(
+    rf"({JINJA_TAG_CLOSE_RE})({JINJA_TAG_OPEN_RE})|"
+    rf"({JINJA_COMMENT_CLOSE_RE})({JINJA_COMMENT_OPEN_RE})|"
+    rf"({JINJA_VAR_CLOSE_RE})({JINJA_VAR_OPEN_RE})|"
+    rf"({HTML_COMMENT_CLOSE_RE})({HTML_COMMENT_OPEN_RE})"
+)
+
+# Pattern to remove spaces between adjacent tags that were added during word splitting
+_denormalize_tags_re: re.Pattern[str] = re.compile(
+    rf"({JINJA_TAG_CLOSE_RE}) ({JINJA_TAG_OPEN_RE})|"
+    rf"({JINJA_COMMENT_CLOSE_RE}) ({JINJA_COMMENT_OPEN_RE})|"
+    rf"({JINJA_VAR_CLOSE_RE}) ({JINJA_VAR_OPEN_RE})|"
+    rf"({HTML_COMMENT_CLOSE_RE}) ({HTML_COMMENT_OPEN_RE})"
+)
+
+
+def normalize_adjacent_tags(text: str) -> str:
+    """
+    Add a space between adjacent tags so they become separate tokens.
+    For example: %}{% becomes %} {%
+    """
+
+    def add_space(match: re.Match[str]) -> str:
+        groups = match.groups()
+        for i in range(0, len(groups), 2):
+            if groups[i] is not None:
+                return groups[i] + " " + groups[i + 1]
+        return match.group(0)
+
+    return _adjacent_tags_re.sub(add_space, text)
+
+
+def denormalize_adjacent_tags(text: str) -> str:
+    """
+    Remove spaces between adjacent tags that were added during word splitting.
+    This restores original adjacency for paired tags like `{% field %}{% /field %}`.
+    """
+
+    def remove_space(match: re.Match[str]) -> str:
+        groups = match.groups()
+        for i in range(0, len(groups), 2):
+            if groups[i] is not None:
+                return groups[i] + groups[i + 1]
+        return match.group(0)
+
+    return _denormalize_tags_re.sub(remove_space, text)
+
+
+# Maximum number of whitespace-separated words to coalesce into a single token.
+MAX_TAG_WORDS = 12
+
+
+def generate_coalescing_patterns(
+    start: str, end: str, middle: str = r".+", max_words: int = MAX_TAG_WORDS
+) -> list[tuple[str, ...]]:
+    """
+    Generate coalescing patterns for tags with a given start/end delimiter.
+
+    For example, for template tags {% ... %}:
+        start=r"\\{%", end=r".*%\\}", middle=r".+"
+
+    This generates patterns for 2, 3, 4, ... max_words word spans.
+    """
+    patterns: list[tuple[str, ...]] = []
+    for num_words in range(2, max_words + 1):
+        # Pattern: start, (middle repeated n-2 times), end
+        middle_count = num_words - 2
+        pattern = (start,) + (middle,) * middle_count + (end,)
+        patterns.append(pattern)
+    return patterns
+
+
+def get_tag_coalescing_patterns() -> list[tuple[str, ...]]:
+    """
+    Return word coalescing patterns for template tags and HTML comments.
+
+    These patterns are used by the word splitter to keep multi-word tag
+    constructs together during line wrapping.
+    """
+    return [
+        # Paired Jinja/Markdoc tags: {% tag %}{% /tag %} (with optional space between)
+        # This handles empty fields like {% field %}{% /field %}
+        # Must come before single tag patterns so it matches first
+        (
+            rf".*{JINJA_TAG_CLOSE_RE}",
+            rf"{JINJA_TAG_OPEN_RE}\s*/.*{JINJA_TAG_CLOSE_RE}",
+        ),
+        # Paired HTML comment tags: <!-- tag --><!-- /tag -->
+        (
+            rf".*{HTML_COMMENT_CLOSE_RE}",
+            rf"{HTML_COMMENT_OPEN_RE}\s*/.*{HTML_COMMENT_CLOSE_RE}",
+        ),
+        # HTML comments: <!-- comment text -->
+        # Keep inline comments together, don't force to separate lines
+        *generate_coalescing_patterns(
+            start=rf"{HTML_COMMENT_OPEN_RE}.*",
+            end=rf".*{HTML_COMMENT_CLOSE_RE}",
+            middle=r".+",
+        ),
+        # Template tags {% ... %} (Markdoc/Jinja/Nunjucks)
+        *generate_coalescing_patterns(
+            start=JINJA_TAG_OPEN_RE,
+            end=rf".*{JINJA_TAG_CLOSE_RE}",
+            middle=r".+",
+        ),
+        # Template comments {# ... #} (Jinja/Nunjucks)
+        *generate_coalescing_patterns(
+            start=JINJA_COMMENT_OPEN_RE,
+            end=rf".*{JINJA_COMMENT_CLOSE_RE}",
+            middle=r".+",
+        ),
+        # Template variables {{ ... }} (Jinja/Nunjucks)
+        *generate_coalescing_patterns(
+            start=JINJA_VAR_OPEN_RE,
+            end=rf".*{JINJA_VAR_CLOSE_RE}",
+            middle=r".+",
+        ),
+    ]
 
 
 def line_ends_with_tag(line: str) -> bool:
@@ -123,10 +249,16 @@ def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
         if len(lines) <= 1:
             return base_wrapper(text, initial_indent, subsequent_indent)
 
+        # Check if there are any tags in the text - only apply block content
+        # heuristics when tags are present to avoid changing normal markdown behavior
+        has_tags = any(line_ends_with_tag(line) or line_starts_with_tag(line) for line in lines)
+
         # Group lines into segments that should be wrapped together
         # A new segment starts when:
         # - The previous line ends with a tag
         # - The current line starts with a tag
+        # - (Only if tags present) The current line is block content (table/list)
+        # - (Only if tags present) The previous line is block content
         segments: list[str] = []
         current_segment_lines: list[str] = []
 
@@ -135,8 +267,12 @@ def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
             prev_ends_with_tag = not is_first_line and line_ends_with_tag(lines[i - 1])
             curr_starts_with_tag = line_starts_with_tag(line)
 
-            # Start a new segment if there's a tag boundary
-            if prev_ends_with_tag or curr_starts_with_tag:
+            # Block content heuristics only apply when tags are present
+            curr_is_block = has_tags and line_is_block_content(line)
+            prev_is_block = has_tags and not is_first_line and line_is_block_content(lines[i - 1])
+
+            # Start a new segment if there's a tag or block content boundary
+            if prev_ends_with_tag or curr_starts_with_tag or curr_is_block or prev_is_block:
                 if current_segment_lines:
                     segments.append("\n".join(current_segment_lines))
                     current_segment_lines = []

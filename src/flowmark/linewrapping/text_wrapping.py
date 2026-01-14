@@ -5,14 +5,10 @@ from collections.abc import Callable
 from typing import Protocol
 
 from flowmark.linewrapping.tag_handling import (
-    HTML_COMMENT_CLOSE_RE,
-    HTML_COMMENT_OPEN_RE,
-    JINJA_COMMENT_CLOSE_RE,
-    JINJA_COMMENT_OPEN_RE,
-    JINJA_TAG_CLOSE_RE,
-    JINJA_TAG_OPEN_RE,
-    JINJA_VAR_CLOSE_RE,
-    JINJA_VAR_OPEN_RE,
+    denormalize_adjacent_tags,
+    generate_coalescing_patterns,
+    get_tag_coalescing_patterns,
+    normalize_adjacent_tags,
 )
 
 DEFAULT_LEN_FUNCTION = len
@@ -32,31 +28,6 @@ def simple_word_splitter(text: str) -> list[str]:
     Split words on whitespace. This is like Python's normal `textwrap`.
     """
     return text.split()
-
-
-# Maximum number of whitespace-separated words to coalesce into a single token.
-# This applies to HTML/XML tags, Markdown links, and template tags.
-MAX_TAG_WORDS = 12
-
-
-def _generate_tag_patterns(
-    start: str, end: str, middle: str = r".+", max_words: int = MAX_TAG_WORDS
-) -> list[tuple[str, ...]]:
-    """
-    Generate coalescing patterns for tags with a given start/end delimiter.
-
-    For example, for template tags {% ... %}:
-        start=r"\\{%", end=r".*%\\}", middle=r".+"
-
-    This generates patterns for 2, 3, 4, ... max_words word spans.
-    """
-    patterns: list[tuple[str, ...]] = []
-    for num_words in range(2, max_words + 1):
-        # Pattern: start, (middle repeated n-2 times), end
-        middle_count = num_words - 2
-        pattern = (start,) + (middle,) * middle_count + (end,)
-        patterns.append(pattern)
-    return patterns
 
 
 class _HtmlMdWordSplitter:
@@ -93,38 +64,20 @@ class _HtmlMdWordSplitter:
     def __init__(self):
         # Patterns for multi-word constructs that should be coalesced into single tokens.
         # Each pattern is a tuple of regexes: (start, middle..., end).
-        # All tag types support up to MAX_TAG_WORDS words.
         self.patterns: list[tuple[str, ...]] = [
-            # Paired Jinja/Markdoc tags: {% tag %}{% /tag %} (with optional space between)
-            # This handles empty fields like {% field %}{% /field %}
-            # Must come before single tag patterns so it matches first
-            (
-                rf".*{JINJA_TAG_CLOSE_RE}",
-                rf"{JINJA_TAG_OPEN_RE}\s*/.*{JINJA_TAG_CLOSE_RE}",
-            ),
-            # Paired HTML comment tags: <!-- tag --><!-- /tag -->
-            (
-                rf".*{HTML_COMMENT_CLOSE_RE}",
-                rf"{HTML_COMMENT_OPEN_RE}\s*/.*{HTML_COMMENT_CLOSE_RE}",
-            ),
+            # Template tag patterns (Jinja/Markdoc/HTML comments) from tag_handling module
+            *get_tag_coalescing_patterns(),
             # Inline code spans with spaces: `code with spaces`
             # Per CommonMark, code spans are delimited by equal-length backtick strings.
             # We coalesce words between opening ` and closing ` to keep them atomic.
             # The [^\s`]* prefix/suffix allows punctuation like (`code`) or `code`.
-            *_generate_tag_patterns(
+            *generate_coalescing_patterns(
                 start=r"[^\s`]*`[^`]*",
                 end=r"[^`]*`[^\s`]*",
                 middle=r"[^`]+",
             ),
-            # HTML comments: <!-- comment text -->
-            # Keep inline comments together, don't force to separate lines
-            *_generate_tag_patterns(
-                start=rf"{HTML_COMMENT_OPEN_RE}.*",
-                end=rf".*{HTML_COMMENT_CLOSE_RE}",
-                middle=r".+",
-            ),
             # HTML/XML tags: <tag attr="value">content</tag>
-            *_generate_tag_patterns(
+            *generate_coalescing_patterns(
                 start=r"<[^>]+",
                 end=r"[^<>]+>[^<>]*",
                 middle=r"[^<>]+",
@@ -132,28 +85,10 @@ class _HtmlMdWordSplitter:
             # Markdown links: [text](url) or [text][ref]
             # Links with multi-word text like [Mark Suster, Upfront Ventures](url) are
             # kept together to avoid awkward line breaks within the link text.
-            *_generate_tag_patterns(
+            *generate_coalescing_patterns(
                 start=r"\[",
                 end=r"[^\[\]]+\][^\[\]]*",
                 middle=r"[^\[\]]+",
-            ),
-            # Template tags {% ... %} (Markdoc/Jinja/Nunjucks)
-            *_generate_tag_patterns(
-                start=JINJA_TAG_OPEN_RE,
-                end=rf".*{JINJA_TAG_CLOSE_RE}",
-                middle=r".+",
-            ),
-            # Template comments {# ... #} (Jinja/Nunjucks)
-            *_generate_tag_patterns(
-                start=JINJA_COMMENT_OPEN_RE,
-                end=rf".*{JINJA_COMMENT_CLOSE_RE}",
-                middle=r".+",
-            ),
-            # Template variables {{ ... }} (Jinja/Nunjucks)
-            *_generate_tag_patterns(
-                start=JINJA_VAR_OPEN_RE,
-                end=rf".*{JINJA_VAR_CLOSE_RE}",
-                middle=r".+",
             ),
         ]
         self.compiled_patterns: list[tuple[re.Pattern[str], ...]] = [
@@ -161,34 +96,9 @@ class _HtmlMdWordSplitter:
             for pattern_group in self.patterns
         ]
 
-    # Pattern to find adjacent tags (closing tag immediately followed by opening tag)
-    # This handles cases like %}{% or --><!-- where there's no space between
-    _adjacent_tags_re: re.Pattern[str] = re.compile(
-        rf"({JINJA_TAG_CLOSE_RE})({JINJA_TAG_OPEN_RE})|"
-        rf"({JINJA_COMMENT_CLOSE_RE})({JINJA_COMMENT_OPEN_RE})|"
-        rf"({JINJA_VAR_CLOSE_RE})({JINJA_VAR_OPEN_RE})|"
-        rf"({HTML_COMMENT_CLOSE_RE})({HTML_COMMENT_OPEN_RE})"
-    )
-
-    def _normalize_adjacent_tags(self, text: str) -> str:
-        """
-        Add a space between adjacent tags so they become separate tokens.
-        For example: %}{% becomes %} {%
-        """
-
-        def add_space(match: re.Match[str]) -> str:
-            # Find which group matched and insert space between closing and opening
-            groups = match.groups()
-            for i in range(0, len(groups), 2):
-                if groups[i] is not None:
-                    return groups[i] + " " + groups[i + 1]
-            return match.group(0)
-
-        return self._adjacent_tags_re.sub(add_space, text)
-
     def __call__(self, text: str) -> list[str]:
         # First normalize adjacent tags to ensure proper tokenization
-        text = self._normalize_adjacent_tags(text)
+        text = normalize_adjacent_tags(text)
 
         words = text.split()
         result: list[str] = []
@@ -225,31 +135,6 @@ html_md_word_splitter: WordSplitter = _HtmlMdWordSplitter()
 """
 Split words, but not within HTML tags or Markdown links.
 """
-
-
-# Pattern to remove spaces between adjacent tags that were added during word splitting
-_denormalize_tags_re: re.Pattern[str] = re.compile(
-    rf"({JINJA_TAG_CLOSE_RE}) ({JINJA_TAG_OPEN_RE})|"
-    rf"({JINJA_COMMENT_CLOSE_RE}) ({JINJA_COMMENT_OPEN_RE})|"
-    rf"({JINJA_VAR_CLOSE_RE}) ({JINJA_VAR_OPEN_RE})|"
-    rf"({HTML_COMMENT_CLOSE_RE}) ({HTML_COMMENT_OPEN_RE})"
-)
-
-
-def denormalize_adjacent_tags(text: str) -> str:
-    """
-    Remove spaces between adjacent tags that were added during word splitting.
-    This restores original adjacency for paired tags like `{% field %}{% /field %}`.
-    """
-
-    def remove_space(match: re.Match[str]) -> str:
-        groups = match.groups()
-        for i in range(0, len(groups), 2):
-            if groups[i] is not None:
-                return groups[i] + groups[i + 1]
-        return match.group(0)
-
-    return _denormalize_tags_re.sub(remove_space, text)
 
 
 # Pattern to identify words that need escaping if they start a wrapped markdown line.

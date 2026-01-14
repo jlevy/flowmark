@@ -1,7 +1,7 @@
 from textwrap import dedent
 
+from flowmark.linewrapping.tag_handling import generate_coalescing_patterns
 from flowmark.linewrapping.text_wrapping import (
-    _generate_tag_patterns,  # pyright: ignore
     _HtmlMdWordSplitter,  # pyright: ignore
     html_md_word_splitter,
     markdown_escape_word,
@@ -350,10 +350,10 @@ def test_mixed_html_and_template_tags():
     assert "{% endif %}" in result
 
 
-def test_generate_tag_patterns():
+def test_generate_coalescing_patterns():
     """Test the pattern generation function directly."""
     # Test with max_words=4
-    patterns = _generate_tag_patterns(start=r"\{%", end=r".*%\}", middle=r".+", max_words=4)
+    patterns = generate_coalescing_patterns(start=r"\{%", end=r".*%\}", middle=r".+", max_words=4)
 
     # Should generate patterns for 2, 3, 4 words
     assert len(patterns) == 3
