@@ -1360,9 +1360,10 @@ Variable interpolation like {{ user.name }} should stay together as one unit.
 
 ### Block Template Tags
 
-{% callout type="warning" %} This is a callout block. The content inside should wrap
-normally, but the opening and closing tags should remain on their own lines and not be
-joined with surrounding text. {% /callout %}
+{% callout type="warning" %}
+This is a callout block. The content inside should wrap normally, but the opening and
+closing tags should remain on their own lines and not be joined with surrounding text.
+{% /callout %}
 
 {% if $showAdvanced %}
 
@@ -1441,6 +1442,122 @@ Single-word inline code should NOT be incorrectly coalesced with following text:
 The word before inline code (like "via") should not wrap to a new line leaving the code
 on the next line. Single-word inline code like `foo()` and `bar` should stay atomic but
 not consume following words.
+
+## 18. Markdoc/Markform Tag Newline Preservation
+
+These tests verify that newlines around Jinja/Markdoc tags and HTML comment tags are
+preserved, which is critical for Markform and similar systems.
+
+### Issue 1: Content After Opening Tags
+
+Opening tags should preserve the newline after them:
+
+{% description ref="example" %}
+This is a multi-line description. It should remain on separate lines after the tag.
+{% /description %}
+
+<!-- f:description ref="example" -->
+HTML comment opening tag should also preserve newlines. Content should start on a new
+line.
+<!-- /f:description -->
+
+### Issue 2: Closing Tags After Lists
+
+Closing tags should NOT be merged onto list item lines:
+
+{% field kind="single_select" id="choice" label="Choice" %}
+
+- [ ] Option A {% #option_a %}
+
+- [ ] Option B {% #option_b %}
+
+- [ ] Option C {% #option_c %}
+  {% /field %}
+
+<!-- f:field kind="select" id="choice" -->
+
+- Option 1 <!-- #opt1 -->
+
+- Option 2 <!-- #opt2 -->
+
+- Option 3 <!-- #opt3 -->
+  <!-- /f:field -->
+
+### Issue 3: Same-Line Tag Pairs
+
+Empty fields with paired tags on the same line should stay together:
+
+{% field kind="string" id="email" label="Email" required=true placeholder="email@example.com" %}
+{% /field %}
+
+<!-- f:field kind="string" id="name" --><!-- /f:field -->
+
+A longer example:
+{% field kind="text" id="description" label="Description" maxlength=500 %}{% /field %}
+with text after.
+
+### Issue 3a: Backslash in Attributes
+
+Backslashes that are NOT CommonMark escape sequences are preserved. Note: `\.` is a
+valid CommonMark escape (escaped period), so use `\\.` in source. Characters like `\+`,
+`\-`, `\s` are NOT CommonMark escapes and are preserved.
+
+{% field kind="string" id="phone" pattern="^\+?[0-9\-\s]+$" %}{% /field %}
+
+### Issue 5: Nested Tags
+
+Nested tag structures should preserve newlines between each tag:
+
+{% form id="contact" %}
+{% group id="personal" title="Personal Information" %}
+{% field kind="string" id="name" label="Name" required=true %}{% /field %}
+{% field kind="string" id="email" label="Email" %}{% /field %}
+{% /group %}
+{% group id="message" title="Your Message" %}
+{% field kind="text" id="body" label="Message" %}{% /field %}
+{% /group %}
+{% /form %}
+
+### Issue 6: Tables Inside Tags
+
+Tables within tags should have their structure preserved (blank lines around block
+content required):
+
+{% field kind="table" id="data" label="Data Table" %}
+
+| Name | Value |
+| --- | --- |
+| A | 1 |
+| B | 2 |
+
+{% /field %}
+
+### Mixed Content Test
+
+A form with various content types:
+
+{% form id="survey" title="Customer Survey" %}
+
+{% description %}
+Please complete this survey to help us improve our service. Your feedback is valuable to
+us.
+{% /description %}
+
+{% field kind="single_select" id="rating" label="Overall Rating" required=true %}
+
+- [ ] Excellent {% #excellent %}
+
+- [ ] Good {% #good %}
+
+- [ ] Fair {% #fair %}
+
+- [ ] Poor {% #poor %}
+  {% /field %}
+
+{% field kind="text" id="comments" label="Additional Comments" placeholder="Enter your comments here..." %}
+{% /field %}
+
+{% /form %}
 
 ## Summary
 

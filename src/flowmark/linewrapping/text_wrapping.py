@@ -4,6 +4,17 @@ import re
 from collections.abc import Callable
 from typing import Protocol
 
+from flowmark.linewrapping.tag_handling import (
+    HTML_COMMENT_CLOSE_RE,
+    HTML_COMMENT_OPEN_RE,
+    JINJA_COMMENT_CLOSE_RE,
+    JINJA_COMMENT_OPEN_RE,
+    JINJA_TAG_CLOSE_RE,
+    JINJA_TAG_OPEN_RE,
+    JINJA_VAR_CLOSE_RE,
+    JINJA_VAR_OPEN_RE,
+)
+
 DEFAULT_LEN_FUNCTION = len
 """
 Default length function to use for wrapping.
@@ -66,6 +77,9 @@ class _HtmlMdWordSplitter:
     This is compatible with CommonMark because we don't interpret code span
     content—we just keep tokens together for sensible line wrapping.
     See: https://spec.commonmark.org/0.31.2/#code-spans
+
+    Note: This class runs AFTER Markdown parsing, so any CommonMark escape
+    sequences will have already been processed by Marko before we see the text.
     """
 
     # Pattern to detect COMPLETE inline code spans (both opening and closing backticks
@@ -81,6 +95,18 @@ class _HtmlMdWordSplitter:
         # Each pattern is a tuple of regexes: (start, middle..., end).
         # All tag types support up to MAX_TAG_WORDS words.
         self.patterns: list[tuple[str, ...]] = [
+            # Paired Jinja/Markdoc tags: {% tag %}{% /tag %} (with optional space between)
+            # This handles empty fields like {% field %}{% /field %}
+            # Must come before single tag patterns so it matches first
+            (
+                rf".*{JINJA_TAG_CLOSE_RE}",
+                rf"{JINJA_TAG_OPEN_RE}\s*/.*{JINJA_TAG_CLOSE_RE}",
+            ),
+            # Paired HTML comment tags: <!-- tag --><!-- /tag -->
+            (
+                rf".*{HTML_COMMENT_CLOSE_RE}",
+                rf"{HTML_COMMENT_OPEN_RE}\s*/.*{HTML_COMMENT_CLOSE_RE}",
+            ),
             # Inline code spans with spaces: `code with spaces`
             # Per CommonMark, code spans are delimited by equal-length backtick strings.
             # We coalesce words between opening ` and closing ` to keep them atomic.
@@ -93,8 +119,8 @@ class _HtmlMdWordSplitter:
             # HTML comments: <!-- comment text -->
             # Keep inline comments together, don't force to separate lines
             *_generate_tag_patterns(
-                start=r"<!--.*",
-                end=r".*-->",
+                start=rf"{HTML_COMMENT_OPEN_RE}.*",
+                end=rf".*{HTML_COMMENT_CLOSE_RE}",
                 middle=r".+",
             ),
             # HTML/XML tags: <tag attr="value">content</tag>
@@ -113,20 +139,20 @@ class _HtmlMdWordSplitter:
             ),
             # Template tags {% ... %} (Markdoc/Jinja/Nunjucks)
             *_generate_tag_patterns(
-                start=r"\{%",
-                end=r".*%\}",
+                start=JINJA_TAG_OPEN_RE,
+                end=rf".*{JINJA_TAG_CLOSE_RE}",
                 middle=r".+",
             ),
             # Template comments {# ... #} (Jinja/Nunjucks)
             *_generate_tag_patterns(
-                start=r"\{#",
-                end=r".*#\}",
+                start=JINJA_COMMENT_OPEN_RE,
+                end=rf".*{JINJA_COMMENT_CLOSE_RE}",
                 middle=r".+",
             ),
             # Template variables {{ ... }} (Jinja/Nunjucks)
             *_generate_tag_patterns(
-                start=r"\{\{",
-                end=r".*\}\}",
+                start=JINJA_VAR_OPEN_RE,
+                end=rf".*{JINJA_VAR_CLOSE_RE}",
                 middle=r".+",
             ),
         ]
@@ -135,7 +161,35 @@ class _HtmlMdWordSplitter:
             for pattern_group in self.patterns
         ]
 
+    # Pattern to find adjacent tags (closing tag immediately followed by opening tag)
+    # This handles cases like %}{% or --><!-- where there's no space between
+    _adjacent_tags_re: re.Pattern[str] = re.compile(
+        rf"({JINJA_TAG_CLOSE_RE})({JINJA_TAG_OPEN_RE})|"
+        rf"({JINJA_COMMENT_CLOSE_RE})({JINJA_COMMENT_OPEN_RE})|"
+        rf"({JINJA_VAR_CLOSE_RE})({JINJA_VAR_OPEN_RE})|"
+        rf"({HTML_COMMENT_CLOSE_RE})({HTML_COMMENT_OPEN_RE})"
+    )
+
+    def _normalize_adjacent_tags(self, text: str) -> str:
+        """
+        Add a space between adjacent tags so they become separate tokens.
+        For example: %}{% becomes %} {%
+        """
+
+        def add_space(match: re.Match[str]) -> str:
+            # Find which group matched and insert space between closing and opening
+            groups = match.groups()
+            for i in range(0, len(groups), 2):
+                if groups[i] is not None:
+                    return groups[i] + " " + groups[i + 1]
+            return match.group(0)
+
+        return self._adjacent_tags_re.sub(add_space, text)
+
     def __call__(self, text: str) -> list[str]:
+        # First normalize adjacent tags to ensure proper tokenization
+        text = self._normalize_adjacent_tags(text)
+
         words = text.split()
         result: list[str] = []
         i = 0
@@ -171,6 +225,31 @@ html_md_word_splitter: WordSplitter = _HtmlMdWordSplitter()
 """
 Split words, but not within HTML tags or Markdown links.
 """
+
+
+# Pattern to remove spaces between adjacent tags that were added during word splitting
+_denormalize_tags_re: re.Pattern[str] = re.compile(
+    rf"({JINJA_TAG_CLOSE_RE}) ({JINJA_TAG_OPEN_RE})|"
+    rf"({JINJA_COMMENT_CLOSE_RE}) ({JINJA_COMMENT_OPEN_RE})|"
+    rf"({JINJA_VAR_CLOSE_RE}) ({JINJA_VAR_OPEN_RE})|"
+    rf"({HTML_COMMENT_CLOSE_RE}) ({HTML_COMMENT_OPEN_RE})"
+)
+
+
+def denormalize_adjacent_tags(text: str) -> str:
+    """
+    Remove spaces between adjacent tags that were added during word splitting.
+    This restores original adjacency for paired tags like `{% field %}{% /field %}`.
+    """
+
+    def remove_space(match: re.Match[str]) -> str:
+        groups = match.groups()
+        for i in range(0, len(groups), 2):
+            if groups[i] is not None:
+                return groups[i] + groups[i + 1]
+        return match.group(0)
+
+    return _denormalize_tags_re.sub(remove_space, text)
 
 
 # Pattern to identify words that need escaping if they start a wrapped markdown line.
@@ -310,4 +389,6 @@ def wrap_paragraph(
         lines[0] = initial_indent + lines[0]
     if subsequent_indent and len(lines) > 1:
         lines[1:] = [subsequent_indent + line for line in lines[1:]]
-    return "\n".join(lines)
+    result = "\n".join(lines)
+    # Restore original adjacency for paired tags (remove spaces added during tokenization)
+    return denormalize_adjacent_tags(result)

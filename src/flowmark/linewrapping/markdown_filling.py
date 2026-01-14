@@ -16,10 +16,10 @@ from textwrap import dedent
 from flowmark.formats.flowmark_markdown import flowmark_markdown
 from flowmark.formats.frontmatter import split_frontmatter
 from flowmark.linewrapping.line_wrappers import (
-    LineWrapper,
     line_wrap_by_sentence,
     line_wrap_to_width,
 )
+from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.sentence_split_regex import split_sentences_regex
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 from flowmark.transforms.doc_cleanups import doc_cleanups

@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import re
 from collections.abc import Callable
 from typing import Protocol
 
+from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.sentence_split_regex import split_sentences_regex
+from flowmark.linewrapping.tag_handling import add_tag_newline_handling
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 from flowmark.linewrapping.text_wrapping import (
     DEFAULT_LEN_FUNCTION,
@@ -12,14 +16,6 @@ from flowmark.linewrapping.text_wrapping import (
 
 DEFAULT_MIN_LINE_LEN = 20
 """Default minimum line length for sentence breaking."""
-
-
-class LineWrapper(Protocol):
-    """
-    Takes a text string and any indents to use, and returns the wrapped text.
-    """
-
-    def __call__(self, text: str, initial_indent: str, subsequent_indent: str) -> str: ...
 
 
 class SentenceSplitter(Protocol):
@@ -97,7 +93,11 @@ def line_wrap_to_width(
         )
 
     if is_markdown:
-        return _add_markdown_hard_break_handling(line_wrapper)
+        # Apply tag newline handling first, then hard break handling
+        # Order matters: tag handling should operate on original newlines
+        # before hard break handling normalizes explicit breaks
+        enhanced = add_tag_newline_handling(line_wrapper)
+        return _add_markdown_hard_break_handling(enhanced)
     else:
         return line_wrapper
 
@@ -166,6 +166,8 @@ def line_wrap_by_sentence(
         return "\n".join(lines)
 
     if is_markdown:
-        return _add_markdown_hard_break_handling(line_wrapper)
+        # Apply tag newline handling first, then hard break handling
+        enhanced = add_tag_newline_handling(line_wrapper)
+        return _add_markdown_hard_break_handling(enhanced)
     else:
         return line_wrapper

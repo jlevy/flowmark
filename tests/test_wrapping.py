@@ -533,3 +533,148 @@ def test_inline_code_in_table_cells():
     assert "`b`" in result3
     assert "`c`" in result3
     assert "and" in result3
+
+
+def test_newline_after_opening_tag():
+    """
+    Test that newlines after opening Jinja/Markdoc tags are preserved.
+
+    When a tag is followed by a newline, the content should start on a new line.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_by_sentence, line_wrap_to_width
+
+    # Test with line_wrap_to_width
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Opening tag followed by newline and content
+    text = "{% description ref='example' %}\nThis is content after the tag."
+    result = wrapper(text, "", "")
+    # The newline after the tag should be preserved
+    assert "{% description ref='example' %}\n" in result or result.startswith(
+        "{% description ref='example' %}\n"
+    )
+
+    # HTML comment tag followed by newline
+    text2 = "<!-- f:description ref='example' -->\nContent after HTML comment tag."
+    result2 = wrapper(text2, "", "")
+    assert "<!-- f:description ref='example' -->\n" in result2
+
+    # Test with line_wrap_by_sentence
+    wrapper2 = line_wrap_by_sentence(width=80, is_markdown=True)
+    result3 = wrapper2(text, "", "")
+    assert "{% description ref='example' %}\n" in result3
+
+
+def test_newline_before_closing_tag():
+    """
+    Test that newlines before closing Jinja/Markdoc tags are preserved.
+
+    When a closing tag is preceded by a newline, it should stay on its own line.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Content followed by newline and closing tag
+    text = "Some content here.\n{% /description %}"
+    result = wrapper(text, "", "")
+    # The closing tag should be on its own line
+    assert "\n{% /description %}" in result
+
+    # HTML comment closing tag
+    text2 = "Some content.\n<!-- /f:description -->"
+    result2 = wrapper(text2, "", "")
+    assert "\n<!-- /f:description -->" in result2
+
+
+def test_paired_tags_not_broken():
+    """
+    Test that paired tags on the same line stay together during wrapping.
+
+    Common pattern: {% field %}{% /field %} for empty fields.
+    """
+    splitter = _HtmlMdWordSplitter()
+
+    # Paired Jinja tags - each tag should be kept as an atomic unit
+    # When adjacent without space, they get normalized to have a space between them
+    paired = "{% field kind='string' id='email' %}{% /field %}"
+    text = f"Some text before {paired} and after."
+    result = splitter(text)
+    # Each tag is coalesced separately (normalization adds space between them)
+    assert "{% field kind='string' id='email' %}" in result
+    assert "{% /field %}" in result
+
+    # HTML comment paired tags - each comment stays together
+    paired_html = "<!-- f:field kind='string' --><!-- /f:field -->"
+    text2 = f"Before {paired_html} after."
+    result2 = splitter(text2)
+    assert "<!-- f:field kind='string' -->" in result2
+    assert "<!-- /f:field -->" in result2
+
+    # Wrapping should not break either tag in a pair
+    long_text = f"This is a longer piece of text with {paired} embedded in the middle."
+    wrapped = wrap_paragraph_lines(text=long_text, width=40, is_markdown=True)
+    full_result = " ".join(wrapped)
+    # Both tags should be intact (not broken across lines)
+    assert "{% field kind='string' id='email' %}" in full_result
+    assert "{% /field %}" in full_result
+
+
+def test_nested_tags_newlines_preserved():
+    """
+    Test that newlines between nested tags are preserved.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Nested structure with newlines
+    text = "{% form id='test' %}\n{% group id='section' %}\n{% field id='name' %}{% /field %}\n{% /group %}\n{% /form %}"
+    result = wrapper(text, "", "")
+
+    # Each tag should be on its own line
+    assert "{% form id='test' %}\n" in result
+    assert "\n{% group id='section' %}\n" in result
+    assert "\n{% /group %}\n" in result
+    assert "\n{% /form %}" in result
+
+
+def test_backslash_in_tag_attributes():
+    r"""
+    Test that backslashes in tag attribute values are preserved.
+
+    Common case: regex patterns like pattern="^[^@]+\.[^@]+$"
+    """
+    splitter = _HtmlMdWordSplitter()
+
+    # Tag with regex pattern containing backslash
+    tag_with_backslash = r"{% field pattern='^[^@]+\.[^@]+$' %}"
+    text = f"Use {tag_with_backslash} for email."
+    result = splitter(text)
+
+    # The backslash should be preserved
+    assert tag_with_backslash in result
+
+    # In wrapped output
+    wrapped = wrap_paragraph_lines(text=text, width=80, is_markdown=True)
+    full_result = " ".join(wrapped)
+    assert r"\." in full_result
+
+
+def test_tag_with_list_items():
+    """
+    Test that tags containing lists don't merge with list items.
+
+    The closing tag should stay on its own line, not merge with last list item.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Simulating what happens when a paragraph contains tag + list + closing tag
+    # Note: In real Markdown, lists are separate blocks, but we test the wrapping behavior
+    text = "- Option A {% #option_a %}\n{% /field %}"
+    result = wrapper(text, "", "")
+
+    # The closing tag should NOT be merged onto the list item line
+    assert "\n{% /field %}" in result
