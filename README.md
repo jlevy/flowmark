@@ -42,8 +42,9 @@ General philosophy:
   (including more complex things like custom line wrapping for HTML).
 
 - Be as small and simple as possible, with few dependencies:
-  [`marko`](https://github.com/frostming/marko), [`regex`](https://pypi.org/project/regex/),
-  and [`strif`](https://github.com/jlevy/strif).
+  [`marko`](https://github.com/frostming/marko),
+  [`regex`](https://pypi.org/project/regex/), and
+  [`strif`](https://github.com/jlevy/strif).
 
 ## Installation
 
@@ -262,8 +263,8 @@ Then add to your `settings.json`:
   }
 ```
 
-The `--auto` option is just the same as `--inplace --nobackup --semantic --cleanups
---smartquotes`.
+The `--auto` option is just the same as
+`--inplace --nobackup --semantic --cleanups --smartquotes`.
 
 ## Why Another Markdown Formatter?
 
