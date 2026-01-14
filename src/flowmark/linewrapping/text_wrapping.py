@@ -49,6 +49,11 @@ def _generate_tag_patterns(
 
 
 class _HtmlMdWordSplitter:
+    # Pattern to detect complete inline code spans that should NOT trigger coalescing.
+    # Matches words like `foo()`, (`code`), `x`. These are already complete and
+    # should not coalesce with following words.
+    _complete_code_span: re.Pattern[str] = re.compile(r"[^\s`]*`[^`]+`[^\s`]*")
+
     def __init__(self):
         # Sequences of whitespace-delimited words that should be coalesced and treated
         # like a single word. All tag types support up to MAX_TAG_WORDS words.
@@ -57,9 +62,11 @@ class _HtmlMdWordSplitter:
             # These must be kept atomic to preserve code formatting.
             # Allow optional leading punctuation (like opening parens) before backtick,
             # and trailing punctuation after closing backtick.
+            # Important: [^\s`]* excludes backticks so complete code spans like
+            # `foo()` don't match as "start" and incorrectly coalesce with following words.
             *_generate_tag_patterns(
-                start=r"[^\s]*`[^`]*",
-                end=r"[^`]*`[^\s]*",
+                start=r"[^\s`]*`[^`]*",
+                end=r"[^`]*`[^\s`]*",
                 middle=r"[^`]+",
             ),
             # HTML comments: <!-- comment text -->
@@ -122,6 +129,11 @@ class _HtmlMdWordSplitter:
         return result
 
     def coalesce_words(self, words: list[str]) -> int:
+        # Skip coalescing if the first word is already a complete inline code span.
+        # This prevents `foo()` from incorrectly coalescing with following words.
+        if words and self._complete_code_span.fullmatch(words[0]):
+            return 0
+
         for pattern_group in self.compiled_patterns:
             if self.match_pattern_group(words, pattern_group):
                 return len(pattern_group)

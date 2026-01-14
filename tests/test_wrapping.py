@@ -458,3 +458,46 @@ def test_html_comments_kept_together():
     text2 = f"Before {long_comment} after."
     result2 = splitter(text2)
     assert long_comment in result2
+
+
+def test_single_word_inline_code_not_coalesced():
+    """
+    Test that single-word inline code spans do NOT incorrectly coalesce with following text.
+
+    Regression test for bug where `getRequiredEnv()` would be coalesced with words
+    following it, causing incorrect line breaks before the inline code.
+    """
+    splitter = _HtmlMdWordSplitter()
+
+    # Single-word inline code should stay as one word, not coalesce with following text
+    text = "access env vars via `getRequiredEnv()` and must live in files"
+    result = splitter(text)
+
+    # The backticked code should be its own separate token
+    assert "`getRequiredEnv()`" in result
+
+    # Find the token containing the inline code
+    code_token = next(r for r in result if "`getRequiredEnv()`" in r)
+    # It should be EXACTLY the inline code, not merged with other words
+    assert code_token == "`getRequiredEnv()`", f"Expected exact match, got {code_token!r}"
+
+    # "and" should be a separate word
+    assert "and" in result
+
+
+def test_multiple_single_word_inline_codes():
+    """
+    Test text with multiple single-word inline code spans.
+    """
+    splitter = _HtmlMdWordSplitter()
+
+    text = 'via `getRequiredEnv()` and must live in files with `"use node"`.'
+    result = splitter(text)
+
+    # Each inline code should be separate
+    assert "`getRequiredEnv()`" in result
+    # The second code span with quotes should be handled correctly too
+    # Note: this has internal spaces so may be multiple words, but should not
+    # incorrectly coalesce with "via" or "and"
+    assert "via" in result
+    assert "and" in result
