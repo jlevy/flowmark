@@ -501,3 +501,35 @@ def test_multiple_single_word_inline_codes():
     # incorrectly coalesce with "via" or "and"
     assert "via" in result
     assert "and" in result
+
+
+def test_inline_code_in_table_cells():
+    """
+    Test that inline code in table cell content is tokenized correctly.
+
+    Tables are parsed by Marko as special blocks and don't go through line
+    wrapping, but the word splitter should still handle table cell content
+    correctly if it's ever processed.
+    """
+    splitter = _HtmlMdWordSplitter()
+
+    # Typical table cell with inline code
+    cell1 = "the field is `runId: v.id('experimentRuns')` or maybe `foo`?"
+    result1 = splitter(cell1)
+    # Single-word code spans should be separate tokens
+    assert "`foo`?" in result1 or any("`foo`" in r for r in result1)
+    # Code without spaces stays as one token
+    assert "`runId: v.id('experimentRuns')`" in result1
+
+    # Simple code-only cell
+    cell2 = "`detailedLogs`"
+    result2 = splitter(cell2)
+    assert result2 == ["`detailedLogs`"]
+
+    # Cell with multiple code spans
+    cell3 = "`a` and `b` and `c`"
+    result3 = splitter(cell3)
+    assert "`a`" in result3
+    assert "`b`" in result3
+    assert "`c`" in result3
+    assert "and" in result3
