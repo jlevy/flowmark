@@ -32,7 +32,7 @@ clean:
 	-find . -type d -name "__pycache__" -exec rm -rf {} +
 
 format-docs:
-	uv run flowmark --auto README.md
+	uv run flowmark --auto README.md docs/*.md
 
 # Reset the expected reference docs to the actual ones currently produced.
 reset-ref-docs:

@@ -88,6 +88,10 @@ extensions:
   for type checking. Note that this extension works with non-Microsoft VSCode forks like
   Cursor.
 
+## Publishing Releases
+
+See [publishing.md](publishing.md) for instructions on publishing to PyPI.
+
 ## Documentation
 
 - [uv docs](https://docs.astral.sh/uv/)

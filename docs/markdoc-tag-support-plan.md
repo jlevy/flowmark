@@ -33,9 +33,8 @@ Additional changes implemented:
 - Marko parser now handles HTML comments naturally (inline stays inline, block stays
   block)
 
-- Added unit tests:
-  `test_inline_code_with_spaces`, `test_inline_code_with_surrounding_punctuation`,
-  `test_html_comments_kept_together`
+- Added unit tests: `test_inline_code_with_spaces`,
+  `test_inline_code_with_surrounding_punctuation`, `test_html_comments_kept_together`
 
 - Added integration tests in testdoc.orig.md (Section 17: HTML Comments and Inline Code)
 
@@ -93,8 +92,8 @@ From the [Markdoc spec](https://markdoc.dev/spec):
 | `{# comment #}` | Comments | `{# TODO: fix this #}` |
 | `{{ variable }}` | Variable interpolation | `{{ user.name }}` |
 
-Common block tags: `if/elif/else/endif`, `for/endfor`,
-`block/endblock`, `macro/endmacro`, `extends`, `include`, `raw/endraw`
+Common block tags: `if/elif/else/endif`, `for/endfor`, `block/endblock`,
+`macro/endmacro`, `extends`, `include`, `raw/endraw`
 
 ### Key Differences
 
