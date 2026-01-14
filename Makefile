@@ -4,9 +4,15 @@
 
 .DEFAULT_GOAL := default
 
+<<<<<<< before updating
 .PHONY: default install lint test upgrade build clean agent-rules format-docs
 
 default: agent-rules format-docs install lint test 
+=======
+.PHONY: default install lint test upgrade build clean
+
+default: install lint test 
+>>>>>>> after updating
 
 install:
 	uv sync --all-extras
@@ -23,6 +29,7 @@ upgrade:
 build:
 	uv build
 
+<<<<<<< before updating
 agent-rules: CLAUDE.md GEMINI.md AGENTS.md
 
 # Use .cursor/rules for sources of rules.
@@ -36,13 +43,14 @@ GEMINI.md: .cursor/rules/general.mdc .cursor/rules/python.mdc
 AGENTS.md: .cursor/rules/general.mdc .cursor/rules/python.mdc
 	cat .cursor/rules/general.mdc .cursor/rules/python.mdc .cursor/rules/flowmark.mdc > AGENTS.md
 
+=======
+>>>>>>> after updating
 clean:
 	-rm -rf dist/
 	-rm -rf *.egg-info/
 	-rm -rf .pytest_cache/
 	-rm -rf .mypy_cache/
 	-rm -rf .venv/
-	-rm -rf CLAUDE.md AGENTS.md
 	-find . -type d -name "__pycache__" -exec rm -rf {} +
 
 format-docs:
