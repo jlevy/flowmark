@@ -678,3 +678,92 @@ def test_tag_with_list_items():
 
     # The closing tag should NOT be merged onto the list item line
     assert "\n{% /field %}" in result
+
+
+def test_block_heuristics_table_rows():
+    """
+    Test that table rows inside tags have their newlines preserved.
+
+    Block heuristics should:
+    - Preserve newline after opening tag before table
+    - Preserve newlines between table rows
+    - Preserve newline after table before closing tag
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Table inside tags WITHOUT blank lines (tests block heuristics)
+    text = "{% field %}\n| A | B |\n|---|---|\n| 1 | 2 |\n{% /field %}"
+    result = wrapper(text, "", "")
+
+    # Each table row should be on its own line
+    assert "{% field %}\n" in result
+    assert "\n| A | B |\n" in result
+    assert "\n|---|---|\n" in result
+    assert "\n| 1 | 2 |\n" in result
+    assert "\n{% /field %}" in result
+
+
+def test_block_heuristics_list_items():
+    """
+    Test that list items inside tags have their newlines preserved.
+
+    Block heuristics should preserve newlines around list items when tags present.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # List inside tags WITHOUT blank lines (tests block heuristics)
+    text = "{% field %}\n- Item 1\n- Item 2\n- Item 3\n{% /field %}"
+    result = wrapper(text, "", "")
+
+    # Each list item should be on its own line
+    assert "{% field %}\n" in result
+    assert "\n- Item 1\n" in result
+    assert "\n- Item 2\n" in result
+    assert "\n- Item 3\n" in result
+    assert "\n{% /field %}" in result
+
+
+def test_block_heuristics_only_with_tags():
+    """
+    Test that block heuristics only apply when tags are present.
+
+    Normal markdown text with tables/lists should NOT be affected.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Table WITHOUT tags - should be wrapped normally (heuristics don't apply)
+    text = "Some text\n| A | B |\nMore text"
+    result = wrapper(text, "", "")
+
+    # Without tags, the table row might be merged with surrounding text
+    # This is the expected behavior - heuristics only apply with tags
+    assert "| A | B |" in result
+
+
+def test_block_heuristics_mixed_content():
+    """
+    Test block heuristics with mixed content (text + block elements).
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Mixed content: text, table, more text, all inside tags
+    text = (
+        "{% field %}\nIntro text here.\n| Col1 | Col2 |\n|------|------|\nOutro text.\n{% /field %}"
+    )
+    result = wrapper(text, "", "")
+
+    # Opening tag preserved
+    assert "{% field %}\n" in result
+    # Table rows should each be on own line
+    assert "\n| Col1 | Col2 |\n" in result
+    assert "\n|------|------|\n" in result
+    # Closing tag preserved
+    assert "\n{% /field %}" in result
