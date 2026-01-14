@@ -49,17 +49,45 @@ def _generate_tag_patterns(
 
 
 class _HtmlMdWordSplitter:
+    """
+    Word splitter for Markdown/HTML that keeps certain constructs together.
+
+    This handles LINE WRAPPING, not Markdown parsing. The distinction matters:
+    - Markdown parsing (handled by Marko): Interprets code spans, applies escaping
+      rules, converts line breaks to spaces per CommonMark spec
+    - Line wrapping (this code): Decides where to break lines in source text
+
+    For inline code spans, we follow these principles:
+    - Single-word code (`foo()`) stays atomic, doesn't merge with following text
+    - Multi-word code (`code with spaces`) coalesces into one token
+    - Punctuation stays attached (`method()`.` as one token)
+    - Content is never modified (backslashes, special chars preserved)
+
+    This is compatible with CommonMark because we don't interpret code span
+    content—we just keep tokens together for sensible line wrapping.
+    See: https://spec.commonmark.org/0.31.2/#code-spans
+    """
+
+    # Pattern to detect COMPLETE inline code spans (both opening and closing backticks
+    # in the same whitespace-delimited word). These should NOT trigger multi-word
+    # coalescing—they're already complete units.
+    # Examples: `foo()`, (`code`), `x`, prefix`code`suffix
+    # This prevents the bug where `getRequiredEnv()` would incorrectly coalesce
+    # with following words like "and", "must", etc.
+    _complete_code_span: re.Pattern[str] = re.compile(r"[^\s`]*`[^`]+`[^\s`]*")
+
     def __init__(self):
-        # Sequences of whitespace-delimited words that should be coalesced and treated
-        # like a single word. All tag types support up to MAX_TAG_WORDS words.
+        # Patterns for multi-word constructs that should be coalesced into single tokens.
+        # Each pattern is a tuple of regexes: (start, middle..., end).
+        # All tag types support up to MAX_TAG_WORDS words.
         self.patterns: list[tuple[str, ...]] = [
-            # Inline code spans: `content with spaces`
-            # These must be kept atomic to preserve code formatting.
-            # Allow optional leading punctuation (like opening parens) before backtick,
-            # and trailing punctuation after closing backtick.
+            # Inline code spans with spaces: `code with spaces`
+            # Per CommonMark, code spans are delimited by equal-length backtick strings.
+            # We coalesce words between opening ` and closing ` to keep them atomic.
+            # The [^\s`]* prefix/suffix allows punctuation like (`code`) or `code`.
             *_generate_tag_patterns(
-                start=r"[^\s]*`[^`]*",
-                end=r"[^`]*`[^\s]*",
+                start=r"[^\s`]*`[^`]*",
+                end=r"[^`]*`[^\s`]*",
                 middle=r"[^`]+",
             ),
             # HTML comments: <!-- comment text -->
@@ -122,6 +150,11 @@ class _HtmlMdWordSplitter:
         return result
 
     def coalesce_words(self, words: list[str]) -> int:
+        # Skip coalescing if the first word is already a complete inline code span.
+        # This prevents `foo()` from incorrectly coalescing with following words.
+        if words and self._complete_code_span.fullmatch(words[0]):
+            return 0
+
         for pattern_group in self.compiled_patterns:
             if self.match_pattern_group(words, pattern_group):
                 return len(pattern_group)

@@ -1431,6 +1431,17 @@ Code with HTML-like content: `<div class="foo">bar</div>` stays together.
 
 Code with comment-like content: `<!-- not a real comment -->` stays together.
 
+### Single-Word Code Spans (Regression Test)
+
+Single-word inline code should NOT be incorrectly coalesced with following text:
+
+- Convex actions access env vars via `getRequiredEnv()` and must live in files with
+  `"use node"`.
+
+The word before inline code (like "via") should not wrap to a new line leaving the code
+on the next line. Single-word inline code like `foo()` and `bar` should stay atomic but
+not consume following words.
+
 ## Summary
 
 All these corner cases should format consistently and predictably.
