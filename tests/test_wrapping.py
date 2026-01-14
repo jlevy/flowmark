@@ -837,3 +837,121 @@ def test_block_heuristics_preserves_existing_blank_lines():
         else:
             current_consecutive = 0
     assert max_consecutive_empty <= 1, f"Too many consecutive blank lines: {result}"
+
+
+def test_self_closing_jinja_tags():
+    """
+    Test self-closing Jinja tags (tags without a separate closing tag).
+
+    Examples: {% break %}, {% continue %}, {% include "file" %}, {% set x = 1 %}
+    These should be kept atomic and preserve newlines around them.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Self-closing tag on its own line
+    text = "Some content.\n{% break %}\nMore content."
+    result = wrapper(text, "", "")
+    assert "\n{% break %}\n" in result
+
+    # Self-closing tag with attributes
+    text2 = "Before.\n{% include 'header.html' %}\nAfter."
+    result2 = wrapper(text2, "", "")
+    assert "\n{% include 'header.html' %}\n" in result2
+
+    # Multiple self-closing tags
+    text3 = "{% set x = 1 %}\n{% set y = 2 %}\n{% set z = 3 %}"
+    result3 = wrapper(text3, "", "")
+    assert "{% set x = 1 %}\n" in result3
+    assert "\n{% set y = 2 %}\n" in result3
+    assert "\n{% set z = 3 %}" in result3
+
+    # Self-closing tag inline with text (should stay together)
+    splitter = _HtmlMdWordSplitter()
+    inline = "Use {% include 'partial.html' %} to include."
+    tokens = splitter(inline)
+    assert "{% include 'partial.html' %}" in tokens
+
+
+def test_self_closing_html_comment_tags():
+    """
+    Test self-closing HTML comment tags (comments without a closing counterpart).
+
+    Examples: <!-- note -->, <!-- TODO: fix this -->, <!-- @annotation -->
+    These should be kept atomic and preserve newlines around them.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Self-closing comment on its own line
+    text = "Some content.\n<!-- note: important -->\nMore content."
+    result = wrapper(text, "", "")
+    assert "\n<!-- note: important -->\n" in result
+
+    # Comment with longer content
+    text2 = "Before.\n<!-- TODO: refactor this section later -->\nAfter."
+    result2 = wrapper(text2, "", "")
+    assert "\n<!-- TODO: refactor this section later -->\n" in result2
+
+    # Multiple self-closing comments
+    text3 = "<!-- start -->\nContent here.\n<!-- end -->"
+    result3 = wrapper(text3, "", "")
+    assert "<!-- start -->\n" in result3
+    assert "\n<!-- end -->" in result3
+
+    # Self-closing comment inline (should stay together)
+    splitter = _HtmlMdWordSplitter()
+    inline = "See <!-- ref: section 3 --> for details."
+    tokens = splitter(inline)
+    assert "<!-- ref: section 3 -->" in tokens
+
+
+def test_self_closing_jinja_variable_tags():
+    """
+    Test Jinja variable tags {{ ... }} which are always self-closing.
+
+    Examples: {{ name }}, {{ user.email }}, {{ items | length }}
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Variable tag on its own line
+    text = "Name:\n{{ user.name }}\nEmail:"
+    result = wrapper(text, "", "")
+    assert "\n{{ user.name }}\n" in result
+
+    # Variable tag with filter
+    text2 = "Count:\n{{ items | length }}\nDone."
+    result2 = wrapper(text2, "", "")
+    assert "\n{{ items | length }}\n" in result2
+
+    # Variable inline (should stay together)
+    splitter = _HtmlMdWordSplitter()
+    inline = "Hello {{ name }}, welcome!"
+    tokens = splitter(inline)
+    assert "{{ name }}," in tokens or "{{ name }}" in tokens
+
+
+def test_self_closing_jinja_comment_tags():
+    """
+    Test Jinja comment tags {# ... #} which are always self-closing.
+
+    Examples: {# TODO #}, {# This is a comment #}
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Comment tag on its own line
+    text = "Code here.\n{# TODO: optimize this #}\nMore code."
+    result = wrapper(text, "", "")
+    assert "\n{# TODO: optimize this #}\n" in result
+
+    # Comment inline (should stay together)
+    splitter = _HtmlMdWordSplitter()
+    inline = "Value {# in bytes #} is 1024."
+    tokens = splitter(inline)
+    assert "{# in bytes #}" in tokens
