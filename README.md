@@ -86,7 +86,8 @@ The main ways to use Flowmark are:
   It simplifies and generalizes that library, offering better control over **initial and
   subsequent indentation** and **when to split words and lines**, e.g. using a word
   splitter that won't break lines within HTML tags, template tags (`{% %}`, `{# #}`,
-  `{{ }}`), inline code spans (`` `code with spaces` ``), or HTML comments. See
+  `{{ }}`), Markdown links (including links with multi-word text), inline code spans
+  (`` `code with spaces` ``), or HTML comments. See
   [`wrap_paragraph_lines`](https://github.com/jlevy/flowmark/blob/main/src/flowmark/linewrapping/text_wrapping.py).
 
 ## Semantic Line Breaks

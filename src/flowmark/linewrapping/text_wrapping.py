@@ -76,6 +76,8 @@ class _HtmlMdWordSplitter:
                 middle=r"[^<>]+",
             ),
             # Markdown links: [text](url) or [text][ref]
+            # Links with multi-word text like [Mark Suster, Upfront Ventures](url) are
+            # kept together to avoid awkward line breaks within the link text.
             *_generate_tag_patterns(
                 start=r"\[",
                 end=r"[^\[\]]+\][^\[\]]*",

@@ -21,6 +21,12 @@ Additional changes implemented:
 - Added unit tests: `test_inline_code_with_spaces`, `test_inline_code_with_surrounding_punctuation`, `test_html_comments_kept_together`
 - Added integration tests in testdoc.orig.md (Section 17: HTML Comments and Inline Code)
 
+**✅ Markdown Link Coalescing Improved**
+
+With the unified `MAX_TAG_WORDS = 12` limit, Markdown links with multi-word text are now kept
+together as atomic units. For example, `[Mark Suster, Upfront Ventures](url)` will not be
+split across lines. This prevents awkward line breaks within link text.
+
 Remaining work (future enhancements):
 - Phase 2: Tag boundary detection for preventing line joining around block tags
 - Phase 4: Block-level tag handling (recognizing block tags at Marko parser level)
