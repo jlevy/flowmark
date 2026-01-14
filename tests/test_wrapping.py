@@ -1,6 +1,7 @@
 from textwrap import dedent
 
 from flowmark.linewrapping.text_wrapping import (
+    _generate_tag_patterns,  # pyright: ignore
     _HtmlMdWordSplitter,  # pyright: ignore
     html_md_word_splitter,
     markdown_escape_word,
@@ -271,3 +272,189 @@ def test_line_wrap_to_width_with_markdown_breaks():
     single_segment = "Text with no breaks"
     wrapped_single = wrapper(single_segment, initial_indent="> ", subsequent_indent="  ")
     assert wrapped_single == "> Text with no breaks"
+
+
+def test_template_tag_splitter():
+    """Test that template tags (Markdoc/Jinja/Nunjucks) are kept as atomic tokens."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Markdoc-style tags: {% tag %}
+    markdoc_text = "Text with {% if $condition %} template tags {% endif %} here."
+    result = splitter(markdoc_text)
+    assert "{% if $condition %}" in result
+    assert "{% endif %}" in result
+
+    # Self-closing Markdoc tags: {% tag /%}
+    self_closing = "Include {% partial file='header.md' /%} here."
+    result = splitter(self_closing)
+    assert "{% partial file='header.md' /%}" in result
+
+    # Jinja/Nunjucks comments: {# comment #}
+    comment_text = "Text with {# this is a comment #} inline."
+    result = splitter(comment_text)
+    assert "{# this is a comment #}" in result
+
+    # Jinja/Nunjucks variables: {{ variable }}
+    variable_text = "Hello {{ user.name }} welcome."
+    result = splitter(variable_text)
+    assert "{{ user.name }}" in result
+
+    # Complex Markdoc tag with attributes
+    complex_tag = "Use {% callout type='warning' title='Note' %} for emphasis."
+    result = splitter(complex_tag)
+    assert "{% callout type='warning' title='Note' %}" in result
+
+    # Multiple template tags in sequence (with spaces between)
+    multi_tag = "{% if $a %} {% if $b %}nested{% /if %} {% /if %}"
+    result = splitter(multi_tag)
+    # Tags should be kept together
+    assert "{% if $a %}" in result
+    assert "{% /if %}" in result
+
+
+def test_template_tag_wrapping():
+    """Test that template tags don't break across lines during wrapping."""
+
+    # Template tag should stay together even if it's long
+    text_with_tag = "Some text {% callout type='warning' %} more text after the tag."
+    result = wrap_paragraph_lines(text=text_with_tag, width=30, is_markdown=True)
+
+    # The tag should not be split across lines
+    full_result = " ".join(result)
+    assert "{% callout type='warning' %}" in full_result
+
+    # Jinja variable should stay together
+    text_with_var = "Hello {{ user.first_name }} and welcome to the site."
+    result = wrap_paragraph_lines(text=text_with_var, width=25, is_markdown=True)
+    full_result = " ".join(result)
+    assert "{{ user.first_name }}" in full_result
+
+    # Comment should stay together
+    text_with_comment = "Text {# TODO: fix this later #} and more text here."
+    result = wrap_paragraph_lines(text=text_with_comment, width=20, is_markdown=True)
+    full_result = " ".join(result)
+    assert "{# TODO: fix this later #}" in full_result
+
+
+def test_mixed_html_and_template_tags():
+    """Test that HTML tags and template tags work together."""
+    splitter = _HtmlMdWordSplitter()
+
+    mixed = "Text <span class='x'>html</span> and {% if $y %} template {% endif %} here."
+    result = splitter(mixed)
+
+    # HTML should be coalesced
+    assert "<span class='x'>html</span>" in result
+    # Template tags should be kept together
+    assert "{% if $y %}" in result
+    assert "{% endif %}" in result
+
+
+def test_generate_tag_patterns():
+    """Test the pattern generation function directly."""
+    # Test with max_words=4
+    patterns = _generate_tag_patterns(start=r"\{%", end=r".*%\}", middle=r".+", max_words=4)
+
+    # Should generate patterns for 2, 3, 4 words
+    assert len(patterns) == 3
+
+    # 2-word pattern: (start, end)
+    assert patterns[0] == (r"\{%", r".*%\}")
+
+    # 3-word pattern: (start, middle, end)
+    assert patterns[1] == (r"\{%", r".+", r".*%\}")
+
+    # 4-word pattern: (start, middle, middle, end)
+    assert patterns[2] == (r"\{%", r".+", r".+", r".*%\}")
+
+
+def test_long_template_tags():
+    """Test that tags with many attributes (10+ words) are kept together."""
+    splitter = _HtmlMdWordSplitter()
+
+    # 10-word template tag
+    long_tag = "{% component name='widget' type='button' size='large' color='blue' disabled=true %}"
+    text = f"Before {long_tag} after."
+    result = splitter(text)
+    assert long_tag in result
+
+    # 12-word template tag (at the limit)
+    very_long_tag = (
+        "{% table columns=[a, b, c] rows=[1, 2, 3] border=true striped=true hover=true %}"
+    )
+    text = f"Before {very_long_tag} after."
+    result = splitter(text)
+    assert very_long_tag in result
+
+
+def test_long_html_tags():
+    """Test that HTML tags with many attributes are kept together."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Long HTML tag with many attributes
+    long_html = (
+        "<div class='container' id='main' data-value='test' style='color: red'>content</div>"
+    )
+    text = f"Before {long_html} after."
+    result = splitter(text)
+    assert long_html in result
+
+
+def test_long_jinja_comments():
+    """Test that long Jinja comments are kept together."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Long comment with many words (12 words = MAX_TAG_WORDS)
+    long_comment = "{# This is a long comment that spans many words here #}"
+    text = f"Before {long_comment} after."
+    result = splitter(text)
+    assert long_comment in result
+
+
+def test_inline_code_with_spaces():
+    """Test that inline code spans with spaces are kept together."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Simple inline code with spaces
+    code = "`code with spaces`"
+    text = f"Some {code} here."
+    result = splitter(text)
+    assert code in result
+
+    # Inline code with HTML-like content
+    code2 = "`<!-- not a real comment -->`"
+    text2 = f"Check {code2} for details."
+    result2 = splitter(text2)
+    assert code2 in result2
+
+
+def test_inline_code_with_surrounding_punctuation():
+    """Test that inline code with surrounding punctuation stays together."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Inline code with parentheses
+    text = "syntax (`<!--% ... -->`)**"
+    result = splitter(text)
+    assert "(`<!--% ... -->`)**" in result
+
+    # Inline code followed by punctuation
+    text2 = "Use `foo bar`."
+    result2 = splitter(text2)
+    assert "`foo bar`." in result2
+
+
+def test_html_comments_kept_together():
+    """Test that HTML comments are kept as atomic units."""
+    splitter = _HtmlMdWordSplitter()
+
+    # Simple HTML comment
+    comment = "<!-- a comment -->"
+    text = f"Text with {comment} inline."
+    result = splitter(text)
+    assert comment in result
+
+    # Longer HTML comment
+    long_comment = "<!-- this is a longer comment with more words -->"
+    text2 = f"Before {long_comment} after."
+    result2 = splitter(text2)
+    assert long_comment in result2

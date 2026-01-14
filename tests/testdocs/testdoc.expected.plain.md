@@ -38,15 +38,17 @@ high-stakes decisions for those who give and *receive it*. Blah blah blah and bl
 
 ### A subsection with some citations
 
-- Mark P. Cussen, Investopedia, [*Introduction To Incentive Stock
-  Options*](http://www.investopedia.com/articles/stocks/12/introduction-incentive-stock-options.asp),
+- Mark P. Cussen, Investopedia,
+  [*Introduction To Incentive Stock Options*](http://www.investopedia.com/articles/stocks/12/introduction-incentive-stock-options.asp),
   updated 2017.
 
-- Alex MacCaw, [*An Engineer’s Guide to Stock
-  Options*](http://blog.alexmaccaw.com/an-engineers-guide-to-stock-options), 2013.
+- Alex MacCaw,
+  [*An Engineer’s Guide to Stock Options*](http://blog.alexmaccaw.com/an-engineers-guide-to-stock-options),
+  2013\.
 
-- Andy Rachleff, Wealthfront, [*The 14 Crucial Questions about Stock
-  Options*](https://blog.wealthfront.com/stock-options-14-crucial-questions), 2014.
+- Andy Rachleff, Wealthfront,
+  [*The 14 Crucial Questions about Stock Options*](https://blog.wealthfront.com/stock-options-14-crucial-questions),
+  2014\.
 
 ### Command Execution
 
@@ -193,8 +195,9 @@ grade. By age seven, he received his first formal training in English at a day s
 London; his first and second languages were Spanish and French. As a boy, Buckley
 developed a love for music, sailing, horses, hunting, and skiing. All of these interests
 would be reflected in his later writings. Just before World War II, at age 12–13, he
-attended the Catholic preparatory school [St. John's Beaumont
-School](https://en.wikipedia.org/wiki/St_John%27s_Beaumont_School) in England.
+attended the Catholic preparatory school
+[St. John's Beaumont School](https://en.wikipedia.org/wiki/St_John%27s_Beaumont_School)
+in England.
 
 The U.S. holds 50% of the global startup investment pool, down from 95% in the 1990s.
 (This data is
@@ -272,15 +275,15 @@ this year (they’ve risen [about](https://fred.stlouisfed.org/series/CSUSHPISA)
 [6% every year](http://www.chicagotribune.com/business/ct-biz-tax-law-home-values-20180102-story.html)
 for the last six) and rising—particularly in hot markets like San Francisco, where the
 average home sells in 21 days. Mortgage rates are rising, too, and fast. From September
-2017 to March 2018, [mortgage rates rose from 3.78% to
-4.45%](https://www.nytimes.com/2018/03/28/upshot/housing-sales-mortgage-rates-tax-law.html).
+2017 to March 2018,
+[mortgage rates rose from 3.78% to 4.45%](https://www.nytimes.com/2018/03/28/upshot/housing-sales-mortgage-rates-tax-law.html).
 Ouch. Neil Irwin, economist and New York Times correspondent,
 [explains](https://www.nytimes.com/2018/03/28/upshot/housing-sales-mortgage-rates-tax-law.html)
 that demand for housing is going up as millennials age into their 30s, but the cost of
 building new homes to accommodate buyers is rising as well. The
 [tax law](https://turbotax.intuit.com/tax-tips/irs-tax-return/2017-tax-reform-legislation-what-you-should-know/L96aFuPhc)
-passed in February 2017 is expected to [slow rising housing
-costs](http://www.chicagotribune.com/business/ct-biz-tax-law-home-values-20180102-story.html)
+passed in February 2017 is expected to
+[slow rising housing costs](http://www.chicagotribune.com/business/ct-biz-tax-law-home-values-20180102-story.html)
 for the upper middle class and the very wealthy. The tax law’s impact on everyone else
 is mostly centered on the doubling of the standard deduction for married couples (still
 58% of
@@ -290,15 +293,16 @@ to $24,000, which means the tax benefit of buying is
 
 * When an investor is trying to get you to agree to a term you think is unfair, you need
   to protect your interests without sounding accusatory toward the investor: *“Sorry,
-  I’m just inexperienced, I read/was told that it’s not wise to [term they want you to
-  agree to].”* [[Paul Graham, Y Combinator](http://paulgraham.com/fr.html)]
+  I’m just inexperienced, I read/was told that it’s not wise to
+  [term they want you to agree to].”*
+  [[Paul Graham, Y Combinator](http://paulgraham.com/fr.html)]
 
 * When you want to test a VC’s interest to determine where to put your energy, you don’t
   want to sound desperate or pushy: *“I know that you’re not likely to give me a strong
   indication at this meeting, but I’d love to know if this is the* sort *of opportunity
   you could imagine taking. I'll happily put in the work to persuade you over time! But
-  would I be better off focusing my attention on other VCs?”* [[Mark Suster, Upfront
-  Ventures](https://bothsidesofthetable.com/how-to-develop-your-fundraising-strategy-58c2f0b22d6d)]
+  would I be better off focusing my attention on other VCs?”*
+  [[Mark Suster, Upfront Ventures](https://bothsidesofthetable.com/how-to-develop-your-fundraising-strategy-58c2f0b22d6d)]
 
 🔹 **Automated and emerging legal services**: Many services like
 [**Stripe Atlas**](https://stripe.com/atlas), **[Atrium](https://www.atrium.co/)**,
@@ -307,17 +311,15 @@ to $24,000, which means the tax benefit of buying is
 provided by lawyers. [**Atrium**](https://www.atrium.co/) is a new legal services
 company worth keeping an eye on.
 
-- [Alternative Minimum Tax
-  (AMT)](http://fairmark.com/general-taxation/alternative-minimum-tax/alternative-minimum-tax-101/)
+- [Alternative Minimum Tax (AMT)](http://fairmark.com/general-taxation/alternative-minimum-tax/alternative-minimum-tax-101/)
   is a [complex part](https://www.irs.gov/taxtopics/tc556.html) of the federal tax code
-  many taxpayers never worry about. Generally, you do not pay [unless you have high
-  income (>$250K) or high
-  deductions](http://www.marketwatch.com/story/congratulations-you-owe-the-alternative-minimum-tax-2014-01-14).
+  many taxpayers never worry about. Generally, you do not pay
+  [unless you have high income (>$250K) or high deductions](http://www.marketwatch.com/story/congratulations-you-owe-the-alternative-minimum-tax-2014-01-14).
   It also depends on the state you’re in, since your state taxes can significantly
   affect your deductions. Confusingly, if you are affected, AMT tax rates are usually at
   **26%** or **28%** marginal tax rate, but effectively is **35%** for some ranges,
-  meaning it is [higher than ordinary income tax for some incomes and lower for
-  others](http://www.forbes.com/sites/feeonlyplanner/2011/12/16/the-alternative-minimum-tax-sweet-spot/).
+  meaning it is
+  [higher than ordinary income tax for some incomes and lower for others](http://www.forbes.com/sites/feeonlyplanner/2011/12/16/the-alternative-minimum-tax-sweet-spot/).
   AMT rules are so complicated you often need professional tax help if they might apply
   to you. The IRS's
   [AMT Assistant](https://www.irs.gov/Businesses/Small-Businesses-&-Self-Employed/Alternative-Minimum-Tax-(AMT)-Assistant-for-Individuals)
@@ -1044,9 +1046,9 @@ This is
 another.
 ```
 
-<div align="center"> <img src="images/rounds.png" alt="awesome"> <br> Example of company
-valuation, shares, fundraising, and dilution (<a
-href="http://ownyourventure.com/equitySim.html">source</a>) <br> </div>
+<div align="center"> <img src="images/rounds.png" alt="awesome">
+<br> Example of company valuation, shares, fundraising, and dilution (<a href="http://ownyourventure.com/equitySim.html">source</a>)
+<br> </div>
 
 | Specific AWS Services | Basics | Tips | Gotchas |
 | --- | --- | --- | --- |
@@ -1341,6 +1343,93 @@ Various malformed alert syntaxes should be preserved as regular quotes.
 > [NOTE] Missing exclamation mark - regular quote.
 
 > [!] Empty alert type - regular quote.
+
+## 16. Template Tags (Markdoc/Jinja/Nunjucks)
+
+Template-style tags should be kept as atomic units during line wrapping.
+
+### Inline Template Tags
+
+This paragraph contains {% if $condition %} inline template tags {% endif %} that should
+stay intact and not be split across lines even when wrapping occurs in a long paragraph
+like this one.
+
+A Jinja comment {# this is a comment #} should not be split across lines.
+
+Variable interpolation like {{ user.name }} should stay together as one unit.
+
+### Block Template Tags
+
+{% callout type="warning" %} This is a callout block. The content inside should wrap
+normally, but the opening and closing tags should remain on their own lines and not be
+joined with surrounding text. {% /callout %}
+
+{% if $showAdvanced %}
+
+This conditional content is between block tags. It should be wrapped but the tags
+themselves should stay on their own lines.
+
+{% /if %}
+
+### Self-Closing and Complex Tags
+
+Some text with {% partial file="snippet.md" /%} self-closing tags inline in a longer
+paragraph that will wrap.
+
+Complex attributes {% city name="San Francisco" coordinates=[37.7749, -122.4194] %}
+should stay atomic even with arrays and objects.
+
+### Edge Cases
+
+Long tag:
+{% very_long_tag_name with="many" attributes="here" and="more" values="too" /%}
+
+Jinja blocks: {% block content %}This is the content{% endblock %}
+
+Nunjucks raw block: {% raw %}This {{ won't }} be {% processed %}{% endraw %}
+
+## 17. HTML Comments and Inline Code Preservation
+
+HTML comments and inline code should be preserved correctly without being forced to
+separate lines.
+
+### Inline HTML Comments
+
+This is text with <!-- a comment --> inline that should stay on the same line.
+
+A paragraph with <!-- an inline comment --> should keep the comment together with
+surrounding text during wrapping.
+
+### Block HTML Comments
+
+Block comments on their own line stay separate:
+
+<!-- This is a block comment -->
+
+### Inline Code with Special Syntax
+
+Inline code with template-like syntax must be preserved exactly:
+
+| Markdoc Form | Comment Form |
+| --- | --- |
+| `{% tag attr="val" %}` | `<!--% tag attr="val" -->` |
+| `{% /tag %}` | `<!--% /tag -->` |
+| `{% tag /%}` | `<!--% tag /-->` |
+
+**Recommended approach: Preprocessor (Approach 1) with Option A syntax
+(`<!--% ... -->`)**
+
+Consider if editor support for `<!--{% %}-->` wrapper syntax is valuable.
+
+### Edge Cases for Code Spans
+
+Simple code: `some-code` stays together.
+
+Code with spaces: `code with spaces inside` stays together.
+
+Code with HTML-like content: `<div class="foo">bar</div>` stays together.
+
+Code with comment-like content: `<!-- not a real comment -->` stays together.
 
 ## Summary
 

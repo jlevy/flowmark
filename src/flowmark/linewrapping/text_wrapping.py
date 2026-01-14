@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from collections.abc import Callable
 from typing import Protocol
@@ -21,17 +23,84 @@ def simple_word_splitter(text: str) -> list[str]:
     return text.split()
 
 
+# Maximum number of whitespace-separated words to coalesce into a single token.
+# This applies to HTML/XML tags, Markdown links, and template tags.
+MAX_TAG_WORDS = 12
+
+
+def _generate_tag_patterns(
+    start: str, end: str, middle: str = r".+", max_words: int = MAX_TAG_WORDS
+) -> list[tuple[str, ...]]:
+    """
+    Generate coalescing patterns for tags with a given start/end delimiter.
+
+    For example, for template tags {% ... %}:
+        start=r"\\{%", end=r".*%\\}", middle=r".+"
+
+    This generates patterns for 2, 3, 4, ... max_words word spans.
+    """
+    patterns: list[tuple[str, ...]] = []
+    for num_words in range(2, max_words + 1):
+        # Pattern: start, (middle repeated n-2 times), end
+        middle_count = num_words - 2
+        pattern = (start,) + (middle,) * middle_count + (end,)
+        patterns.append(pattern)
+    return patterns
+
+
 class _HtmlMdWordSplitter:
     def __init__(self):
         # Sequences of whitespace-delimited words that should be coalesced and treated
-        # like a single word.
+        # like a single word. All tag types support up to MAX_TAG_WORDS words.
         self.patterns: list[tuple[str, ...]] = [
-            # HTML tags:
-            (r"<[^>]+", r"[^<>]+>[^<>]*"),
-            (r"<[^>]+", r"[^<>]+", r"[^<>]+>[^<>]*"),
-            # Markdown links:
-            (r"\[", r"[^\[\]]+\][^\[\]]*"),
-            (r"\[", r"[^\[\]]+", r"[^\[\]]+\][^\[\]]*"),
+            # Inline code spans: `content with spaces`
+            # These must be kept atomic to preserve code formatting.
+            # Allow optional leading punctuation (like opening parens) before backtick,
+            # and trailing punctuation after closing backtick.
+            *_generate_tag_patterns(
+                start=r"[^\s]*`[^`]*",
+                end=r"[^`]*`[^\s]*",
+                middle=r"[^`]+",
+            ),
+            # HTML comments: <!-- comment text -->
+            # Keep inline comments together, don't force to separate lines
+            *_generate_tag_patterns(
+                start=r"<!--.*",
+                end=r".*-->",
+                middle=r".+",
+            ),
+            # HTML/XML tags: <tag attr="value">content</tag>
+            *_generate_tag_patterns(
+                start=r"<[^>]+",
+                end=r"[^<>]+>[^<>]*",
+                middle=r"[^<>]+",
+            ),
+            # Markdown links: [text](url) or [text][ref]
+            # Links with multi-word text like [Mark Suster, Upfront Ventures](url) are
+            # kept together to avoid awkward line breaks within the link text.
+            *_generate_tag_patterns(
+                start=r"\[",
+                end=r"[^\[\]]+\][^\[\]]*",
+                middle=r"[^\[\]]+",
+            ),
+            # Template tags {% ... %} (Markdoc/Jinja/Nunjucks)
+            *_generate_tag_patterns(
+                start=r"\{%",
+                end=r".*%\}",
+                middle=r".+",
+            ),
+            # Template comments {# ... #} (Jinja/Nunjucks)
+            *_generate_tag_patterns(
+                start=r"\{#",
+                end=r".*#\}",
+                middle=r".+",
+            ),
+            # Template variables {{ ... }} (Jinja/Nunjucks)
+            *_generate_tag_patterns(
+                start=r"\{\{",
+                end=r".*\}\}",
+                middle=r".+",
+            ),
         ]
         self.compiled_patterns: list[tuple[re.Pattern[str], ...]] = [
             tuple(re.compile(pattern) for pattern in pattern_group)
