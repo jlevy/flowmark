@@ -13,7 +13,7 @@ own fork will make it easier to contribute) and
 ## Basic Developer Workflows
 
 The `Makefile` simply offers shortcuts to `uv` commands for developer convenience.
-(For clarity, GitHub Actions don't use the Makefile and just call `uv` directly.)
+(For clarity, GitHub Actions don’t use the Makefile and just call `uv` directly.)
 
 ```shell
 # First, install all dependencies and set up your virtual environment.

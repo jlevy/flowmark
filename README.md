@@ -21,8 +21,8 @@ The key differences from [other Markdown formatters](#why-another-markdown-forma
   It parses and normalizes standard links and special characters, headings, tables,
   footnotes, and horizontal rules and performing Markdown-aware line wrapping.
 
-- "Just works" support for GFM-style tables, footnotes, YAML frontmatter, template
-  tags (Markdoc, Jinja, Nunjucks), and inline HTML comments.
+- “Just works” support for GFM-style tables, footnotes, YAML frontmatter, template tags
+  (Markdoc, Jinja, Nunjucks), and inline HTML comments.
 
 - Advanced and customizable line-wrapping capabilities, including
   [semantic line breaks](#semantic-line-breaks), a feature that is especially helpful in
@@ -42,9 +42,8 @@ General philosophy:
   (including more complex things like custom line wrapping for HTML).
 
 - Be as small and simple as possible, with few dependencies:
-  [`marko`](https://github.com/frostming/marko),
-  [`regex`](https://pypi.org/project/regex/), and
-  [`strif`](https://github.com/jlevy/strif).
+  [`marko`](https://github.com/frostming/marko), [`regex`](https://pypi.org/project/regex/),
+  and [`strif`](https://github.com/jlevy/strif).
 
 ## Installation
 
@@ -85,9 +84,10 @@ The main ways to use Flowmark are:
   [`textwrap`](https://docs.python.org/3/library/textwrap.html)** but with more options.
   It simplifies and generalizes that library, offering better control over **initial and
   subsequent indentation** and **when to split words and lines**, e.g. using a word
-  splitter that won't break lines within HTML tags, template tags (`{% %}`, `{# #}`,
+  splitter that won’t break lines within HTML tags, template tags (`{% %}`, `{# #}`,
   `{{ }}`), Markdown links (including links with multi-word text), inline code spans
-  (`` `code with spaces` ``), or HTML comments. See
+  (`` `code with spaces` ``), or HTML comments.
+  See
   [`wrap_paragraph_lines`](https://github.com/jlevy/flowmark/blob/main/src/flowmark/linewrapping/text_wrapping.py).
 
 ## Semantic Line Breaks
@@ -121,8 +121,8 @@ this idea, as it can **make diffs in git much more readable**. The change may se
 subtle but avoids having paragraphs reflow for very small edits, which does a lot to
 **minimize merge conflicts**.
 
-This is my own refinement of [traditional semantic line
-breaks](https://github.com/sembr/specification).
+This is my own refinement of
+[traditional semantic line breaks](https://github.com/sembr/specification).
 Instead of just allowing you to break lines as you wish, it auto-applies fixed
 conventions about likely sentence boundaries in a conservative and reasonable way.
 It uses simple and fast **regex-based sentence splitting**. While not perfect, this
