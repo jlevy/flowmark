@@ -767,3 +767,73 @@ def test_block_heuristics_mixed_content():
     assert "\n|------|------|\n" in result
     # Closing tag preserved
     assert "\n{% /field %}" in result
+
+
+def test_block_heuristics_blank_line_normalization():
+    """
+    Test that block content between tags gets exactly one blank line at boundaries.
+
+    This ensures:
+    - One blank line after opening tag before list/table
+    - One blank line after list/table before closing tag
+
+    This prevents CommonMark lazy continuation from merging tags into blocks.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # List between tags - should get blank lines around it
+    text = "{% field %}\n- Item 1\n- Item 2\n{% /field %}"
+    result = wrapper(text, "", "")
+
+    # Verify blank line after opening tag (two newlines = blank line)
+    assert "{% field %}\n\n" in result, f"Expected blank line after opening tag, got: {result}"
+
+    # Verify blank line before closing tag
+    assert "\n\n{% /field %}" in result, f"Expected blank line before closing tag, got: {result}"
+
+
+def test_block_heuristics_table_blank_lines():
+    """
+    Test blank line normalization specifically for tables.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Table between tags
+    text = "{% field %}\n| A | B |\n|---|---|\n{% /field %}"
+    result = wrapper(text, "", "")
+
+    # Should have blank lines around table
+    assert "{% field %}\n\n" in result
+    assert "\n\n{% /field %}" in result
+
+
+def test_block_heuristics_preserves_existing_blank_lines():
+    """
+    Test that if there are already blank lines, we don't add extras.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Already has blank lines
+    text = "{% field %}\n\n- Item 1\n\n{% /field %}"
+    result = wrapper(text, "", "")
+
+    # Should still have exactly one blank line (not doubled)
+    # Note: the wrapper may normalize, so we just check it's not more than 2 newlines
+    assert "{% field %}\n\n" in result
+    lines = result.split("\n")
+    # Count consecutive empty lines - should not exceed 1
+    max_consecutive_empty = 0
+    current_consecutive = 0
+    for line in lines:
+        if line.strip() == "":
+            current_consecutive += 1
+            max_consecutive_empty = max(max_consecutive_empty, current_consecutive)
+        else:
+            current_consecutive = 0
+    assert max_consecutive_empty <= 1, f"Too many consecutive blank lines: {result}"

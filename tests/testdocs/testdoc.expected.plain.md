@@ -1472,7 +1472,7 @@ Closing tags should NOT be merged onto list item lines:
 - [ ] Option B {% #option_b %}
 
 - [ ] Option C {% #option_c %}
-  {% /field %}
+{% /field %}
 
 <!-- f:field kind="select" id="choice" -->
 
@@ -1481,7 +1481,7 @@ Closing tags should NOT be merged onto list item lines:
 - Option 2 <!-- #opt2 -->
 
 - Option 3 <!-- #opt3 -->
-  <!-- /f:field -->
+<!-- /f:field -->
 
 ### Issue 3: Same-Line Tag Pairs
 
@@ -1552,7 +1552,7 @@ us.
 - [ ] Fair {% #fair %}
 
 - [ ] Poor {% #poor %}
-  {% /field %}
+{% /field %}
 
 {% field kind="text" id="comments" label="Additional Comments" placeholder="Enter your comments here..." %}
 {% /field %}

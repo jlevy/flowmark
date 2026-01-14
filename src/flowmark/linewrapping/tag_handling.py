@@ -287,7 +287,7 @@ def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
         if len(segments) == 1:
             return base_wrapper(text, initial_indent, subsequent_indent)
 
-        # Wrap each segment separately and rejoin with newlines
+        # Wrap each segment separately
         wrapped_segments: list[str] = []
         for i, segment in enumerate(segments):
             is_first = i == 0
@@ -295,6 +295,70 @@ def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
             wrapped = base_wrapper(segment, cur_initial_indent, subsequent_indent)
             wrapped_segments.append(wrapped)
 
-        return "\n".join(wrapped_segments)
+        # Rejoin segments, normalizing newlines around block content.
+        # When transitioning between a tag and block content (list/table),
+        # ensure exactly one blank line to prevent CommonMark lazy continuation.
+        result_parts: list[str] = []
+        for i, wrapped in enumerate(wrapped_segments):
+            if i == 0:
+                result_parts.append(wrapped)
+                continue
+
+            prev_segment = segments[i - 1]
+            curr_segment = segments[i]
+
+            # Check if we're transitioning to/from block content
+            prev_is_block = any(line_is_block_content(line) for line in prev_segment.split("\n"))
+            curr_is_block = any(line_is_block_content(line) for line in curr_segment.split("\n"))
+            prev_is_tag = (
+                line_ends_with_tag(prev_segment.split("\n")[-1]) if prev_segment else False
+            )
+            curr_is_tag = (
+                line_starts_with_tag(curr_segment.split("\n")[0]) if curr_segment else False
+            )
+
+            # Ensure exactly one blank line between tag and block content
+            if (prev_is_tag and curr_is_block) or (prev_is_block and curr_is_tag):
+                # Add blank line separator
+                result_parts.append("")  # Empty string creates blank line when joined
+                result_parts.append(wrapped)
+            else:
+                result_parts.append(wrapped)
+
+        result = "\n".join(result_parts)
+
+        # Post-process: remove incorrect indentation from closing tags.
+        # The Markdown parser may indent closing tags due to lazy continuation.
+        result = _fix_tag_indentation(result)
+
+        return result
 
     return enhanced_wrapper
+
+
+def _fix_tag_indentation(text: str) -> str:
+    """
+    Remove incorrect indentation from closing tags.
+
+    When a closing tag follows a list item, the Markdown parser may indent it
+    as list continuation. This function strips leading whitespace from lines
+    that are closing tags (start with {% /, {# /, {{ /, or <!-- /).
+    """
+    lines = text.split("\n")
+    fixed_lines: list[str] = []
+
+    for line in lines:
+        stripped = line.lstrip()
+        # Check if this is a closing tag that got incorrectly indented
+        if (
+            stripped.startswith("{% /")
+            or stripped.startswith("{# /")
+            or stripped.startswith("{{ /")
+            or stripped.startswith("<!-- /")
+        ):
+            # Strip the indentation
+            fixed_lines.append(stripped)
+        else:
+            fixed_lines.append(line)
+
+    return "\n".join(fixed_lines)
