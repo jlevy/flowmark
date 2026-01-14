@@ -1436,7 +1436,7 @@ Long tag:
 
 Jinja blocks: {% block content %}This is the content{% endblock %}
 
-Nunjucks raw block: {% raw %}This {{ won't }} be {% processed %} {% endraw %}
+Nunjucks raw block: {% raw %}This {{ won't }} be {% processed %}{% endraw %}
 
 ## 17. HTML Comments and Inline Code Preservation
 
@@ -1544,10 +1544,10 @@ Empty fields with paired tags on the same line should stay together:
 {% field kind="string" id="email" label="Email" required=true placeholder="email@example.com" %}
 {% /field %}
 
-<!-- f:field kind="string" id="name" --> <!-- /f:field -->
+<!-- f:field kind="string" id="name" --><!-- /f:field -->
 
 A longer example:
-{% field kind="text" id="description" label="Description" maxlength=500 %} {% /field %}
+{% field kind="text" id="description" label="Description" maxlength=500 %}{% /field %}
 with text after.
 
 ### Issue 3a: Backslash in Attributes
@@ -1556,7 +1556,7 @@ Backslashes that are NOT CommonMark escape sequences are preserved.
 Note: `\.` is a valid CommonMark escape (escaped period), so use `\\.` in source.
 Characters like `\+`, `\-`, `\s` are NOT CommonMark escapes and are preserved.
 
-{% field kind="string" id="phone" pattern="^\+?[0-9\-\s]+$" %} {% /field %}
+{% field kind="string" id="phone" pattern="^\+?[0-9\-\s]+$" %}{% /field %}
 
 ### Issue 5: Nested Tags
 
@@ -1564,11 +1564,11 @@ Nested tag structures should preserve newlines between each tag:
 
 {% form id="contact" %}
 {% group id="personal" title="Personal Information" %}
-{% field kind="string" id="name" label="Name" required=true %} {% /field %}
-{% field kind="string" id="email" label="Email" %} {% /field %}
+{% field kind="string" id="name" label="Name" required=true %}{% /field %}
+{% field kind="string" id="email" label="Email" %}{% /field %}
 {% /group %}
 {% group id="message" title="Your Message" %}
-{% field kind="text" id="body" label="Message" %} {% /field %}
+{% field kind="text" id="body" label="Message" %}{% /field %}
 {% /group %}
 {% /form %}
 

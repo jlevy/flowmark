@@ -955,3 +955,138 @@ def test_self_closing_jinja_comment_tags():
     inline = "Value {# in bytes #} is 1024."
     tokens = splitter(inline)
     assert "{# in bytes #}" in tokens
+
+
+def test_adjacent_jinja_tags_no_space():
+    """
+    Test that adjacent Jinja tags stay adjacent (no space inserted).
+
+    When tags like %}{% are adjacent, normalization adds a space for tokenization,
+    but denormalization must remove it in the final output.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_by_sentence, line_wrap_to_width
+    from flowmark.linewrapping.tag_handling import (
+        denormalize_adjacent_tags,
+        normalize_adjacent_tags,
+    )
+
+    # Test normalize/denormalize directly
+    original = "{% field kind='string' %}{% /field %}"
+    normalized = normalize_adjacent_tags(original)
+    assert normalized == "{% field kind='string' %} {% /field %}", (
+        f"Expected space, got: {normalized}"
+    )
+    denormalized = denormalize_adjacent_tags(normalized)
+    assert denormalized == original, f"Expected {original}, got: {denormalized}"
+
+    # Test with line_wrap_to_width (uses wrap_paragraph)
+    wrapper1 = line_wrap_to_width(width=80, is_markdown=True)
+    result1 = wrapper1(original, "", "")
+    assert result1 == original, f"line_wrap_to_width: Expected {original}, got: {result1}"
+
+    # Test with line_wrap_by_sentence (uses wrap_paragraph_lines)
+    wrapper2 = line_wrap_by_sentence(width=80, is_markdown=True)
+    result2 = wrapper2(original, "", "")
+    assert result2 == original, f"line_wrap_by_sentence: Expected {original}, got: {result2}"
+
+
+def test_adjacent_html_comment_tags_no_space():
+    """
+    Test that adjacent HTML comment tags stay adjacent (no space inserted).
+
+    This is critical for Markform-style HTML comment syntax.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_by_sentence, line_wrap_to_width
+    from flowmark.linewrapping.tag_handling import (
+        denormalize_adjacent_tags,
+        normalize_adjacent_tags,
+    )
+
+    # Test normalize/denormalize directly
+    original = '<!-- f:field kind="string" id="name" --><!-- /f:field -->'
+    normalized = normalize_adjacent_tags(original)
+    assert " <!-- /f:field -->" in normalized, (
+        f"Expected space after normalization, got: {normalized}"
+    )
+    denormalized = denormalize_adjacent_tags(normalized)
+    assert denormalized == original, f"Expected {original}, got: {denormalized}"
+
+    # Test with line_wrap_to_width
+    wrapper1 = line_wrap_to_width(width=80, is_markdown=True)
+    result1 = wrapper1(original, "", "")
+    assert result1 == original, f"line_wrap_to_width: Expected {original}, got: {result1}"
+
+    # Test with line_wrap_by_sentence
+    wrapper2 = line_wrap_by_sentence(width=80, is_markdown=True)
+    result2 = wrapper2(original, "", "")
+    assert result2 == original, f"line_wrap_by_sentence: Expected {original}, got: {result2}"
+
+
+def test_adjacent_jinja_variable_tags_no_space():
+    """
+    Test that adjacent Jinja variable tags stay adjacent.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_by_sentence
+    from flowmark.linewrapping.tag_handling import (
+        denormalize_adjacent_tags,
+        normalize_adjacent_tags,
+    )
+
+    original = "{{ a }}{{ b }}"
+    normalized = normalize_adjacent_tags(original)
+    assert normalized == "{{ a }} {{ b }}", f"Expected space, got: {normalized}"
+    denormalized = denormalize_adjacent_tags(normalized)
+    assert denormalized == original, f"Expected {original}, got: {denormalized}"
+
+    wrapper = line_wrap_by_sentence(width=80, is_markdown=True)
+    result = wrapper(original, "", "")
+    assert result == original, f"Expected {original}, got: {result}"
+
+
+def test_adjacent_jinja_comment_tags_no_space():
+    """
+    Test that adjacent Jinja comment tags stay adjacent.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_by_sentence
+    from flowmark.linewrapping.tag_handling import (
+        denormalize_adjacent_tags,
+        normalize_adjacent_tags,
+    )
+
+    original = "{# first #}{# second #}"
+    normalized = normalize_adjacent_tags(original)
+    assert normalized == "{# first #} {# second #}", f"Expected space, got: {normalized}"
+    denormalized = denormalize_adjacent_tags(normalized)
+    assert denormalized == original, f"Expected {original}, got: {denormalized}"
+
+    wrapper = line_wrap_by_sentence(width=80, is_markdown=True)
+    result = wrapper(original, "", "")
+    assert result == original, f"Expected {original}, got: {result}"
+
+
+def test_adjacent_tags_full_pipeline():
+    """
+    Test adjacent tags through the full Markdown processing pipeline.
+
+    This catches bugs where normalization happens but denormalization doesn't.
+    """
+    from flowmark import fill_markdown
+
+    # Jinja tags
+    jinja_input = "{% field kind='string' %}{% /field %}"
+    jinja_result = fill_markdown(jinja_input, semantic=True)
+    assert jinja_result.strip() == jinja_input, (
+        f"Jinja: Expected {jinja_input}, got: {jinja_result.strip()}"
+    )
+
+    # HTML comment tags
+    html_input = '<!-- f:field kind="string" id="name" --><!-- /f:field -->'
+    html_result = fill_markdown(html_input, semantic=True)
+    assert html_result.strip() == html_input, (
+        f"HTML: Expected {html_input}, got: {html_result.strip()}"
+    )
+
+    # With surrounding text
+    mixed_input = "Before {% field %}{% /field %} after."
+    mixed_result = fill_markdown(mixed_input, semantic=True)
+    assert "{% field %}{% /field %}" in mixed_result, f"Mixed: Space inserted in: {mixed_result}"

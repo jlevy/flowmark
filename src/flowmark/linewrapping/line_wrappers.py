@@ -6,7 +6,7 @@ from typing import Protocol
 
 from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.sentence_split_regex import split_sentences_regex
-from flowmark.linewrapping.tag_handling import add_tag_newline_handling
+from flowmark.linewrapping.tag_handling import add_tag_newline_handling, denormalize_adjacent_tags
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 from flowmark.linewrapping.text_wrapping import (
     DEFAULT_LEN_FUNCTION,
@@ -163,7 +163,9 @@ def line_wrap_by_sentence(
         if subsequent_indent and len(lines) > 1:
             lines[1:] = [subsequent_indent + line for line in lines[1:]]
 
-        return "\n".join(lines)
+        result = "\n".join(lines)
+        # Restore original adjacency for paired tags (remove spaces added during tokenization)
+        return denormalize_adjacent_tags(result)
 
     if is_markdown:
         # Apply tag newline handling first, then hard break handling
