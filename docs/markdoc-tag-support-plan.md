@@ -6,8 +6,20 @@
 
 Changes implemented:
 - Extended `_HtmlMdWordSplitter` with patterns for `{% %}`, `{# #}`, and `{{ }}`
+- Added `_generate_tag_patterns()` helper for programmatic pattern generation
+- Unified all tag types (HTML, Markdown links, template tags) to use `MAX_TAG_WORDS = 12`
 - Added unit tests for template tag handling
-- Added integration tests in testdoc.orig.md
+- Added integration tests in testdoc.orig.md (Section 16: Template Tags)
+
+**✅ HTML Comment & Inline Code Preservation Complete**
+
+Additional changes implemented:
+- Added HTML comment patterns (`<!-- -->`) to keep inline comments together
+- Added inline code span patterns (`` `code with spaces` ``) to preserve backtick content
+- Removed `_normalize_html_comments()` function that was forcing all comments to separate lines
+- Marko parser now handles HTML comments naturally (inline stays inline, block stays block)
+- Added unit tests: `test_inline_code_with_spaces`, `test_inline_code_with_surrounding_punctuation`, `test_html_comments_kept_together`
+- Added integration tests in testdoc.orig.md (Section 17: HTML Comments and Inline Code)
 
 Remaining work (future enhancements):
 - Phase 2: Tag boundary detection for preventing line joining around block tags
@@ -62,28 +74,39 @@ Common block tags: `if/elif/else/endif`, `for/endfor`, `block/endblock`, `macro/
 
 ### XML/HTML Tag Handling
 
-The current implementation in `text_wrapping.py` uses `_HtmlMdWordSplitter`:
+The current implementation in `text_wrapping.py` uses `_HtmlMdWordSplitter` with dynamically
+generated patterns via `_generate_tag_patterns()`:
 
 ```python
+MAX_TAG_WORDS = 12  # Maximum words to coalesce into a single token
+
 class _HtmlMdWordSplitter:
-    patterns: list[tuple[str, ...]] = [
-        # HTML tags: coalesce words within tags
-        (r"<[^>]+", r"[^<>]+>[^<>]*"),
-        (r"<[^>]+", r"[^<>]+", r"[^<>]+>[^<>]*"),
-        # Markdown links: coalesce words within links
-        (r"\[", r"[^\[\]]+\][^\[\]]*"),
-        (r"\[", r"[^\[\]]+", r"[^\[\]]+\][^\[\]]*"),
-    ]
+    def __init__(self):
+        self.patterns: list[tuple[str, ...]] = [
+            # Inline code spans: `content with spaces`
+            *_generate_tag_patterns(start=r"[^\s]*`[^`]*", end=r"[^`]*`[^\s]*", middle=r"[^`]+"),
+            # HTML comments: <!-- comment text -->
+            *_generate_tag_patterns(start=r"<!--.*", end=r".*-->", middle=r".+"),
+            # HTML/XML tags: <tag attr="value">content</tag>
+            *_generate_tag_patterns(start=r"<[^>]+", end=r"[^<>]+>[^<>]*", middle=r"[^<>]+"),
+            # Markdown links: [text](url) or [text][ref]
+            *_generate_tag_patterns(start=r"\[", end=r"[^\[\]]+\][^\[\]]*", middle=r"[^\[\]]+"),
+            # Template tags {% ... %}, {# ... #}, {{ ... }}
+            *_generate_tag_patterns(start=r"\{%", end=r".*%\}", middle=r".+"),
+            *_generate_tag_patterns(start=r"\{#", end=r".*#\}", middle=r".+"),
+            *_generate_tag_patterns(start=r"\{\{", end=r".*\}\}", middle=r".+"),
+        ]
 ```
 
-This keeps HTML tags as atomic tokens during word splitting, preventing line breaks inside tags.
+This keeps HTML tags, template tags, inline code, and HTML comments as atomic tokens during
+word splitting, preventing line breaks inside these constructs.
 
 ### Current Behavior on Template Tags
 
-Currently, Flowmark would treat `{% tag %}` as regular text:
-- Words inside the tag could be split across lines
-- Lines could be joined onto/from template tags
-- Tag attributes could be broken awkwardly
+**After implementation**, Flowmark keeps template tags as atomic tokens:
+- Words inside tags like `{% tag attr="value" %}` stay together
+- Template comments `{# comment #}` and variables `{{ var }}` are preserved
+- Tag attributes are never broken across lines
 
 ## Requirements
 
