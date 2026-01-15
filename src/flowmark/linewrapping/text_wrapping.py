@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
 from functools import cache
 from typing import Protocol
 
+from flowmark.linewrapping.atomic_patterns import ATOMIC_CONSTRUCT_PATTERN
 from flowmark.linewrapping.tag_handling import (
-    TagWrapping,
     denormalize_adjacent_tags,
     normalize_adjacent_tags,
 )
@@ -37,112 +36,6 @@ _PLACEHOLDER_PREFIX = "\x00AC"
 _PLACEHOLDER_SUFFIX = "\x00"
 
 
-@dataclass(frozen=True)
-class AtomicPattern:
-    """
-    Defines a regex pattern for an atomic construct that should not be broken.
-
-    Each pattern matches a specific type of construct (code span, link, tag, etc.)
-    that should be kept together as a single token during line wrapping.
-    """
-
-    name: str
-    pattern: str
-
-
-# Atomic construct patterns. Order matters: more specific patterns come first.
-# Paired tag patterns must come before single tag patterns to match correctly.
-
-INLINE_CODE_SPAN = AtomicPattern(
-    name="inline_code_span",
-    pattern=r"(`+)(?:(?!\1).)+\1",  # Handles multi-backtick like ``code``
-)
-
-MARKDOWN_LINK = AtomicPattern(
-    name="markdown_link",
-    pattern=r"\[[^\]]*\](?:\([^)]*\)|\[[^\]]*\])?",  # [text](url) or [text][ref]
-)
-
-# Paired template tags: opening + closing kept together (e.g., {% field %}{% /field %})
-# Uses (?!\s*/) lookahead to ensure first tag is not a closing tag
-PAIRED_JINJA_TAG = AtomicPattern(
-    name="paired_jinja_tag",
-    pattern=r"\{%(?!\s*/)[^%]*%\}\s*\{%\s*/[^%]*%\}",
-)
-
-PAIRED_JINJA_COMMENT = AtomicPattern(
-    name="paired_jinja_comment",
-    pattern=r"\{[#](?!\s*/)[^#]*[#]\}\s*\{[#]\s*/[^#]*[#]\}",
-)
-
-PAIRED_JINJA_VAR = AtomicPattern(
-    name="paired_jinja_var",
-    pattern=r"\{\{(?!\s*/)[^}]*\}\}\s*\{\{\s*/[^}]*\}\}",
-)
-
-PAIRED_HTML_COMMENT = AtomicPattern(
-    name="paired_html_comment",
-    pattern=r"<!--(?!\s*/)[^-]*(?:-[^-]+)*-->\s*<!--\s*/[^-]*(?:-[^-]+)*-->",
-)
-
-# Single template tags
-SINGLE_JINJA_TAG = AtomicPattern(
-    name="single_jinja_tag",
-    pattern=r"\{%.*?%\}",
-)
-
-SINGLE_JINJA_COMMENT = AtomicPattern(
-    name="single_jinja_comment",
-    pattern=r"\{[#].*?[#]\}",
-)
-
-SINGLE_JINJA_VAR = AtomicPattern(
-    name="single_jinja_var",
-    pattern=r"\{\{.*?\}\}",
-)
-
-SINGLE_HTML_COMMENT = AtomicPattern(
-    name="single_html_comment",
-    pattern=r"<!--.*?-->",
-)
-
-# HTML/XML tags
-HTML_OPEN_TAG = AtomicPattern(
-    name="html_open_tag",
-    pattern=r"<[a-zA-Z][^>]*>",
-)
-
-HTML_CLOSE_TAG = AtomicPattern(
-    name="html_close_tag",
-    pattern=r"</[a-zA-Z][^>]*>",
-)
-
-# All patterns in priority order (more specific patterns first)
-_ATOMIC_PATTERNS: tuple[AtomicPattern, ...] = (
-    INLINE_CODE_SPAN,
-    MARKDOWN_LINK,
-    # Paired tags must come before single tags
-    PAIRED_JINJA_TAG,
-    PAIRED_JINJA_COMMENT,
-    PAIRED_JINJA_VAR,
-    PAIRED_HTML_COMMENT,
-    # Single tags
-    SINGLE_JINJA_TAG,
-    SINGLE_JINJA_COMMENT,
-    SINGLE_JINJA_VAR,
-    SINGLE_HTML_COMMENT,
-    # HTML tags
-    HTML_OPEN_TAG,
-    HTML_CLOSE_TAG,
-)
-
-# Compiled regex combining all patterns with alternation
-_ATOMIC_CONSTRUCT_PATTERN: re.Pattern[str] = re.compile(
-    "|".join(p.pattern for p in _ATOMIC_PATTERNS),
-    re.DOTALL,
-)
-
-
 def _extract_atomic_constructs(text: str) -> tuple[dict[int, str], str]:
     """
     Extract all atomic constructs from text, replacing them with placeholders.
@@ -164,7 +57,7 @@ def _extract_atomic_constructs(text: str) -> tuple[dict[int, str], str]:
         placeholder_idx += 1
         return placeholder
 
-    text_with_placeholders = _ATOMIC_CONSTRUCT_PATTERN.sub(replace_construct, text)
+    text_with_placeholders = ATOMIC_CONSTRUCT_PATTERN.sub(replace_construct, text)
     return construct_map, text_with_placeholders
 
 
@@ -195,44 +88,28 @@ class _HtmlMdWordSplitter:
     2. Split on whitespace (placeholders become single "words")
     3. Restore original constructs
 
-    When `atomic_tags=True`, all constructs are treated as indivisible tokens.
-    When `atomic_tags=False`, only basic constructs are kept together.
+    All atomic constructs (template tags, code spans, markdown links, HTML tags)
+    are treated as indivisible tokens and never broken across lines.
     """
-
-    atomic_tags: bool
-
-    def __init__(self, atomic_tags: bool = False):
-        self.atomic_tags = atomic_tags
 
     def __call__(self, text: str) -> list[str]:
         # Normalize adjacent tags to ensure proper tokenization
         text = normalize_adjacent_tags(text)
 
-        if self.atomic_tags:
-            return self._split_with_extraction(text)
-        else:
-            return self._split_with_extraction(text)
-
-    def _split_with_extraction(self, text: str) -> list[str]:
-        """
-        Split using single-pass regex extraction.
-
-        1. Extract all atomic constructs and replace with placeholders
-        2. Split on whitespace (placeholders are single tokens)
-        3. Restore original constructs
-        """
+        # Extract all atomic constructs and replace with placeholders
         construct_map, text_with_placeholders = _extract_atomic_constructs(text)
+        # Split on whitespace (placeholders are single tokens)
         tokens = text_with_placeholders.split()
+        # Restore original constructs
         return _restore_atomic_constructs(tokens, construct_map)
 
 
 @cache
-def get_html_md_word_splitter(atomic_tags: bool) -> WordSplitter:
+def get_html_md_word_splitter() -> WordSplitter:
     """
     Get cached word splitter instance. Thread-safe via @cache decorator.
-    Avoids re-compiling regex patterns on every call.
     """
-    return _HtmlMdWordSplitter(atomic_tags=atomic_tags)
+    return _HtmlMdWordSplitter()
 
 
 # Pattern to identify words that need escaping if they start a wrapped markdown line.
@@ -268,7 +145,6 @@ def wrap_paragraph_lines(
     splitter: WordSplitter | None = None,
     len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
     is_markdown: bool = False,
-    tags: TagWrapping = TagWrapping.atomic,
 ) -> list[str]:
     r"""
     Wrap a single paragraph of text, returning a list of wrapped lines.
@@ -281,10 +157,6 @@ def wrap_paragraph_lines(
     "\\\n" (backslash-newline) or "  \n" (two spaces followed by newline) at the
     end of the line. Hard line breaks are normalized to always use "\\\n" as the line
     break.
-
-    The `tags` parameter controls template tag handling:
-    - `atomic`: Tags are treated as indivisible tokens (never broken across lines)
-    - `wrap`: Tags can wrap like normal text (legacy behavior with coalescing limits)
     """
     lines: list[str] = []
 
@@ -299,9 +171,9 @@ def wrap_paragraph_lines(
     if replace_whitespace:
         text = re.sub(r"\s+", " ", text)
 
-    # Use provided splitter or get cached one based on tags mode
+    # Use provided splitter or get cached one
     if splitter is None:
-        splitter = get_html_md_word_splitter(atomic_tags=(tags == TagWrapping.atomic))
+        splitter = get_html_md_word_splitter()
 
     words = splitter(text)
 
@@ -360,14 +232,9 @@ def wrap_paragraph(
     word_splitter: WordSplitter | None = None,
     len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
     is_markdown: bool = False,
-    tags: TagWrapping = TagWrapping.atomic,
 ) -> str:
     """
     Wrap lines of a single paragraph of plain text, returning a new string.
-
-    The `tags` parameter controls template tag handling:
-    - `atomic`: Tags are treated as indivisible tokens (never broken across lines)
-    - `wrap`: Tags can wrap like normal text (legacy behavior with coalescing limits)
     """
     lines = wrap_paragraph_lines(
         text=text,
@@ -379,7 +246,6 @@ def wrap_paragraph(
         subsequent_offset=len_fn(subsequent_indent),
         len_fn=len_fn,
         is_markdown=is_markdown,
-        tags=tags,
     )
     # Now insert indents on first and subsequent lines, if needed.
     if initial_indent and initial_column == 0 and len(lines) > 0:

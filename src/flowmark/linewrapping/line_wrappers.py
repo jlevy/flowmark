@@ -7,7 +7,6 @@ from typing import Protocol
 from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.sentence_split_regex import split_sentences_regex
 from flowmark.linewrapping.tag_handling import (
-    TagWrapping,
     add_tag_newline_handling,
     denormalize_adjacent_tags,
 )
@@ -79,7 +78,6 @@ def _add_markdown_hard_break_handling(base_wrapper: LineWrapper) -> LineWrapper:
 
 def line_wrap_to_width(
     width: int = DEFAULT_WRAP_WIDTH,
-    tags: TagWrapping = TagWrapping.atomic,
     len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
     is_markdown: bool = False,
 ) -> LineWrapper:
@@ -95,14 +93,13 @@ def line_wrap_to_width(
             subsequent_indent=subsequent_indent,
             len_fn=len_fn,
             is_markdown=is_markdown,
-            tags=tags,
         )
 
     if is_markdown:
         # Apply tag newline handling first, then hard break handling
         # Order matters: tag handling should operate on original newlines
         # before hard break handling normalizes explicit breaks
-        enhanced = add_tag_newline_handling(line_wrapper, tags=tags)
+        enhanced = add_tag_newline_handling(line_wrapper)
         return _add_markdown_hard_break_handling(enhanced)
     else:
         return line_wrapper
@@ -111,7 +108,6 @@ def line_wrap_to_width(
 def line_wrap_by_sentence(
     split_sentences: SentenceSplitter = split_sentences_no_min_length,
     width: int = DEFAULT_WRAP_WIDTH,
-    tags: TagWrapping = TagWrapping.atomic,
     min_line_len: int = DEFAULT_MIN_LINE_LEN,
     len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
     is_markdown: bool = False,
@@ -120,10 +116,6 @@ def line_wrap_by_sentence(
     Wrap lines of text to a given width but also keep sentences on their own lines.
     If the last line ends up shorter than `min_line_len`, it's combined with the
     next sentence.
-
-    The `tags` parameter controls template tag handling:
-    - `atomic`: Tags are treated as indivisible tokens (never broken across lines)
-    - `wrap`: Tags can wrap like normal text (legacy behavior with coalescing limits)
     """
 
     def line_wrapper(text: str, initial_indent: str, subsequent_indent: str) -> str:
@@ -152,7 +144,6 @@ def line_wrap_by_sentence(
                 initial_column=current_column,
                 subsequent_offset=subsequent_indent_len,
                 is_markdown=is_markdown,
-                tags=tags,
             )
             # If last line is shorter than min_line_len, combine with next line.
             # Also handles if the first word doesn't fit.
@@ -182,7 +173,7 @@ def line_wrap_by_sentence(
 
     if is_markdown:
         # Apply tag newline handling first, then hard break handling
-        enhanced = add_tag_newline_handling(line_wrapper, tags=tags)
+        enhanced = add_tag_newline_handling(line_wrapper)
         return _add_markdown_hard_break_handling(enhanced)
     else:
         return line_wrapper

@@ -1,6 +1,5 @@
 from textwrap import dedent
 
-from flowmark.linewrapping.tag_handling import generate_coalescing_patterns
 from flowmark.linewrapping.text_wrapping import (
     _HtmlMdWordSplitter,  # pyright: ignore
     get_html_md_word_splitter,
@@ -164,10 +163,10 @@ def test_wrap_text():
         """
     ).strip()
 
-    print("\nFilled text with get_html_md_word_splitter(atomic_tags=False):")
+    print("\nFilled text with get_html_md_word_splitter():")
     filled_smart = wrap_paragraph(
         sample_text,
-        word_splitter=get_html_md_word_splitter(atomic_tags=False),
+        word_splitter=get_html_md_word_splitter(),
         width=40,
         initial_indent=">",
         subsequent_indent=">>",
@@ -183,10 +182,10 @@ def test_wrap_text():
         """
     ).strip()
 
-    print("\nFilled text with get_html_md_word_splitter(atomic_tags=False) and initial_offset:")
+    print("\nFilled text with get_html_md_word_splitter() and initial_offset:")
     filled_smart_offset = wrap_paragraph(
         sample_text,
-        word_splitter=get_html_md_word_splitter(atomic_tags=False),
+        word_splitter=get_html_md_word_splitter(),
         width=40,
         initial_indent=">",
         subsequent_indent=">>",
@@ -348,24 +347,6 @@ def test_mixed_html_and_template_tags():
     # Template tags should be kept together
     assert "{% if $y %}" in result
     assert "{% endif %}" in result
-
-
-def test_generate_coalescing_patterns():
-    """Test the pattern generation function directly."""
-    # Test with max_words=4
-    patterns = generate_coalescing_patterns(start=r"\{%", end=r".*%\}", middle=r".+", max_words=4)
-
-    # Should generate patterns for 2, 3, 4 words
-    assert len(patterns) == 3
-
-    # 2-word pattern: (start, end)
-    assert patterns[0] == (r"\{%", r".*%\}")
-
-    # 3-word pattern: (start, middle, end)
-    assert patterns[1] == (r"\{%", r".+", r".*%\}")
-
-    # 4-word pattern: (start, middle, middle, end)
-    assert patterns[2] == (r"\{%", r".+", r".+", r".*%\}")
 
 
 def test_long_template_tags():

@@ -103,7 +103,7 @@ def fill_text(
     what you want, but you can also use the `simple_word_splitter` plaintext wrapping.
     """
     if word_splitter is None:
-        word_splitter = get_html_md_word_splitter(atomic_tags=False)
+        word_splitter = get_html_md_word_splitter()
 
     if not text_wrap.should_wrap:
         indent = extra_indent + DEFAULT_INDENT if text_wrap == Wrap.INDENT_ONLY else extra_indent
