@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Generator
 from contextlib import contextmanager
-from enum import StrEnum
+from enum import Enum
 from typing import Any, NamedTuple, cast
 
 from marko import Markdown, Renderer, block, inline
@@ -24,7 +24,7 @@ from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 
 
-class ListSpacing(StrEnum):
+class ListSpacing(str, Enum):
     """
     Controls how list item spacing is handled during Markdown normalization.
 
