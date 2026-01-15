@@ -62,77 +62,24 @@ The following unit tests have been added or updated in `tests/test_list_spacing.
 
 ## Manual Testing Needed
 
-### CLI Validation
+All core functionality is covered by automated tests. Manual review is only needed for:
 
-Please validate the following CLI commands work correctly:
+### Code Review Items
 
-1. **Default (preserve) mode - tight input:**
-   ```shell
-   echo "- one
-   - two
-   - three" | flowmark -
-   ```
-   **Expected:** Output should remain tight (no blank lines between items)
+1. **Help text clarity** - Review `flowmark --help` to confirm the `--list-spacing` option
+   description is clear and understandable
 
-2. **Default (preserve) mode - loose input:**
-   ```shell
-   echo "- one
+2. **Breaking change communication** - Confirm the breaking change (default behavior changed
+   from `loose` to `preserve`) is adequately documented in:
+   - The commit message
+   - The PR description
+   - The plan spec
 
-   - two
+### No Additional Manual Testing Required
 
-   - three" | flowmark -
-   ```
-   **Expected:** Output should remain loose (blank lines between items)
-
-3. **Loose mode:**
-   ```shell
-   echo "- one
-   - two
-   - three" | flowmark --list-spacing=loose -
-   ```
-   **Expected:** Output should be loose (blank lines added between items)
-
-4. **Tight mode:**
-   ```shell
-   echo "- one
-
-   - two
-
-   - three" | flowmark --list-spacing=tight -
-   ```
-   **Expected:** Output should be tight (blank lines removed)
-
-5. **Help text:**
-   ```shell
-   flowmark --help
-   ```
-   **Expected:** Should show `--list-spacing` option with description
-
-### File Processing Validation
-
-1. **In-place processing with preserve mode:**
-   ```shell
-   # Create a test file with tight list
-   echo "- item1
-   - item2" > /tmp/test.md
-   flowmark --inplace /tmp/test.md
-   cat /tmp/test.md
-   ```
-   **Expected:** File should remain with tight list
-
-2. **In-place processing with loose mode:**
-   ```shell
-   echo "- item1
-   - item2" > /tmp/test.md
-   flowmark --inplace --list-spacing=loose /tmp/test.md
-   cat /tmp/test.md
-   ```
-   **Expected:** File should have blank lines between items
-
-### Breaking Change Awareness
-
-- **IMPORTANT**: The default behavior has changed from always making lists loose to
-  preserving the original tight/loose formatting
-- Users who relied on the previous behavior (lists always becoming loose) should use
-  `--list-spacing=loose` to restore it
-- Verify that the `--auto` flag still works as expected with the new default
+The following are all covered by automated tests:
+- All three modes (`preserve`, `loose`, `tight`)
+- Nested list handling
+- Multi-paragraph items
+- CLI argument parsing
+- File processing (in-place and stdout)
