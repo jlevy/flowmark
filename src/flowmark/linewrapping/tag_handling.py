@@ -6,152 +6,70 @@ Markdoc, Markform, Jinja, Nunjucks, and WordPress Gutenberg.
 
 The main concerns are:
 1. Detecting tag boundaries to preserve newlines around them
-2. Providing constants for tag delimiters used in word splitting patterns
-3. Normalizing and denormalizing adjacent tags for proper tokenization
+2. Normalizing and denormalizing adjacent tags for proper tokenization
 """
 
 from __future__ import annotations
 
 import re
-from enum import Enum
 
+from flowmark.linewrapping.atomic_patterns import (
+    PAIRED_HTML_COMMENT,
+    PAIRED_JINJA_COMMENT,
+    PAIRED_JINJA_TAG,
+    PAIRED_JINJA_VAR,
+    SINGLE_HTML_COMMENT,
+    SINGLE_JINJA_COMMENT,
+    SINGLE_JINJA_TAG,
+    SINGLE_JINJA_VAR,
+)
 from flowmark.linewrapping.block_heuristics import line_is_block_content
 from flowmark.linewrapping.protocols import LineWrapper
 
-
-class TagWrapping(str, Enum):
-    """
-    Controls how template tags are handled during line wrapping.
-
-    - `atomic`: Tags are never broken across lines (default). Long tags placed
-      on their own line if they don't fit.
-    - `wrap`: Tags can be wrapped like normal text (legacy behavior).
-    """
-
-    atomic = "atomic"
-    wrap = "wrap"
-
-
-# Tag delimiters - all tag syntax defined in one place for consistency.
-#
-# Supported tag formats:
-# - Jinja/Markdoc: {% tag %}, {% /tag %}, {# comment #}, {{ variable }}
-# - HTML comments: <!-- tag -->, <!-- /tag -->
-
-# Jinja/Markdoc template tags
-JINJA_TAG_OPEN = "{%"
-JINJA_TAG_CLOSE = "%}"
-# Jinja comments
-JINJA_COMMENT_OPEN = "{#"
-JINJA_COMMENT_CLOSE = "#}"
-# Jinja variables
-JINJA_VAR_OPEN = "{{"
-JINJA_VAR_CLOSE = "}}"
-# HTML comments
-HTML_COMMENT_OPEN = "<!--"
-HTML_COMMENT_CLOSE = "-->"
-
-# Regex-escaped versions of delimiters (for use in regex patterns)
-JINJA_TAG_OPEN_RE = r"\{%"
-JINJA_TAG_CLOSE_RE = r"%\}"
-JINJA_COMMENT_OPEN_RE = r"\{#"
-JINJA_COMMENT_CLOSE_RE = r"#\}"
-JINJA_VAR_OPEN_RE = r"\{\{"
-JINJA_VAR_CLOSE_RE = r"\}\}"
-HTML_COMMENT_OPEN_RE = r"<!--"
-HTML_COMMENT_CLOSE_RE = r"-->"
-
-
 # Pattern to match complete template tags (for protecting content inside tags).
-# These tags can span multiple lines and may contain quotes in attribute values.
-# Uses DOTALL so . matches newlines within tags.
-# Note: In VERBOSE mode, # starts a comment, so we use [#] for literal hash.
+# Uses the single tag patterns from atomic_patterns.
 TEMPLATE_TAG_PATTERN: re.Pattern[str] = re.compile(
-    r"""
-    \{%.*?%\}             # Jinja/Markdoc template tags
-    | \{[#].*?[#]\}       # Jinja comments (use [#] to avoid VERBOSE comment)
-    | \{\{.*?\}\}         # Jinja variables
-    | <!--.*?-->          # HTML comments
-    """,
-    re.VERBOSE | re.DOTALL,
+    "|".join(
+        [
+            SINGLE_JINJA_TAG.pattern,
+            SINGLE_JINJA_COMMENT.pattern,
+            SINGLE_JINJA_VAR.pattern,
+            SINGLE_HTML_COMMENT.pattern,
+        ]
+    ),
+    re.DOTALL,
 )
-
-# Placeholder format for atomic tag wrapping. Uses null byte prefix/suffix to
-# avoid conflicts with real content.
-_PLACEHOLDER_PREFIX = "\x00TAG"
-_PLACEHOLDER_SUFFIX = "\x00"
 
 # Pattern to match paired tags like {% tag %}{% /tag %} that should stay together.
-# Allows optional whitespace between tags (added by normalize_adjacent_tags).
+# Uses paired tag patterns from atomic_patterns.
 PAIRED_TAGS_PATTERN: re.Pattern[str] = re.compile(
-    r"""
-    (\{%[^%]*%\})\s*(\{%\s*/[^%]*%\})       # {% tag %}{% /tag %}
-    | (<!--[^-]*-->)\s*(<!--\s*/[^-]*-->)   # <!-- tag --><!-- /tag -->
-    | (\{[#][^#]*[#]\})\s*(\{[#]\s*/[^#]*[#]\})  # {# tag #}{# /tag #}
-    | (\{\{[^}]*\}\})\s*(\{\{\s*/[^}]*\}\})  # {{ tag }}{{ /tag }}
-    """,
-    re.VERBOSE | re.DOTALL,
+    "|".join(
+        [
+            PAIRED_JINJA_TAG.pattern,
+            PAIRED_JINJA_COMMENT.pattern,
+            PAIRED_JINJA_VAR.pattern,
+            PAIRED_HTML_COMMENT.pattern,
+        ]
+    ),
+    re.DOTALL,
 )
-
-
-def extract_tags_atomic(text: str) -> tuple[dict[int, str], str]:
-    """
-    Extract all template tags from text, replacing them with placeholders.
-
-    In atomic mode, tags are replaced with short placeholders so the wrapping
-    algorithm treats them as single words. Each tag is extracted individually
-    (not paired) so that opening and closing tags can be placed on separate
-    lines when needed for line width or Markdoc parser compatibility.
-
-    Returns a tuple of (tag_map, text_with_placeholders) where tag_map maps
-    placeholder indices to original tag strings.
-    """
-    tag_map: dict[int, str] = {}
-    placeholder_idx = 0
-
-    def make_placeholder(idx: int) -> str:
-        return f"{_PLACEHOLDER_PREFIX}{idx}{_PLACEHOLDER_SUFFIX}"
-
-    def replace_tag(match: re.Match[str]) -> str:
-        nonlocal placeholder_idx
-        tag = match.group(0)
-        tag_map[placeholder_idx] = tag
-        placeholder = make_placeholder(placeholder_idx)
-        placeholder_idx += 1
-        return placeholder
-
-    text = TEMPLATE_TAG_PATTERN.sub(replace_tag, text)
-
-    return tag_map, text
-
-
-def restore_tags_atomic(text: str, tag_map: dict[int, str]) -> str:
-    """
-    Restore original tags from placeholders.
-
-    This is the inverse of `extract_tags_atomic()`.
-    """
-    for idx, tag in tag_map.items():
-        placeholder = f"{_PLACEHOLDER_PREFIX}{idx}{_PLACEHOLDER_SUFFIX}"
-        text = text.replace(placeholder, tag)
-    return text
 
 
 # Pattern to detect adjacent tags (closing tag immediately followed by opening tag)
 # This handles cases like %}{% or --><!-- where there's no space between
 _adjacent_tags_re: re.Pattern[str] = re.compile(
-    rf"({JINJA_TAG_CLOSE_RE})({JINJA_TAG_OPEN_RE})|"
-    rf"({JINJA_COMMENT_CLOSE_RE})({JINJA_COMMENT_OPEN_RE})|"
-    rf"({JINJA_VAR_CLOSE_RE})({JINJA_VAR_OPEN_RE})|"
-    rf"({HTML_COMMENT_CLOSE_RE})({HTML_COMMENT_OPEN_RE})"
+    rf"({SINGLE_JINJA_TAG.close_re})({SINGLE_JINJA_TAG.open_re})|"
+    rf"({SINGLE_JINJA_COMMENT.close_re})({SINGLE_JINJA_COMMENT.open_re})|"
+    rf"({SINGLE_JINJA_VAR.close_re})({SINGLE_JINJA_VAR.open_re})|"
+    rf"({SINGLE_HTML_COMMENT.close_re})({SINGLE_HTML_COMMENT.open_re})"
 )
 
 # Pattern to remove spaces between adjacent tags that were added during word splitting
 _denormalize_tags_re: re.Pattern[str] = re.compile(
-    rf"({JINJA_TAG_CLOSE_RE}) ({JINJA_TAG_OPEN_RE})|"
-    rf"({JINJA_COMMENT_CLOSE_RE}) ({JINJA_COMMENT_OPEN_RE})|"
-    rf"({JINJA_VAR_CLOSE_RE}) ({JINJA_VAR_OPEN_RE})|"
-    rf"({HTML_COMMENT_CLOSE_RE}) ({HTML_COMMENT_OPEN_RE})"
+    rf"({SINGLE_JINJA_TAG.close_re}) ({SINGLE_JINJA_TAG.open_re})|"
+    rf"({SINGLE_JINJA_COMMENT.close_re}) ({SINGLE_JINJA_COMMENT.open_re})|"
+    rf"({SINGLE_JINJA_VAR.close_re}) ({SINGLE_JINJA_VAR.open_re})|"
+    rf"({SINGLE_HTML_COMMENT.close_re}) ({SINGLE_HTML_COMMENT.open_re})"
 )
 
 
@@ -187,85 +105,6 @@ def denormalize_adjacent_tags(text: str) -> str:
     return _denormalize_tags_re.sub(remove_space, text)
 
 
-# Maximum number of whitespace-separated words to coalesce into a single token.
-MAX_TAG_WORDS = 12
-
-
-def generate_coalescing_patterns(
-    start: str, end: str, middle: str = r".+", max_words: int = MAX_TAG_WORDS
-) -> list[tuple[str, ...]]:
-    """
-    Generate coalescing patterns for tags with a given start/end delimiter.
-
-    For example, for template tags {% ... %}:
-        start=r"\\{%", end=r".*%\\}", middle=r".+"
-
-    This generates patterns for 2, 3, 4, ... max_words word spans.
-    """
-    patterns: list[tuple[str, ...]] = []
-    for num_words in range(2, max_words + 1):
-        # Pattern: start, (middle repeated n-2 times), end
-        middle_count = num_words - 2
-        pattern = (start,) + (middle,) * middle_count + (end,)
-        patterns.append(pattern)
-    return patterns
-
-
-def get_tag_coalescing_patterns(max_words: int = MAX_TAG_WORDS) -> list[tuple[str, ...]]:
-    """
-    Return word coalescing patterns for template tags and HTML comments.
-
-    These patterns are used by the word splitter to keep multi-word tag
-    constructs together during line wrapping.
-
-    The `max_words` parameter controls how many words can be coalesced.
-    For atomic mode, use a high value (e.g., 128) to prevent tag breaks.
-    """
-    return [
-        # Paired Jinja/Markdoc tags: {% tag %}{% /tag %} (with optional space between)
-        # This handles empty fields like {% field %}{% /field %}
-        # Must come before single tag patterns so it matches first
-        (
-            rf".*{JINJA_TAG_CLOSE_RE}",
-            rf"{JINJA_TAG_OPEN_RE}\s*/.*{JINJA_TAG_CLOSE_RE}",
-        ),
-        # Paired HTML comment tags: <!-- tag --><!-- /tag -->
-        (
-            rf".*{HTML_COMMENT_CLOSE_RE}",
-            rf"{HTML_COMMENT_OPEN_RE}\s*/.*{HTML_COMMENT_CLOSE_RE}",
-        ),
-        # HTML comments: <!-- comment text -->
-        # Keep inline comments together, don't force to separate lines
-        *generate_coalescing_patterns(
-            start=rf"{HTML_COMMENT_OPEN_RE}.*",
-            end=rf".*{HTML_COMMENT_CLOSE_RE}",
-            middle=r".+",
-            max_words=max_words,
-        ),
-        # Template tags {% ... %} (Markdoc/Jinja/Nunjucks)
-        *generate_coalescing_patterns(
-            start=JINJA_TAG_OPEN_RE,
-            end=rf".*{JINJA_TAG_CLOSE_RE}",
-            middle=r".+",
-            max_words=max_words,
-        ),
-        # Template comments {# ... #} (Jinja/Nunjucks)
-        *generate_coalescing_patterns(
-            start=JINJA_COMMENT_OPEN_RE,
-            end=rf".*{JINJA_COMMENT_CLOSE_RE}",
-            middle=r".+",
-            max_words=max_words,
-        ),
-        # Template variables {{ ... }} (Jinja/Nunjucks)
-        *generate_coalescing_patterns(
-            start=JINJA_VAR_OPEN_RE,
-            end=rf".*{JINJA_VAR_CLOSE_RE}",
-            middle=r".+",
-            max_words=max_words,
-        ),
-    ]
-
-
 def _is_tag_only_line(line: str) -> bool:
     """
     Check if a line contains only a tag (opening or closing), not inline tags in content.
@@ -281,18 +120,18 @@ def _is_tag_only_line(line: str) -> bool:
 
     # Check if it starts with a tag
     starts_tag = (
-        stripped.startswith(JINJA_TAG_OPEN)
-        or stripped.startswith(JINJA_COMMENT_OPEN)
-        or stripped.startswith(JINJA_VAR_OPEN)
-        or stripped.startswith(HTML_COMMENT_OPEN)
+        stripped.startswith(SINGLE_JINJA_TAG.open_delim)
+        or stripped.startswith(SINGLE_JINJA_COMMENT.open_delim)
+        or stripped.startswith(SINGLE_JINJA_VAR.open_delim)
+        or stripped.startswith(SINGLE_HTML_COMMENT.open_delim)
     )
 
     # Check if it ends with a tag
     ends_tag = (
-        stripped.endswith(JINJA_TAG_CLOSE)
-        or stripped.endswith(JINJA_COMMENT_CLOSE)
-        or stripped.endswith(JINJA_VAR_CLOSE)
-        or stripped.endswith(HTML_COMMENT_CLOSE)
+        stripped.endswith(SINGLE_JINJA_TAG.close_delim)
+        or stripped.endswith(SINGLE_JINJA_COMMENT.close_delim)
+        or stripped.endswith(SINGLE_JINJA_VAR.close_delim)
+        or stripped.endswith(SINGLE_HTML_COMMENT.close_delim)
     )
 
     return starts_tag and ends_tag
@@ -359,13 +198,13 @@ def line_ends_with_tag(line: str) -> bool:
         return False
     # Check for Jinja-style tags
     if (
-        stripped.endswith(JINJA_TAG_CLOSE)
-        or stripped.endswith(JINJA_COMMENT_CLOSE)
-        or stripped.endswith(JINJA_VAR_CLOSE)
+        stripped.endswith(SINGLE_JINJA_TAG.close_delim)
+        or stripped.endswith(SINGLE_JINJA_COMMENT.close_delim)
+        or stripped.endswith(SINGLE_JINJA_VAR.close_delim)
     ):
         return True
     # Check for HTML comments
-    if stripped.endswith(HTML_COMMENT_CLOSE):
+    if stripped.endswith(SINGLE_HTML_COMMENT.close_delim):
         return True
     return False
 
@@ -377,20 +216,19 @@ def line_starts_with_tag(line: str) -> bool:
         return False
     # Check for Jinja-style tags
     if (
-        stripped.startswith(JINJA_TAG_OPEN)
-        or stripped.startswith(JINJA_COMMENT_OPEN)
-        or stripped.startswith(JINJA_VAR_OPEN)
+        stripped.startswith(SINGLE_JINJA_TAG.open_delim)
+        or stripped.startswith(SINGLE_JINJA_COMMENT.open_delim)
+        or stripped.startswith(SINGLE_JINJA_VAR.open_delim)
     ):
         return True
     # Check for HTML comments
-    if stripped.startswith(HTML_COMMENT_OPEN):
+    if stripped.startswith(SINGLE_HTML_COMMENT.open_delim):
         return True
     return False
 
 
 def add_tag_newline_handling(
     base_wrapper: LineWrapper,
-    tags: TagWrapping = TagWrapping.atomic,  # pyright: ignore[reportUnusedParameter]
 ) -> LineWrapper:
     """
     Augments a LineWrapper to preserve newlines around Jinja/Markdoc tags
@@ -590,10 +428,10 @@ def _fix_closing_tag_spacing(text: str) -> str:
 # where a multi-line opening tag ends and a closing tag follows on the same line.
 # Uses named group "closing_tag" to capture the start of the closing tag.
 _multiline_closing_pattern: re.Pattern[str] = re.compile(
-    rf"{JINJA_TAG_CLOSE_RE}\s*(?P<closing_tag>{JINJA_TAG_OPEN_RE}\s*/)|"  # %}{% /
-    rf"{JINJA_COMMENT_CLOSE_RE}\s*(?P<closing_comment>{JINJA_COMMENT_OPEN_RE}\s*/)|"  # #}{# /
-    rf"{JINJA_VAR_CLOSE_RE}\s*(?P<closing_var>{JINJA_VAR_OPEN_RE}\s*/)|"  # }}{{ /
-    rf"{HTML_COMMENT_CLOSE_RE}\s*(?P<closing_html>{HTML_COMMENT_OPEN_RE}\s*/)"  # --><!-- /
+    rf"{SINGLE_JINJA_TAG.close_re}\s*(?P<closing_tag>{SINGLE_JINJA_TAG.open_re}\s*/)|"
+    rf"{SINGLE_JINJA_COMMENT.close_re}\s*(?P<closing_comment>{SINGLE_JINJA_COMMENT.open_re}\s*/)|"
+    rf"{SINGLE_JINJA_VAR.close_re}\s*(?P<closing_var>{SINGLE_JINJA_VAR.open_re}\s*/)|"
+    rf"{SINGLE_HTML_COMMENT.close_re}\s*(?P<closing_html>{SINGLE_HTML_COMMENT.open_re}\s*/)"
 )
 
 
@@ -636,10 +474,10 @@ def _fix_multiline_opening_tag_with_closing(text: str) -> str:
         # Only process lines that are continuations (don't start with a tag opener).
         # If a line starts with a tag opener, the tag began on that line, not a continuation.
         is_tag_start = (
-            stripped.startswith(JINJA_TAG_OPEN)
-            or stripped.startswith(JINJA_COMMENT_OPEN)
-            or stripped.startswith(JINJA_VAR_OPEN)
-            or stripped.startswith(HTML_COMMENT_OPEN)
+            stripped.startswith(SINGLE_JINJA_TAG.open_delim)
+            or stripped.startswith(SINGLE_JINJA_COMMENT.open_delim)
+            or stripped.startswith(SINGLE_JINJA_VAR.open_delim)
+            or stripped.startswith(SINGLE_HTML_COMMENT.open_delim)
         )
 
         if not is_tag_start:
