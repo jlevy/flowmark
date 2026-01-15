@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from textwrap import dedent
 
-from flowmark.formats.flowmark_markdown import flowmark_markdown
+from flowmark.formats.flowmark_markdown import ListSpacing, flowmark_markdown
 from flowmark.formats.frontmatter import split_frontmatter
 from flowmark.linewrapping.line_wrappers import (
     line_wrap_by_sentence,
@@ -43,6 +43,7 @@ def fill_markdown(
     smartquotes: bool = False,
     ellipses: bool = False,
     line_wrapper: LineWrapper | None = None,
+    list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> str:
     """
     Normalize and wrap Markdown text filling paragraphs to the full width.
@@ -50,8 +51,9 @@ def fill_markdown(
     Wraps lines and adds line breaks within paragraphs and on
     best-guess estimations of sentences, to make diffs more readable.
 
-    Also enforces that all list items have two newlines between them, so
-    that items are separate paragraphs when viewed as plaintext.
+    With `list_spacing="preserve"` (default), list spacing is preserved as authored.
+    With `list_spacing="loose"`, all lists have blank lines between items.
+    With `list_spacing="tight"`, lists are made tight where possible.
 
     Optionally also dedents and strips the input, so it can be used
     on docstrings.
@@ -86,7 +88,7 @@ def fill_markdown(
     markdown_text = markdown_text.strip() + "\n"
 
     # Parse and render.
-    marko = flowmark_markdown(line_wrapper)
+    marko = flowmark_markdown(line_wrapper, list_spacing)
     document = marko.parse(markdown_text)
     if cleanups:
         doc_cleanups(document)
