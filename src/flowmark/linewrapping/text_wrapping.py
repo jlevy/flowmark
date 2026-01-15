@@ -10,7 +10,7 @@ from flowmark.linewrapping.tag_handling import (
     TagWrapping,
     denormalize_adjacent_tags,
     generate_coalescing_patterns,
-    get_tag_coalescing_patterns,
+    get_tag_coalescing_patterns_by_start,
     normalize_adjacent_tags,
 )
 
@@ -88,43 +88,6 @@ class _HtmlMdWordSplitter:
         # Use higher word limit for atomic mode so tags stay together
         tag_max_words = self.ATOMIC_MAX_TAG_WORDS if atomic_tags else MAX_TAG_WORDS
 
-        # Patterns for multi-word constructs that should be coalesced into single tokens.
-        # Each pattern is a tuple of regexes: (start, middle..., end).
-        self.patterns: list[tuple[str, ...]] = [
-            # Template tag patterns (Jinja/Markdoc/HTML comments) from tag_handling module
-            *get_tag_coalescing_patterns(max_words=tag_max_words),
-            # Inline code spans with spaces: `code with spaces`
-            # Per CommonMark, code spans are delimited by equal-length backtick strings.
-            # We coalesce words between opening ` and closing ` to keep them atomic.
-            # The [^\s`]* prefix/suffix allows punctuation like (`code`) or `code`.
-            *generate_coalescing_patterns(
-                start=r"[^\s`]*`[^`]*",
-                end=r"[^`]*`[^\s`]*",
-                middle=r"[^`]+",
-                max_words=tag_max_words,
-            ),
-            # HTML/XML tags: <tag attr="value">content</tag>
-            *generate_coalescing_patterns(
-                start=r"<[^>]+",
-                end=r"[^<>]+>[^<>]*",
-                middle=r"[^<>]+",
-                max_words=tag_max_words,
-            ),
-            # Markdown links: [text](url) or [text][ref]
-            # Links with multi-word text like [Mark Suster, Upfront Ventures](url) are
-            # kept together to avoid awkward line breaks within the link text.
-            *generate_coalescing_patterns(
-                start=r"\[",
-                end=r"[^\[\]]+\][^\[\]]*",
-                middle=r"[^\[\]]+",
-                max_words=tag_max_words,
-            ),
-        ]
-        self.compiled_patterns: list[tuple[re.Pattern[str], ...]] = [
-            tuple(re.compile(pattern) for pattern in pattern_group)
-            for pattern_group in self.patterns
-        ]
-
         # Group patterns by what character they can match first for faster lookup.
         # This reduces iterations from O(all_patterns) to O(patterns_for_char).
         self._patterns_by_start: dict[str, list[tuple[re.Pattern[str], ...]]] = {
@@ -133,17 +96,60 @@ class _HtmlMdWordSplitter:
             "[": [],
             "`": [],  # For backtick patterns (code spans)
         }
-        for i, pattern_group in enumerate(self.compiled_patterns):
-            first_pattern_str = self.patterns[i][0]
-            if first_pattern_str.startswith(r"\{") or first_pattern_str.startswith(r".*%\}"):
-                self._patterns_by_start["{"].append(pattern_group)
-            elif first_pattern_str.startswith("<") or first_pattern_str.startswith(r".*-->"):
-                self._patterns_by_start["<"].append(pattern_group)
-            elif first_pattern_str.startswith(r"\["):
-                self._patterns_by_start["["].append(pattern_group)
-            elif "`" in first_pattern_str or first_pattern_str.startswith("[^"):
-                # Code span patterns - can start with various chars containing backtick
-                self._patterns_by_start["`"].append(pattern_group)
+
+        # Get tag patterns already grouped by start character from tag_handling module.
+        # This keeps tag-specific knowledge (which patterns match which delimiters)
+        # encapsulated in the tag_handling module.
+        tag_patterns_by_start = get_tag_coalescing_patterns_by_start(max_words=tag_max_words)
+        for start_char, patterns in tag_patterns_by_start.items():
+            for pattern_tuple in patterns:
+                compiled = tuple(re.compile(p) for p in pattern_tuple)
+                self._patterns_by_start[start_char].append(compiled)
+
+        # Non-tag patterns defined here with their expected start characters.
+
+        # Inline code spans with spaces: `code with spaces`
+        # Per CommonMark, code spans are delimited by equal-length backtick strings.
+        # We coalesce words between opening ` and closing ` to keep them atomic.
+        # The [^\s`]* prefix/suffix allows punctuation like (`code`) or `code`.
+        code_span_patterns = generate_coalescing_patterns(
+            start=r"[^\s`]*`[^`]*",
+            end=r"[^`]*`[^\s`]*",
+            middle=r"[^`]+",
+            max_words=tag_max_words,
+        )
+        for pattern_tuple in code_span_patterns:
+            compiled = tuple(re.compile(p) for p in pattern_tuple)
+            self._patterns_by_start["`"].append(compiled)
+
+        # HTML/XML tags: <tag attr="value">content</tag>
+        html_tag_patterns = generate_coalescing_patterns(
+            start=r"<[^>]+",
+            end=r"[^<>]+>[^<>]*",
+            middle=r"[^<>]+",
+            max_words=tag_max_words,
+        )
+        for pattern_tuple in html_tag_patterns:
+            compiled = tuple(re.compile(p) for p in pattern_tuple)
+            self._patterns_by_start["<"].append(compiled)
+
+        # Markdown links: [text](url) or [text][ref]
+        # Links with multi-word text like [Mark Suster, Upfront Ventures](url) are
+        # kept together to avoid awkward line breaks within the link text.
+        md_link_patterns = generate_coalescing_patterns(
+            start=r"\[",
+            end=r"[^\[\]]+\][^\[\]]*",
+            middle=r"[^\[\]]+",
+            max_words=tag_max_words,
+        )
+        for pattern_tuple in md_link_patterns:
+            compiled = tuple(re.compile(p) for p in pattern_tuple)
+            self._patterns_by_start["["].append(compiled)
+
+        # Build flat list for compatibility (used in match_pattern_group)
+        self.compiled_patterns: list[tuple[re.Pattern[str], ...]] = []
+        for patterns in self._patterns_by_start.values():
+            self.compiled_patterns.extend(patterns)
 
     def __call__(self, text: str) -> list[str]:
         # First normalize adjacent tags to ensure proper tokenization

@@ -221,49 +221,74 @@ def get_tag_coalescing_patterns(max_words: int = MAX_TAG_WORDS) -> list[tuple[st
     The `max_words` parameter controls how many words can be coalesced.
     For atomic mode, use a high value (e.g., 128) to prevent tag breaks.
     """
-    return [
-        # Paired Jinja/Markdoc tags: {% tag %}{% /tag %} (with optional space between)
-        # This handles empty fields like {% field %}{% /field %}
-        # Must come before single tag patterns so it matches first
-        (
-            rf".*{JINJA_TAG_CLOSE_RE}",
-            rf"{JINJA_TAG_OPEN_RE}\s*/.*{JINJA_TAG_CLOSE_RE}",
-        ),
-        # Paired HTML comment tags: <!-- tag --><!-- /tag -->
-        (
-            rf".*{HTML_COMMENT_CLOSE_RE}",
-            rf"{HTML_COMMENT_OPEN_RE}\s*/.*{HTML_COMMENT_CLOSE_RE}",
-        ),
-        # HTML comments: <!-- comment text -->
-        # Keep inline comments together, don't force to separate lines
-        *generate_coalescing_patterns(
-            start=rf"{HTML_COMMENT_OPEN_RE}.*",
-            end=rf".*{HTML_COMMENT_CLOSE_RE}",
-            middle=r".+",
-            max_words=max_words,
-        ),
-        # Template tags {% ... %} (Markdoc/Jinja/Nunjucks)
-        *generate_coalescing_patterns(
-            start=JINJA_TAG_OPEN_RE,
-            end=rf".*{JINJA_TAG_CLOSE_RE}",
-            middle=r".+",
-            max_words=max_words,
-        ),
-        # Template comments {# ... #} (Jinja/Nunjucks)
-        *generate_coalescing_patterns(
-            start=JINJA_COMMENT_OPEN_RE,
-            end=rf".*{JINJA_COMMENT_CLOSE_RE}",
-            middle=r".+",
-            max_words=max_words,
-        ),
-        # Template variables {{ ... }} (Jinja/Nunjucks)
-        *generate_coalescing_patterns(
-            start=JINJA_VAR_OPEN_RE,
-            end=rf".*{JINJA_VAR_CLOSE_RE}",
-            middle=r".+",
-            max_words=max_words,
-        ),
-    ]
+    # Flatten the grouped patterns into a single list for backward compatibility
+    grouped = get_tag_coalescing_patterns_by_start(max_words)
+    result: list[tuple[str, ...]] = []
+    for patterns in grouped.values():
+        result.extend(patterns)
+    return result
+
+
+def get_tag_coalescing_patterns_by_start(
+    max_words: int = MAX_TAG_WORDS,
+) -> dict[str, list[tuple[str, ...]]]:
+    """
+    Return word coalescing patterns for template tags and HTML comments,
+    grouped by the character they expect to match first.
+
+    This enables efficient pattern lookup by checking only relevant patterns
+    based on the first character of a word.
+
+    Returns a dict mapping start character ('{', '<') to pattern tuples.
+    The `max_words` parameter controls how many words can be coalesced.
+    """
+    return {
+        "{": [
+            # Paired Jinja/Markdoc tags: {% tag %}{% /tag %} (with optional space between)
+            # This handles empty fields like {% field %}{% /field %}
+            # Must come before single tag patterns so it matches first
+            (
+                rf".*{JINJA_TAG_CLOSE_RE}",
+                rf"{JINJA_TAG_OPEN_RE}\s*/.*{JINJA_TAG_CLOSE_RE}",
+            ),
+            # Template tags {% ... %} (Markdoc/Jinja/Nunjucks)
+            *generate_coalescing_patterns(
+                start=JINJA_TAG_OPEN_RE,
+                end=rf".*{JINJA_TAG_CLOSE_RE}",
+                middle=r".+",
+                max_words=max_words,
+            ),
+            # Template comments {# ... #} (Jinja/Nunjucks)
+            *generate_coalescing_patterns(
+                start=JINJA_COMMENT_OPEN_RE,
+                end=rf".*{JINJA_COMMENT_CLOSE_RE}",
+                middle=r".+",
+                max_words=max_words,
+            ),
+            # Template variables {{ ... }} (Jinja/Nunjucks)
+            *generate_coalescing_patterns(
+                start=JINJA_VAR_OPEN_RE,
+                end=rf".*{JINJA_VAR_CLOSE_RE}",
+                middle=r".+",
+                max_words=max_words,
+            ),
+        ],
+        "<": [
+            # Paired HTML comment tags: <!-- tag --><!-- /tag -->
+            (
+                rf".*{HTML_COMMENT_CLOSE_RE}",
+                rf"{HTML_COMMENT_OPEN_RE}\s*/.*{HTML_COMMENT_CLOSE_RE}",
+            ),
+            # HTML comments: <!-- comment text -->
+            # Keep inline comments together, don't force to separate lines
+            *generate_coalescing_patterns(
+                start=rf"{HTML_COMMENT_OPEN_RE}.*",
+                end=rf".*{HTML_COMMENT_CLOSE_RE}",
+                middle=r".+",
+                max_words=max_words,
+            ),
+        ],
+    }
 
 
 def _is_tag_only_line(line: str) -> bool:
