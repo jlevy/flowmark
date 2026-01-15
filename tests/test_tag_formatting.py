@@ -507,3 +507,150 @@ def test_html_comment_multiline_closing():
 
     # Closing comment should be on its own line
     assert "-->\n<!-- /f:field -->" in result, f"HTML closing tag not split: {result}"
+
+
+def test_preprocess_tag_block_spacing_lists():
+    """
+    Test that blank lines are added around lists inside tags.
+
+    This prevents CommonMark lazy continuation from merging tags with lists.
+    """
+    from flowmark.linewrapping.tag_handling import (
+        preprocess_tag_block_spacing,
+    )
+
+    # Input without blank lines around list
+    text = dedent("""
+        {% field kind="single_select" id="choice" %}
+        - [ ] Option A {% #a %}
+        - [ ] Option B {% #b %}
+        {% /field %}
+        """).strip()
+
+    result = preprocess_tag_block_spacing(text)
+
+    # Should have blank line after opening tag
+    assert "{% field" in result
+    assert "%}\n\n-" in result, f"Missing blank line after opening tag: {result}"
+
+    # Should have blank line before closing tag
+    assert "\n\n{% /field" in result, f"Missing blank line before closing tag: {result}"
+
+
+def test_preprocess_tag_block_spacing_tables():
+    """Test that blank lines are added around tables inside tags."""
+    from flowmark.linewrapping.tag_handling import (
+        preprocess_tag_block_spacing,
+    )
+
+    # Input without blank lines around table
+    text = dedent("""
+        {% table id="data" %}
+        | A | B |
+        |---|---|
+        | 1 | 2 |
+        {% /table %}
+        """).strip()
+
+    result = preprocess_tag_block_spacing(text)
+
+    # Should have blank line after opening tag
+    assert "%}\n\n|" in result, f"Missing blank line after opening tag: {result}"
+
+    # Should have blank line before closing tag
+    assert "|\n\n{% /table" in result, f"Missing blank line before closing tag: {result}"
+
+
+def test_preprocess_tag_block_spacing_already_spaced():
+    """Test that already-spaced content is not double-spaced."""
+    from flowmark.linewrapping.tag_handling import (
+        preprocess_tag_block_spacing,
+    )
+
+    # Input already has proper blank lines
+    text = dedent("""
+        {% field kind="select" %}
+
+        - Option 1
+        - Option 2
+
+        {% /field %}
+        """).strip()
+
+    result = preprocess_tag_block_spacing(text)
+
+    # Should not add extra blank lines (no triple newlines)
+    assert "\n\n\n" not in result, f"Extra blank lines added: {result}"
+
+
+def test_preprocess_tag_block_spacing_inline_tags():
+    """Test that inline tags in list items don't trigger extra spacing."""
+    from flowmark.linewrapping.tag_handling import (
+        preprocess_tag_block_spacing,
+    )
+
+    # List items with inline tags - should NOT add blank lines between items
+    text = dedent("""
+        {% field %}
+
+        - Item 1 {% #item1 %}
+        - Item 2 {% #item2 %}
+
+        {% /field %}
+        """).strip()
+
+    result = preprocess_tag_block_spacing(text)
+
+    # Should NOT have blank lines between list items
+    assert "{% #item1 %}\n- Item 2" in result, f"Incorrectly added blank between items: {result}"
+
+
+def test_fill_markdown_with_list_in_tags():
+    """
+    Integration test: fill_markdown properly formats lists inside tags.
+
+    Regression test for the bug where closing tags were merged into list items
+    due to CommonMark lazy continuation.
+    """
+    text = dedent("""
+        {% field kind="single_select" id="rating" %}
+        - [ ] G {% #g %}
+        - [ ] PG {% #pg %}
+        - [x] R {% #r %}
+        {% /field %}
+        """).strip()
+
+    result = fill_markdown(text, semantic=True)
+
+    # Opening tag should be followed by blank line
+    assert "{% field" in result
+    lines = result.strip().split("\n")
+
+    # First line should be the opening tag
+    assert lines[0].startswith("{% field")
+
+    # Second line should be blank
+    assert lines[1] == "", f"Expected blank line after opening tag, got: {lines[1]}"
+
+    # List items should be together (no blank lines between them)
+    list_start = None
+    for i, line in enumerate(lines):
+        if line.startswith("- "):
+            list_start = i
+            break
+
+    assert list_start is not None
+    # Check consecutive list items
+    assert lines[list_start].startswith("- [ ] G")
+    assert lines[list_start + 1].startswith("- [ ] PG")
+    assert lines[list_start + 2].startswith("- ")
+
+    # There should be a blank line before closing tag
+    closing_idx = None
+    for i, line in enumerate(lines):
+        if line.strip() == "{% /field %}":
+            closing_idx = i
+            break
+
+    assert closing_idx is not None
+    assert lines[closing_idx - 1] == "", "Expected blank line before closing tag"

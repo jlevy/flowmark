@@ -21,7 +21,7 @@ from flowmark.linewrapping.line_wrappers import (
 )
 from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.sentence_split_regex import split_sentences_regex
-from flowmark.linewrapping.tag_handling import TagWrapping
+from flowmark.linewrapping.tag_handling import TagWrapping, preprocess_tag_block_spacing
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 from flowmark.transforms.doc_cleanups import doc_cleanups
 from flowmark.transforms.doc_transforms import rewrite_text_content
@@ -86,6 +86,11 @@ def fill_markdown(
         markdown_text = dedent(markdown_text).strip()
 
     markdown_text = markdown_text.strip() + "\n"
+
+    # Preprocess: ensure proper blank lines around block content within tags.
+    # This must happen before parsing to prevent CommonMark lazy continuation
+    # from incorrectly merging tags with lists/tables.
+    markdown_text = preprocess_tag_block_spacing(markdown_text)
 
     # Parse and render.
     marko = flowmark_markdown(line_wrapper, list_spacing)

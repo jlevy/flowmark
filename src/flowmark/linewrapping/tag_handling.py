@@ -266,6 +266,92 @@ def get_tag_coalescing_patterns(max_words: int = MAX_TAG_WORDS) -> list[tuple[st
     ]
 
 
+def _is_tag_only_line(line: str) -> bool:
+    """
+    Check if a line contains only a tag (opening or closing), not inline tags in content.
+
+    A tag-only line starts with a tag delimiter and ends with a tag delimiter,
+    with no substantial non-tag content. This distinguishes:
+    - `{% field %}` (tag-only line)
+    - `- [ ] Item {% #id %}` (content with inline tag - NOT tag-only)
+    """
+    stripped = line.strip()
+    if not stripped:
+        return False
+
+    # Check if it starts with a tag
+    starts_tag = (
+        stripped.startswith(JINJA_TAG_OPEN)
+        or stripped.startswith(JINJA_COMMENT_OPEN)
+        or stripped.startswith(JINJA_VAR_OPEN)
+        or stripped.startswith(HTML_COMMENT_OPEN)
+    )
+
+    # Check if it ends with a tag
+    ends_tag = (
+        stripped.endswith(JINJA_TAG_CLOSE)
+        or stripped.endswith(JINJA_COMMENT_CLOSE)
+        or stripped.endswith(JINJA_VAR_CLOSE)
+        or stripped.endswith(HTML_COMMENT_CLOSE)
+    )
+
+    return starts_tag and ends_tag
+
+
+def preprocess_tag_block_spacing(text: str) -> str:
+    """
+    Preprocess text to ensure proper blank lines around block content within tags.
+
+    When block content (lists, tables) appears directly after an opening tag or
+    directly before a closing tag, the CommonMark parser may use lazy continuation
+    to merge them incorrectly. This function inserts blank lines to prevent this.
+
+    This preprocessing must happen BEFORE Markdown parsing, as the parser's
+    structure cannot be fixed after the fact.
+
+    Example transformation:
+        {% field %}
+        - item 1
+        - item 2
+        {% /field %}
+
+    Becomes:
+        {% field %}
+
+        - item 1
+        - item 2
+
+        {% /field %}
+    """
+    lines = text.split("\n")
+    result_lines: list[str] = []
+
+    # Check if there are any tag-only lines in the text
+    has_tag_only_lines = any(_is_tag_only_line(line) for line in lines)
+    if not has_tag_only_lines:
+        return text
+
+    for i, line in enumerate(lines):
+        # Check if we need to add a blank line BEFORE this line
+        if i > 0:
+            prev_line = lines[i - 1]
+            prev_is_empty = prev_line.strip() == ""
+
+            # Case 1: Previous line is a tag-only line, current line is block content
+            # (need blank line after opening tag before list/table)
+            if not prev_is_empty and _is_tag_only_line(prev_line) and line_is_block_content(line):
+                result_lines.append("")
+
+            # Case 2: Previous line is block content, current line is a closing tag-only line
+            # (need blank line after list/table before closing tag)
+            if not prev_is_empty and line_is_block_content(prev_line) and _is_tag_only_line(line):
+                result_lines.append("")
+
+        result_lines.append(line)
+
+    return "\n".join(result_lines)
+
+
 def line_ends_with_tag(line: str) -> bool:
     """Check if a line ends with a Jinja/Markdoc tag or HTML comment."""
     stripped = line.rstrip()

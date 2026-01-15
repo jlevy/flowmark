@@ -1387,6 +1387,7 @@ line.
 Closing tags should NOT be merged onto list item lines:
 
 {% field kind="single_select" id="choice" label="Choice" %}
+
 - [ ] Option A {% #option_a %}
 - [ ] Option B {% #option_b %}
 - [ ] Option C {% #option_c %}
@@ -1394,6 +1395,7 @@ Closing tags should NOT be merged onto list item lines:
 {% /field %}
 
 <!-- f:field kind="select" id="choice" -->
+
 - Option 1 <!-- #opt1 -->
 - Option 2 <!-- #opt2 -->
 - Option 3 <!-- #opt3 -->
@@ -1456,7 +1458,7 @@ lines):
 {% table_container id="pricing" %}
 
 | Plan | Price | Features |
-|------|-------|----------|
+| --- | --- | --- |
 | Free | $0 | Basic |
 | Pro | $10 | Advanced |
 
@@ -1467,7 +1469,7 @@ Tables inside HTML comment tags without blank lines:
 <!-- f:table id="comparison" -->
 
 | Feature | Product A | Product B |
-|---------|-----------|-----------|
+| --- | --- | --- |
 | Speed | Fast | Faster |
 | Cost | Low | Medium |
 
@@ -1478,7 +1480,7 @@ Tables inside Jinja variable tags (edge case):
 {{ table_header }}
 
 | Column 1 | Column 2 |
-|----------|----------|
+| --- | --- |
 | Data 1 | Data 2 |
 
 {{ table_footer }}
@@ -1545,7 +1547,7 @@ Self-closing tags with tables:
 {% divider style="double" /%}
 
 | Before Divider | After Divider |
-|----------------|---------------|
+| --- | --- |
 | A | B |
 
 {% spacer height="20" /%}
@@ -1553,7 +1555,7 @@ Self-closing tags with tables:
 <!-- separator -->
 
 | Item | Value |
-|------|-------|
+| --- | --- |
 | X | 1 |
 
 <!-- end-section -->
@@ -1589,6 +1591,7 @@ us.
 {% /description %}
 
 {% field kind="single_select" id="rating" label="Overall Rating" required=true %}
+
 - [ ] Excellent {% #excellent %}
 - [ ] Good {% #good %}
 - [ ] Fair {% #fair %}
