@@ -419,3 +419,81 @@ def test_smart_quotes_multiline_tag_with_prose():
     # Tag quotes should NOT be converted
     assert 'kind="string"' in result
     assert 'label="Full Name"' in result
+
+
+def test_multiline_opening_tag_closing_on_own_line():
+    """
+    Test that closing tags are placed on their own line after multiline opening tags.
+
+    This is a regression test for GitHub issue #17: When an opening tag spans
+    multiple lines, having the closing tag on the same line as the opening tag's
+    closing delimiter breaks Markdoc's parser.
+    """
+    from flowmark.linewrapping.tag_handling import (
+        _fix_multiline_opening_tag_with_closing,  # pyright: ignore[reportPrivateUsage]
+    )
+
+    # Pattern that triggers Markdoc bug: multi-line opening tag with closing on same line
+    problematic = "{% field kind='string'\nrequired=true %}{% /field %}"
+    result = _fix_multiline_opening_tag_with_closing(problematic)
+
+    # Closing tag should be on its own line
+    assert "%}\n{% /field %}" in result, f"Closing tag not on own line: {result}"
+
+
+def test_single_line_paired_tags_not_split():
+    """
+    Test that single-line paired tags like {% field %}{% /field %} are NOT split.
+
+    This is a regression test to ensure the fix for issue #17 doesn't affect
+    single-line tags.
+    """
+    from flowmark.linewrapping.tag_handling import (
+        _fix_multiline_opening_tag_with_closing,  # pyright: ignore[reportPrivateUsage]
+    )
+
+    # Single-line paired tag - should NOT be split
+    single_line = "{% field kind='string' %}{% /field %}"
+    result = _fix_multiline_opening_tag_with_closing(single_line)
+
+    # Should remain on single line
+    assert result == single_line, f"Single-line tag was incorrectly split: {result}"
+
+
+def test_multiline_tag_through_pipeline():
+    """Test multiline tags with closing on same line through the full pipeline."""
+    # Use a tag that's long enough to actually trigger wrapping at width 88
+    # This should produce the problematic pattern that triggers the Markdoc bug
+    long_tag = (
+        '{% field kind="string" id="name" label="Full Name" role="user" '
+        'required=true minLength=2 maxLength=100 placeholder="Enter your full name" %}'
+        "{% /field %}"
+    )
+
+    result = fill_markdown(long_tag, semantic=True, width=88)
+    lines = result.strip().split("\n")
+
+    # If the tag wrapped (longer than line width), closing tag should be on its own line
+    if len(lines) >= 2:
+        # Last line should be the closing tag on its own
+        assert lines[-1].strip() == "{% /field %}", (
+            f"Last line should be closing tag, got: {lines[-1]}"
+        )
+        # The line before closing tag should end with %}
+        assert lines[-2].strip().endswith("%}"), (
+            f"Line before closing should end with %}}, got: {lines[-2]}"
+        )
+
+
+def test_html_comment_multiline_closing():
+    """Test HTML comment tags with multi-line opening and closing on same line."""
+    from flowmark.linewrapping.tag_handling import (
+        _fix_multiline_opening_tag_with_closing,  # pyright: ignore[reportPrivateUsage]
+    )
+
+    # HTML comment pattern
+    text = "<!-- f:field kind='string'\nlabel='Name' --><!-- /f:field -->"
+    result = _fix_multiline_opening_tag_with_closing(text)
+
+    # Closing comment should be on its own line
+    assert "-->\n<!-- /f:field -->" in result, f"HTML closing tag not split: {result}"
