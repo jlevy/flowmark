@@ -1,6 +1,6 @@
 """Test smart escape handling - only preserve escapes when necessary."""
 
-from flowmark.formats.flowmark_markdown import flowmark_markdown
+from flowmark.formats.flowmark_markdown import ListSpacing, flowmark_markdown
 
 
 def test_escape_in_heading():
@@ -87,7 +87,7 @@ def test_escape_in_table():
 
 def test_actual_list_no_escape():
     """Real lists without escapes should remain unchanged."""
-    md = flowmark_markdown()
+    md = flowmark_markdown(list_spacing=ListSpacing.loose)
 
     result = md("1. First item\n2. Second item\n")
     assert result == "1. First item\n\n2. Second item\n"
@@ -95,7 +95,7 @@ def test_actual_list_no_escape():
 
 def test_mixed_escapes():
     """Test document with mixed escape scenarios."""
-    md = flowmark_markdown()
+    md = flowmark_markdown(list_spacing=ListSpacing.loose)
 
     input_md = """## 1\\. Heading
 

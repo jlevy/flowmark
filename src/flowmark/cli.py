@@ -50,6 +50,7 @@ import importlib.metadata
 import sys
 from dataclasses import dataclass
 
+from flowmark.formats.flowmark_markdown import ListSpacing
 from flowmark.reformat_api import reformat_files
 
 
@@ -68,6 +69,7 @@ class Options:
     inplace: bool
     nobackup: bool
     version: bool
+    list_spacing: ListSpacing
 
 
 def _parse_args(args: list[str] | None = None) -> Options:
@@ -137,6 +139,15 @@ def _parse_args(args: list[str] | None = None) -> Options:
         "(only applies to Markdown mode)",
     )
     parser.add_argument(
+        "--list-spacing",
+        type=str,
+        choices=["preserve", "loose", "tight"],
+        default="preserve",
+        help="Control list spacing: 'preserve' keeps original tight/loose formatting, "
+        "'loose' adds blank lines between all items, 'tight' removes blank lines where possible "
+        "(default: %(default)s)",
+    )
+    parser.add_argument(
         "-i", "--inplace", action="store_true", help="Edit the file in place (ignores --output)"
     )
     parser.add_argument(
@@ -177,6 +188,7 @@ def _parse_args(args: list[str] | None = None) -> Options:
         inplace=opts.inplace,
         nobackup=opts.nobackup,
         version=opts.version,
+        list_spacing=ListSpacing(opts.list_spacing),
     )
 
 
@@ -214,6 +226,7 @@ def main(args: list[str] | None = None) -> int:
             smartquotes=options.smartquotes,
             ellipses=options.ellipses,
             make_parents=True,
+            list_spacing=options.list_spacing,
         )
     except ValueError as e:
         # Handle errors reported by reformat_file, like using --inplace with stdin.

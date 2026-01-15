@@ -7,6 +7,7 @@ including the corner case where headings end with hard breaks.
 
 from textwrap import dedent
 
+from flowmark.formats.flowmark_markdown import ListSpacing
 from flowmark.linewrapping.markdown_filling import fill_markdown
 
 
@@ -64,7 +65,7 @@ def test_heading_spacing_before_list():
         + "\n"
     )
 
-    normalized_doc = fill_markdown(input_doc, semantic=True)
+    normalized_doc = fill_markdown(input_doc, semantic=True, list_spacing=ListSpacing.loose)
     assert normalized_doc == expected_doc
 
 
