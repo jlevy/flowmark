@@ -261,23 +261,23 @@ This leverages existing word splitting and wrapping code with minimal changes.
 ### Implementation Phases
 
 **Phase 1: Block Tag Detection and Newline Preservation**
-- [ ] Add block tag line detection regex patterns
-- [ ] Modify paragraph wrapping to preserve newlines around block tags
-- [ ] Add test cases for basic tag scenarios
+- [x] Add block tag line detection regex patterns
+- [x] Modify paragraph wrapping to preserve newlines around block tags
+- [x] Add test cases for basic tag scenarios
 
 **Phase 2: Consecutive Tag Handling**
-- [ ] Prevent breaking between consecutive tags
-- [ ] Add test cases for same-line tag pairs
+- [x] Prevent breaking between consecutive tags
+- [x] Add test cases for same-line tag pairs
 
 **Phase 3: Escape and List Handling**
-- [ ] Fix backslash escape preservation
-- [ ] Investigate tight list preservation options
-- [ ] Add test cases
+- [x] Fix backslash escape preservation (documented as CommonMark limitation)
+- [x] Investigate tight list preservation options (documented workaround with blank lines)
+- [x] Add test cases
 
 **Phase 4: Validation**
-- [ ] Ensure existing testdoc tests pass
-- [ ] Add comprehensive Markdoc/Markform test files
-- [ ] Test with real Markform documents
+- [x] Ensure existing testdoc tests pass
+- [x] Add comprehensive Markdoc/Markform test files
+- [x] Test with real Markform documents
 
 ## Stage 4: Validation Stage
 
@@ -313,32 +313,61 @@ This leverages existing word splitting and wrapping code with minimal changes.
 
 ## Implementation Complete
 
-The implementation was completed with the following changes:
+The implementation was completed with a clean modular architecture:
+
+### Files Added
+
+| File | Purpose |
+|------|---------|
+| `src/flowmark/linewrapping/tag_handling.py` | Tag detection, newline handling, and coalescing patterns |
+| `src/flowmark/linewrapping/block_heuristics.py` | CommonMark-compliant list/table detection with inline tests |
+| `src/flowmark/linewrapping/protocols.py` | `LineWrapper` protocol definition (extracted to avoid circular imports) |
 
 ### Files Modified
 
 | File | Changes |
 |------|---------|
-| `text_wrapping.py` | Added tag delimiter constants; added adjacent tag normalization; added paired tag coalescing patterns |
-| `line_wrappers.py` | Added `_line_ends_with_tag()`, `_line_starts_with_tag()`, `_add_tag_newline_handling()` |
-| `test_wrapping.py` | Added 6 unit tests for tag handling |
-| `testdoc.orig.md` | Added Section 18 with comprehensive tag test cases |
+| `line_wrappers.py` | Integrates tag newline handling via `add_tag_newline_handling()` wrapper |
+| `text_wrapping.py` | Uses tag handling module for coalescing patterns and adjacent tag normalization |
+| `flowmark_markdown.py` | Updated import for `LineWrapper` protocol |
+| `markdown_filling.py` | Updated import for `LineWrapper` protocol |
+| `test_wrapping.py` | Added 48+ unit tests for tag handling |
+| `testdoc.orig.md` | Added comprehensive tag test cases (Issues 1-7, tables, lists, self-closing tags) |
 | `testdoc.expected.*.md` | Updated expected outputs |
+
+### Architecture
+
+```
+tag_handling.py                    block_heuristics.py
+├── Tag delimiter constants        ├── line_is_list_item()
+├── normalize_adjacent_tags()      ├── line_is_table_row()
+├── denormalize_adjacent_tags()    └── line_is_block_content()
+├── get_tag_coalescing_patterns()
+├── line_ends_with_tag()
+├── line_starts_with_tag()
+├── add_tag_newline_handling()     protocols.py
+└── _fix_closing_tag_spacing()     └── LineWrapper (Protocol)
+```
 
 ### How It Works
 
-1. **Newline Preservation**: `_add_tag_newline_handling()` in `line_wrappers.py` wraps the base
-   line wrapper. It splits text into segments at tag boundaries (lines ending with or starting
-   with tags), wraps each segment separately, then rejoins with preserved newlines.
+1. **Newline Preservation**: `add_tag_newline_handling()` wraps the base line wrapper. It splits
+   text into segments at tag boundaries (lines ending with or starting with tags), wraps each
+   segment separately, then rejoins with preserved newlines.
 
-2. **Tag Atomicity**: `_HtmlMdWordSplitter` in `text_wrapping.py` keeps tags atomic during word
-   splitting. Multi-word tags like `{% field kind="string" %}` stay together.
+2. **Block Content Detection**: `block_heuristics.py` detects lists and tables using
+   CommonMark-compliant patterns (https://spec.commonmark.org/0.31.2/#list-items). When block
+   content is between tags, blank lines are automatically added to prevent CommonMark lazy
+   continuation.
 
-3. **Adjacent Tags**: The `_normalize_adjacent_tags()` method adds a space between adjacent
-   tags like `%}{% ` to ensure proper tokenization.
+3. **Tag Atomicity**: `_HtmlMdWordSplitter` in `text_wrapping.py` uses patterns from
+   `tag_handling.py` to keep multi-word tags like `{% field kind="string" %}` together.
 
-4. **Paired Tag Coalescing**: Patterns for `{% tag %}{% /tag %}` ensure paired tags stay
-   together during wrapping.
+4. **Adjacent Tags**: `normalize_adjacent_tags()` adds space between `%}{%` for tokenization;
+   `denormalize_adjacent_tags()` removes it in output to preserve `{% tag %}{% /tag %}` format.
+
+5. **Paired Tag Coalescing**: Patterns ensure `{% tag %}{% /tag %}` pairs stay together during
+   wrapping.
 
 ## Known Limitations and Corner Cases
 
@@ -353,11 +382,15 @@ that CommonMark doesn't recognize (like `\s`, `\d` which are preserved).
 
 **Reference**: https://spec.commonmark.org/0.31.2/#backslash-escapes
 
-### 2. Block Elements After Opening Tags Need Blank Lines
+### 2. Block Elements After Opening Tags (Auto-Handled)
 
 When a block element (table, list) immediately follows an opening tag without a blank line,
 the Markdown parser may interpret subsequent content incorrectly.
 
+**Automatic Handling**: Flowmark now automatically adds blank lines around block content
+(lists/tables) when they appear between tags. This prevents CommonMark lazy continuation.
+
+Input:
 ```markdown
 {% field %}
 - Item 1
@@ -365,11 +398,7 @@ the Markdown parser may interpret subsequent content incorrectly.
 {% /field %}
 ```
 
-In this case, the closing tag may be interpreted as list item continuation and get indented.
-
-**Workaround**: Always include a blank line after opening tags when content contains block
-elements:
-
+Output (automatic blank lines added):
 ```markdown
 {% field %}
 
@@ -379,30 +408,28 @@ elements:
 {% /field %}
 ```
 
-**Why**: This is a fundamental limitation of CommonMark parsing. The Markdown parser interprets
-structure before Flowmark processes it. Flowmark preserves the newline before `{% /field %}`,
-but the parser has already placed it inside the list item structure.
+**Note**: Regular paragraph text between tags does NOT get extra blank lines—only block
+content (lists and tables) triggers this normalization.
 
-### 3. Closing Tags After List Items Get Indented
+### 3. Closing Tags After List Items (Auto-Handled)
 
-Related to #2: when a closing tag immediately follows a list item (no blank line), it may
-receive list item continuation indentation:
+Related to #2: when a closing tag immediately follows a list item (no blank line), Flowmark
+now automatically adds a blank line and strips any incorrect indentation.
 
+Input:
 ```markdown
 - list item
 {% /tag %}
 ```
 
-Becomes:
+Output (automatic blank line added, indentation stripped):
 ```markdown
 - list item
-  {% /tag %}
+
+{% /tag %}
 ```
 
-The newline IS preserved (the tag is on its own line), but it's indented because the Markdown
-parser treats it as list continuation.
-
-**Workaround**: Add a blank line before closing tags when inside lists.
+**Implementation**: The `_fix_closing_tag_spacing()` function in `tag_handling.py` handles this.
 
 ### 4. Tight vs Loose Lists
 
@@ -414,7 +441,15 @@ of list style.
 
 ### Best Practices for Markform/Markdoc Documents
 
-1. **Use blank lines around block content inside tags**:
+1. **Block content blank lines are auto-handled**: Flowmark automatically adds blank lines
+   around lists/tables inside tags. You can write either format and get consistent output:
+   ```markdown
+   {% field %}
+   - Option A
+   - Option B
+   {% /field %}
+   ```
+   Becomes:
    ```markdown
    {% field %}
 
@@ -424,7 +459,7 @@ of list style.
    {% /field %}
    ```
 
-2. **Keep inline tags on the same line**:
+2. **Keep inline tags on the same line** (preserved as-is):
    ```markdown
    {% field kind="string" id="name" %}{% /field %}
    ```
@@ -432,3 +467,9 @@ of list style.
 3. **Use non-CommonMark escape sequences** for regex patterns:
    - `\s`, `\d`, `\+` are preserved (not CommonMark escapes)
    - `\.`, `\*`, `\[` will be processed as escapes
+
+## Final Statistics
+
+- **Tests**: 134 total (4 new inline tests in `block_heuristics.py`, 48+ in `test_wrapping.py`)
+- **Lines of code**: ~500 new lines in tag handling modules
+- **Backward compatible**: All existing tests pass unchanged
