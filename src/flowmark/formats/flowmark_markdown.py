@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Generator
 from contextlib import contextmanager
+from enum import Enum
 from typing import Any, NamedTuple, cast
 
 from marko import Markdown, Renderer, block, inline
@@ -21,6 +22,20 @@ from flowmark.linewrapping.line_wrappers import (
 )
 from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
+
+
+class ListSpacing(str, Enum):
+    """
+    Controls how list item spacing is handled during Markdown normalization.
+
+    - preserve: Keep lists tight or loose as authored (default)
+    - loose: Convert all lists to loose format (blank lines between items)
+    - tight: Convert all lists to tight format where possible
+    """
+
+    preserve = "preserve"
+    loose = "loose"
+    tight = "tight"
 
 
 def _normalize_title_quotes(title: str) -> str:
@@ -174,7 +189,9 @@ class MarkdownNormalizer(Renderer):
     https://github.com/frostming/marko/blob/master/marko/ext/gfm/renderer.py
     """
 
-    def __init__(self, line_wrapper: LineWrapper) -> None:
+    def __init__(
+        self, line_wrapper: LineWrapper, list_spacing: ListSpacing = ListSpacing.preserve
+    ) -> None:
         super().__init__()
         self._prefix: str = ""  # The prefix on the first line, with a bullet, such as `  - `.
         self._second_prefix: str = ""  # The prefix on subsequent lines, such as `    `.
@@ -183,6 +200,8 @@ class MarkdownNormalizer(Renderer):
         self._skip_next_blank_line: bool = False  # Skip blank line following heading
         self._current_inline_text: str = ""  # Track accumulated inline text for escape context
         self._in_heading: bool = False  # Track if we're rendering a heading
+        self._list_spacing: ListSpacing = list_spacing
+        self._current_list_tight: bool = False  # Whether current list should render tight
 
     @override
     def __enter__(self) -> MarkdownNormalizer:
@@ -197,6 +216,22 @@ class MarkdownNormalizer(Renderer):
         self._second_prefix += second_prefix
         yield
         self._prefix, self._second_prefix = old_prefix, old_second_prefix
+
+    def _can_be_tight(self, element: block.List) -> bool:
+        """
+        Check if a list can be rendered tight.
+
+        A list cannot be tight if any item contains multiple block elements
+        (e.g., multiple paragraphs, code blocks, quote blocks) because
+        CommonMark requires blank lines to separate these, making the list loose.
+        """
+        for item in element.children:
+            if not isinstance(item, block.ListItem):
+                continue
+            # If the item has more than one child (multiple block elements), it must be loose
+            if len(item.children) > 1:
+                return False
+        return True
 
     def render_paragraph(self, element: block.Paragraph) -> str:
         # Reset the skip flag since we're not rendering a blank line
@@ -227,6 +262,19 @@ class MarkdownNormalizer(Renderer):
         # Reset the skip flag since we're not rendering a blank line
         self._skip_next_blank_line = False
 
+        # Determine effective tightness based on mode
+        if self._list_spacing == ListSpacing.preserve:
+            is_tight = element.tight
+        elif self._list_spacing == ListSpacing.tight:
+            # Only make tight if the list can be tight (no multi-paragraph items)
+            is_tight = self._can_be_tight(element)
+        else:  # loose
+            is_tight = False
+
+        # Save and set the tightness for this list
+        old_tight = self._current_list_tight
+        self._current_list_tight = is_tight
+
         result: list[str] = []
 
         for i, child in enumerate(element.children):
@@ -243,18 +291,22 @@ class MarkdownNormalizer(Renderer):
                 rendered_item = self.render(child)
                 result.append(rendered_item)
 
+        # Restore the previous list's tightness (for nested lists)
+        self._current_list_tight = old_tight
         self._prefix = self._second_prefix
         return "".join(result)
 
     def render_list_item(self, element: block.ListItem) -> str:
         result = ""
-        # We want all list items to have two newlines between them.
-        if self._suppress_item_break:
-            self._suppress_item_break = False
-        else:
-            # Add the newline between paragraphs. Normally this would be an empty line but
-            # within a quote block it would be the secondary prefix, like `> `.
-            result += self._second_prefix.strip() + "\n"
+        # For loose lists, add a blank line between items.
+        # For tight lists, don't add blank lines.
+        if not self._current_list_tight:
+            if self._suppress_item_break:
+                self._suppress_item_break = False
+            else:
+                # Add the newline between paragraphs. Normally this would be an empty line but
+                # within a quote block it would be the secondary prefix, like `> `.
+                result += self._second_prefix.strip() + "\n"
 
         result += self.render_children(element)
 
@@ -590,7 +642,10 @@ Default line wrapper for fixed-width line wrapping.
 """
 
 
-def flowmark_markdown(line_wrapper: LineWrapper = DEFAULT_SEMANTIC_LINE_WRAPPER) -> Markdown:
+def flowmark_markdown(
+    line_wrapper: LineWrapper = DEFAULT_SEMANTIC_LINE_WRAPPER,
+    list_spacing: ListSpacing = ListSpacing.preserve,
+) -> Markdown:
     """
     Marko Markdown setup for GFM with a few customizations for Flowmark and a new
     renderer that normalizes Markdown according to Flowmark's conventions.
@@ -598,7 +653,7 @@ def flowmark_markdown(line_wrapper: LineWrapper = DEFAULT_SEMANTIC_LINE_WRAPPER)
 
     class CustomRenderer(MarkdownNormalizer):
         def __init__(self) -> None:
-            super().__init__(line_wrapper)
+            super().__init__(line_wrapper, list_spacing)
 
     class FlowmarkMarkdown(Markdown):
         """

@@ -2,6 +2,7 @@ from textwrap import dedent
 
 import marko
 
+from flowmark.formats.flowmark_markdown import ListSpacing
 from flowmark.linewrapping.markdown_filling import fill_markdown
 
 _original_doc = dedent(
@@ -227,7 +228,7 @@ def test_normalize_markdown():
     print("---Parsed")
     print(parsed)
 
-    normalized_doc = fill_markdown(_original_doc, semantic=True)
+    normalized_doc = fill_markdown(_original_doc, semantic=True, list_spacing=ListSpacing.loose)
 
     print("---Before")
     print(_original_doc)

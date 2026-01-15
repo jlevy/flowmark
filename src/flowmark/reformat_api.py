@@ -3,6 +3,7 @@ from pathlib import Path
 
 from strif import atomic_output_file
 
+from flowmark.formats.flowmark_markdown import ListSpacing
 from flowmark.linewrapping.markdown_filling import fill_markdown
 from flowmark.linewrapping.text_filling import Wrap, fill_text
 from flowmark.linewrapping.text_wrapping import html_md_word_splitter
@@ -16,6 +17,7 @@ def reformat_text(
     cleanups: bool = True,
     smartquotes: bool = False,
     ellipses: bool = False,
+    list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> str:
     """
     Reformat text or markdown and wrap lines. Simply a convenient wrapper
@@ -38,6 +40,7 @@ def reformat_text(
             cleanups=cleanups,
             smartquotes=smartquotes,
             ellipses=ellipses,
+            list_spacing=list_spacing,
         )
 
     return result
@@ -55,6 +58,7 @@ def reformat_file(
     smartquotes: bool = False,
     ellipses: bool = False,
     make_parents: bool = True,
+    list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> None:
     """
     Reformat text or markdown and wrap lines on the given files.
@@ -76,6 +80,7 @@ def reformat_file(
         ellipses: Convert three dots (...) to ellipsis character (…) with normalized spacing
             (only applies to Markdown mode).
         make_parents: Whether to make parent directories if they don't exist.
+        list_spacing: Control list spacing: "preserve" (default), "loose", or "tight".
     """
     read_stdin = path == "-"
     write_stdout = output == "-" or not output
@@ -88,7 +93,9 @@ def reformat_file(
     else:
         text = Path(path).read_text()
 
-    result = reformat_text(text, width, plaintext, semantic, cleanups, smartquotes, ellipses)
+    result = reformat_text(
+        text, width, plaintext, semantic, cleanups, smartquotes, ellipses, list_spacing
+    )
 
     if inplace:
         backup_suffix = ".orig" if not nobackup else ""
@@ -116,6 +123,7 @@ def reformat_files(
     smartquotes: bool = False,
     ellipses: bool = False,
     make_parents: bool = True,
+    list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> None:
     """
     Reformat multiple files with the same options.
@@ -132,6 +140,7 @@ def reformat_files(
         smartquotes: Convert straight quotes to typographic quotes.
         ellipses: Convert three dots to ellipsis character.
         make_parents: Whether to make parent directories if they don't exist.
+        list_spacing: Control list spacing: "preserve" (default), "loose", or "tight".
     """
     if len(files) == 1 and files[0] == "-":
         # Single stdin case - use original function
@@ -147,6 +156,7 @@ def reformat_files(
             smartquotes=smartquotes,
             ellipses=ellipses,
             make_parents=make_parents,
+            list_spacing=list_spacing,
         )
         return
 
@@ -175,4 +185,5 @@ def reformat_files(
             smartquotes=smartquotes,
             ellipses=ellipses,
             make_parents=make_parents,
+            list_spacing=list_spacing,
         )

@@ -248,35 +248,35 @@ CLI: --list-spacing=preserve
 
 ### Phase 1: Core Infrastructure
 
-- [ ] Add `ListSpacing` enum
-- [ ] Add `list_spacing` parameter to `MarkdownNormalizer.__init__()`
-- [ ] Add `_current_list_tight` instance variable for threading state
-- [ ] Add `_can_be_tight()` helper method for `tight` mode
+- [x] Add `ListSpacing` enum
+- [x] Add `list_spacing` parameter to `MarkdownNormalizer.__init__()`
+- [x] Add `_current_list_tight` instance variable for threading state
+- [x] Add `_can_be_tight()` helper method for `tight` mode
 
 ### Phase 2: List Rendering Changes
 
-- [ ] Modify `render_list()` to compute effective tightness
-- [ ] Modify `render_list_item()` to conditionally add blank lines
-- [ ] Handle edge cases (nested lists, code blocks in items, etc.)
+- [x] Modify `render_list()` to compute effective tightness
+- [x] Modify `render_list_item()` to conditionally add blank lines
+- [x] Handle edge cases (nested lists, code blocks in items, etc.)
 
 ### Phase 3: API Updates
 
-- [ ] Add `list_spacing` parameter to `fill_markdown()`
-- [ ] Add `list_spacing` parameter to `reformat_text()`
-- [ ] Add `list_spacing` parameter to `reformat_file()` and `reformat_files()`
+- [x] Add `list_spacing` parameter to `fill_markdown()`
+- [x] Add `list_spacing` parameter to `reformat_text()`
+- [x] Add `list_spacing` parameter to `reformat_file()` and `reformat_files()`
 
 ### Phase 4: CLI Updates
 
-- [ ] Add `--list-spacing` argument to CLI
-- [ ] Update `--auto` flag to use `preserve`
-- [ ] Update help text
+- [x] Add `--list-spacing` argument to CLI
+- [x] Update `--auto` flag to use `preserve`
+- [x] Update help text
 
 ### Phase 5: Testing and Documentation
 
-- [ ] Add unit tests for `ListSpacing` modes
-- [ ] Update `test_list_spacing.py` with preserve/tight mode tests
-- [ ] Regenerate `testdoc.expected.*.md` files
-- [ ] Update README/docstrings
+- [x] Add unit tests for `ListSpacing` modes
+- [x] Update `test_list_spacing.py` with preserve/tight mode tests
+- [x] Regenerate `testdoc.expected.*.md` files
+- [x] Update README/docstrings
 
 ## Stage 4: Validation Stage
 
@@ -322,8 +322,8 @@ def test_multi_para_stays_loose():
 
 ### Success Criteria
 
-- [ ] All existing tests pass (with updated expectations)
-- [ ] New spacing mode tests pass
-- [ ] `make lint` passes
-- [ ] `make test` passes
-- [ ] Manual testing with real documents confirms expected behavior
+- [x] All existing tests pass (with updated expectations)
+- [x] New spacing mode tests pass
+- [x] `make lint` passes
+- [x] `make test` passes
+- [x] Manual testing with real documents confirms expected behavior
