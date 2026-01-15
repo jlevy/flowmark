@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from functools import cache
 from typing import Protocol
 
 from flowmark.linewrapping.tag_handling import (
@@ -74,6 +75,11 @@ class _HtmlMdWordSplitter:
 
     # In atomic mode, use high limit so tags virtually never break internally
     ATOMIC_MAX_TAG_WORDS: int = 128
+
+    # Characters that can start a multi-word construct. If a word doesn't start
+    # with one of these (or contain a backtick for code spans), it can't match
+    # any coalescing pattern, so we skip all pattern checks.
+    _START_CHARS: frozenset[str] = frozenset("{<[`")
 
     atomic_tags: bool
 
@@ -210,9 +216,20 @@ class _HtmlMdWordSplitter:
         return self._split_with_coalescing(text)
 
     def coalesce_words(self, words: list[str]) -> int:
+        if not words:
+            return 0
+
+        first_word = words[0]
+
+        # Quick reject: if first word doesn't start with a trigger character
+        # and doesn't contain a backtick (for code spans like "prefix`code"),
+        # it can't match any pattern, so skip expensive pattern matching.
+        if first_word[0] not in self._START_CHARS and "`" not in first_word:
+            return 0
+
         # Skip coalescing if the first word is already a complete inline code span.
         # This prevents `foo()` from incorrectly coalescing with following words.
-        if words and self._complete_code_span.fullmatch(words[0]):
+        if self._complete_code_span.fullmatch(first_word):
             return 0
 
         for pattern_group in self.compiled_patterns:
@@ -227,10 +244,13 @@ class _HtmlMdWordSplitter:
         return all(pattern.match(word) for pattern, word in zip(patterns, words, strict=False))
 
 
-html_md_word_splitter: WordSplitter = _HtmlMdWordSplitter()
-"""
-Split words, but not within HTML tags or Markdown links.
-"""
+@cache
+def get_html_md_word_splitter(atomic_tags: bool) -> WordSplitter:
+    """
+    Get cached word splitter instance. Thread-safe via @cache decorator.
+    Avoids re-compiling regex patterns on every call.
+    """
+    return _HtmlMdWordSplitter(atomic_tags=atomic_tags)
 
 
 # Pattern to identify words that need escaping if they start a wrapped markdown line.
@@ -297,9 +317,9 @@ def wrap_paragraph_lines(
     if replace_whitespace:
         text = re.sub(r"\s+", " ", text)
 
-    # Use provided splitter or create one based on tags mode
+    # Use provided splitter or get cached one based on tags mode
     if splitter is None:
-        splitter = _HtmlMdWordSplitter(atomic_tags=(tags == TagWrapping.atomic))
+        splitter = get_html_md_word_splitter(atomic_tags=(tags == TagWrapping.atomic))
 
     words = splitter(text)
 

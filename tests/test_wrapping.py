@@ -3,7 +3,7 @@ from textwrap import dedent
 from flowmark.linewrapping.tag_handling import generate_coalescing_patterns
 from flowmark.linewrapping.text_wrapping import (
     _HtmlMdWordSplitter,  # pyright: ignore
-    html_md_word_splitter,
+    get_html_md_word_splitter,
     markdown_escape_word,
     simple_word_splitter,
     wrap_paragraph,
@@ -164,10 +164,10 @@ def test_wrap_text():
         """
     ).strip()
 
-    print("\nFilled text with html_md_word_splitter:")
+    print("\nFilled text with get_html_md_word_splitter(atomic_tags=False):")
     filled_smart = wrap_paragraph(
         sample_text,
-        word_splitter=html_md_word_splitter,
+        word_splitter=get_html_md_word_splitter(atomic_tags=False),
         width=40,
         initial_indent=">",
         subsequent_indent=">>",
@@ -183,10 +183,10 @@ def test_wrap_text():
         """
     ).strip()
 
-    print("\nFilled text with html_md_word_splitter and initial_offset:")
+    print("\nFilled text with get_html_md_word_splitter(atomic_tags=False) and initial_offset:")
     filled_smart_offset = wrap_paragraph(
         sample_text,
-        word_splitter=html_md_word_splitter,
+        word_splitter=get_html_md_word_splitter(atomic_tags=False),
         width=40,
         initial_indent=">",
         subsequent_indent=">>",
