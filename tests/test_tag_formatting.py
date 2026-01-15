@@ -461,28 +461,32 @@ def test_single_line_paired_tags_not_split():
 
 
 def test_multiline_tag_through_pipeline():
-    """Test multiline tags with closing on same line through the full pipeline."""
-    # Use a tag that's long enough to actually trigger wrapping at width 88
-    # This should produce the problematic pattern that triggers the Markdoc bug
+    """Test multiline tags with closing on separate line through the full pipeline."""
+    # Use a tag that's long enough to trigger wrapping at width 88
     long_tag = (
         '{% field kind="string" id="name" label="Full Name" role="user" '
         'required=true minLength=2 maxLength=100 placeholder="Enter your full name" %}'
         "{% /field %}"
     )
 
+    # Both atomic and wrap modes should wrap long tags and put closing tag on own line
     result = fill_markdown(long_tag, semantic=True, width=88)
     lines = result.strip().split("\n")
 
-    # If the tag wrapped (longer than line width), closing tag should be on its own line
-    if len(lines) >= 2:
-        # Last line should be the closing tag on its own
-        assert lines[-1].strip() == "{% /field %}", (
-            f"Last line should be closing tag, got: {lines[-1]}"
-        )
-        # The line before closing tag should end with %}
-        assert lines[-2].strip().endswith("%}"), (
-            f"Line before closing should end with %}}, got: {lines[-2]}"
-        )
+    # Long tags should wrap (opening tag spans multiple lines)
+    assert len(lines) >= 2, f"Long tag should wrap, got: {lines}"
+
+    # Last line should be the closing tag on its own
+    assert lines[-1].strip() == "{% /field %}", f"Last line should be closing tag, got: {lines[-1]}"
+    # The line before closing tag should end with %}
+    assert lines[-2].strip().endswith("%}"), (
+        f"Line before closing should end with %}}, got: {lines[-2]}"
+    )
+
+    # Tag attributes should not be broken (e.g., minLength=2 stays together)
+    full_result = " ".join(lines)
+    assert "minLength=2" in full_result, "minLength=2 should stay together"
+    assert "maxLength=100" in full_result, "maxLength=100 should stay together"
 
 
 def test_html_comment_multiline_closing():

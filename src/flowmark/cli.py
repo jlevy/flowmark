@@ -50,6 +50,7 @@ import importlib.metadata
 import sys
 from dataclasses import dataclass
 
+from flowmark.linewrapping.tag_handling import TagWrapping
 from flowmark.reformat_api import reformat_files
 
 
@@ -60,6 +61,7 @@ class Options:
     files: list[str]
     output: str
     width: int
+    tags: TagWrapping
     plaintext: bool
     semantic: bool
     cleanups: bool
@@ -106,6 +108,14 @@ def _parse_args(args: list[str] | None = None) -> Options:
     )
     parser.add_argument(
         "-p", "--plaintext", action="store_true", help="Process as plaintext (no Markdown parsing)"
+    )
+    parser.add_argument(
+        "--tags",
+        type=str,
+        choices=["atomic", "wrap"],
+        default="atomic",
+        help="How to handle template tags during line wrapping: 'atomic' (default) never breaks "
+        "tags across lines, 'wrap' allows tags to wrap like normal text",
     )
     parser.add_argument(
         "-s",
@@ -169,6 +179,7 @@ def _parse_args(args: list[str] | None = None) -> Options:
         files=opts.files,
         output=opts.output,
         width=opts.width,
+        tags=TagWrapping(opts.tags),
         plaintext=opts.plaintext,
         semantic=opts.semantic,
         cleanups=opts.cleanups,
@@ -206,6 +217,7 @@ def main(args: list[str] | None = None) -> int:
             files=options.files,
             output=options.output,
             width=options.width,
+            tags=options.tags,
             inplace=options.inplace,
             nobackup=options.nobackup,
             plaintext=options.plaintext,

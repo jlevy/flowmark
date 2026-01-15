@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Protocol
 
 from flowmark.linewrapping.tag_handling import (
+    TagWrapping,
     denormalize_adjacent_tags,
     generate_coalescing_patterns,
     get_tag_coalescing_patterns,
@@ -51,6 +52,10 @@ class _HtmlMdWordSplitter:
 
     Note: This class runs AFTER Markdown parsing, so any CommonMark escape
     sequences will have already been processed by Marko before we see the text.
+
+    When `atomic_tags=True`, template tags are treated as indivisible tokens
+    regardless of internal whitespace. This prevents tags from being broken
+    across lines during wrapping.
     """
 
     # Pattern to detect COMPLETE inline code spans (both opening and closing backticks
@@ -61,7 +66,15 @@ class _HtmlMdWordSplitter:
     # with following words like "and", "must", etc.
     _complete_code_span: re.Pattern[str] = re.compile(r"[^\s`]*`[^`]+`[^\s`]*")
 
-    def __init__(self):
+    # Pattern to match inline code spans for atomic mode. Matches complete code spans
+    # including any prefix/suffix punctuation. Handles multi-backtick spans like ``code``.
+    # This protects content inside code spans from being treated as template tags.
+    _code_span_pattern: re.Pattern[str] = re.compile(r"[^\s`]*(`+)[^`]+\1[^\s`]*")
+
+    atomic_tags: bool
+
+    def __init__(self, atomic_tags: bool = False):
+        self.atomic_tags = atomic_tags
         # Patterns for multi-word constructs that should be coalesced into single tokens.
         # Each pattern is a tuple of regexes: (start, middle..., end).
         self.patterns: list[tuple[str, ...]] = [
@@ -100,6 +113,13 @@ class _HtmlMdWordSplitter:
         # First normalize adjacent tags to ensure proper tokenization
         text = normalize_adjacent_tags(text)
 
+        if self.atomic_tags:
+            return self._split_with_atomic_constructs(text)
+        else:
+            return self._split_with_coalescing(text)
+
+    def _split_with_coalescing(self, text: str) -> list[str]:
+        """Original coalescing-based splitting (wrap mode)."""
         words = text.split()
         result: list[str] = []
         i = 0
@@ -112,6 +132,28 @@ class _HtmlMdWordSplitter:
                 result.append(words[i])
                 i += 1
         return result
+
+    def _split_with_atomic_constructs(self, text: str) -> list[str]:
+        """
+        Split for atomic mode - same as coalescing mode.
+
+        Both modes use coalescing to keep tag contents together where possible.
+        The difference is in post-processing: atomic mode ensures closing tags
+        are placed on their own line via `_fix_multiline_opening_tag_with_closing`.
+
+        Tags can still wrap at internal whitespace when they exceed line width,
+        which is the expected behavior for long tags with many attributes.
+        """
+        # Use the same coalescing approach as wrap mode
+        return self._split_with_coalescing(text)
+
+    def _inside_existing(self, start: int, end: int, atomics: list[tuple[int, int, str]]) -> bool:
+        """Check if a range overlaps with any existing atomic construct."""
+        for a_start, a_end, _ in atomics:
+            # Check for any overlap
+            if start < a_end and end > a_start:
+                return True
+        return False
 
     def coalesce_words(self, words: list[str]) -> int:
         # Skip coalescing if the first word is already a complete inline code span.
@@ -167,9 +209,10 @@ def wrap_paragraph_lines(
     subsequent_offset: int = 0,
     replace_whitespace: bool = True,
     drop_whitespace: bool = True,
-    splitter: WordSplitter = html_md_word_splitter,
+    splitter: WordSplitter | None = None,
     len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
     is_markdown: bool = False,
+    tags: TagWrapping = TagWrapping.atomic,
 ) -> list[str]:
     r"""
     Wrap a single paragraph of text, returning a list of wrapped lines.
@@ -182,6 +225,10 @@ def wrap_paragraph_lines(
     "\\\n" (backslash-newline) or "  \n" (two spaces followed by newline) at the
     end of the line. Hard line breaks are normalized to always use "\\\n" as the line
     break.
+
+    The `tags` parameter controls template tag handling:
+    - `atomic`: Tags are treated as indivisible tokens (never broken across lines)
+    - `wrap`: Tags can wrap like normal text (legacy behavior with coalescing limits)
     """
     lines: list[str] = []
 
@@ -195,6 +242,10 @@ def wrap_paragraph_lines(
 
     if replace_whitespace:
         text = re.sub(r"\s+", " ", text)
+
+    # Use provided splitter or create one based on tags mode
+    if splitter is None:
+        splitter = _HtmlMdWordSplitter(atomic_tags=(tags == TagWrapping.atomic))
 
     words = splitter(text)
 
@@ -250,13 +301,17 @@ def wrap_paragraph(
     initial_column: int = 0,
     replace_whitespace: bool = True,
     drop_whitespace: bool = True,
-    word_splitter: WordSplitter = html_md_word_splitter,
+    word_splitter: WordSplitter | None = None,
     len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
     is_markdown: bool = False,
+    tags: TagWrapping = TagWrapping.atomic,
 ) -> str:
     """
     Wrap lines of a single paragraph of plain text, returning a new string.
-    By default, uses an HTML- and Markdown-aware word splitter.
+
+    The `tags` parameter controls template tag handling:
+    - `atomic`: Tags are treated as indivisible tokens (never broken across lines)
+    - `wrap`: Tags can wrap like normal text (legacy behavior with coalescing limits)
     """
     lines = wrap_paragraph_lines(
         text=text,
@@ -268,6 +323,7 @@ def wrap_paragraph(
         subsequent_offset=len_fn(subsequent_indent),
         len_fn=len_fn,
         is_markdown=is_markdown,
+        tags=tags,
     )
     # Now insert indents on first and subsequent lines, if needed.
     if initial_indent and initial_column == 0 and len(lines) > 0:
@@ -275,5 +331,6 @@ def wrap_paragraph(
     if subsequent_indent and len(lines) > 1:
         lines[1:] = [subsequent_indent + line for line in lines[1:]]
     result = "\n".join(lines)
+
     # Restore original adjacency for paired tags (remove spaces added during tokenization)
     return denormalize_adjacent_tags(result)

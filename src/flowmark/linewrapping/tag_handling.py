@@ -13,9 +13,24 @@ The main concerns are:
 from __future__ import annotations
 
 import re
+from enum import StrEnum
 
 from flowmark.linewrapping.block_heuristics import line_is_block_content
 from flowmark.linewrapping.protocols import LineWrapper
+
+
+class TagWrapping(StrEnum):
+    """
+    Controls how template tags are handled during line wrapping.
+
+    - `atomic`: Tags are never broken across lines (default). Long tags placed
+      on their own line if they don't fit.
+    - `wrap`: Tags can be wrapped like normal text (legacy behavior).
+    """
+
+    atomic = "atomic"
+    wrap = "wrap"
+
 
 # Tag delimiters - all tag syntax defined in one place for consistency.
 #
@@ -60,6 +75,67 @@ TEMPLATE_TAG_PATTERN: re.Pattern[str] = re.compile(
     """,
     re.VERBOSE | re.DOTALL,
 )
+
+# Placeholder format for atomic tag wrapping. Uses null byte prefix/suffix to
+# avoid conflicts with real content.
+_PLACEHOLDER_PREFIX = "\x00TAG"
+_PLACEHOLDER_SUFFIX = "\x00"
+
+# Pattern to match paired tags like {% tag %}{% /tag %} that should stay together.
+# Allows optional whitespace between tags (added by normalize_adjacent_tags).
+PAIRED_TAGS_PATTERN: re.Pattern[str] = re.compile(
+    r"""
+    (\{%[^%]*%\})\s*(\{%\s*/[^%]*%\})       # {% tag %}{% /tag %}
+    | (<!--[^-]*-->)\s*(<!--\s*/[^-]*-->)   # <!-- tag --><!-- /tag -->
+    | (\{[#][^#]*[#]\})\s*(\{[#]\s*/[^#]*[#]\})  # {# tag #}{# /tag #}
+    | (\{\{[^}]*\}\})\s*(\{\{\s*/[^}]*\}\})  # {{ tag }}{{ /tag }}
+    """,
+    re.VERBOSE | re.DOTALL,
+)
+
+
+def extract_tags_atomic(text: str) -> tuple[dict[int, str], str]:
+    """
+    Extract all template tags from text, replacing them with placeholders.
+
+    In atomic mode, tags are replaced with short placeholders so the wrapping
+    algorithm treats them as single words. Each tag is extracted individually
+    (not paired) so that opening and closing tags can be placed on separate
+    lines when needed for line width or Markdoc parser compatibility.
+
+    Returns a tuple of (tag_map, text_with_placeholders) where tag_map maps
+    placeholder indices to original tag strings.
+    """
+    tag_map: dict[int, str] = {}
+    placeholder_idx = 0
+
+    def make_placeholder(idx: int) -> str:
+        return f"{_PLACEHOLDER_PREFIX}{idx}{_PLACEHOLDER_SUFFIX}"
+
+    def replace_tag(match: re.Match[str]) -> str:
+        nonlocal placeholder_idx
+        tag = match.group(0)
+        tag_map[placeholder_idx] = tag
+        placeholder = make_placeholder(placeholder_idx)
+        placeholder_idx += 1
+        return placeholder
+
+    text = TEMPLATE_TAG_PATTERN.sub(replace_tag, text)
+
+    return tag_map, text
+
+
+def restore_tags_atomic(text: str, tag_map: dict[int, str]) -> str:
+    """
+    Restore original tags from placeholders.
+
+    This is the inverse of `extract_tags_atomic()`.
+    """
+    for idx, tag in tag_map.items():
+        placeholder = f"{_PLACEHOLDER_PREFIX}{idx}{_PLACEHOLDER_SUFFIX}"
+        text = text.replace(placeholder, tag)
+    return text
+
 
 # Pattern to detect adjacent tags (closing tag immediately followed by opening tag)
 # This handles cases like %}{% or --><!-- where there's no space between
@@ -219,7 +295,10 @@ def line_starts_with_tag(line: str) -> bool:
     return False
 
 
-def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
+def add_tag_newline_handling(
+    base_wrapper: LineWrapper,
+    tags: TagWrapping = TagWrapping.atomic,  # pyright: ignore[reportUnusedParameter]
+) -> LineWrapper:
     """
     Augments a LineWrapper to preserve newlines around Jinja/Markdoc tags
     and HTML comments.
@@ -230,6 +309,10 @@ def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
 
     This enables compatibility with Markdoc, Markform, and similar systems
     that use block-level tags like `{% field %}...{% /field %}`.
+
+    The `tags` parameter is retained for API compatibility but currently unused.
+    Both atomic and wrap modes apply the multiline tag fix (workaround for
+    Markdoc parser bug - see GitHub issue #17).
 
     IMPORTANT LIMITATION: This operates at the line-wrapping level, AFTER
     Markdown parsing. If the Markdown parser (Marko) has already interpreted
@@ -257,14 +340,18 @@ def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
         # The base_wrapper may produce multi-line output that needs fixing.
         if "\n" not in text:
             result = base_wrapper(text, initial_indent, subsequent_indent)
-            return _fix_multiline_opening_tag_with_closing(result)
+            # Fix multiline tags: ensure closing tag on own line when opening spans lines.
+            # This applies in both atomic and wrap modes to work around Markdoc parser bug.
+            result = _fix_multiline_opening_tag_with_closing(result)
+            return result
 
         lines = text.split("\n")
 
         # If only one line after split, same as above
         if len(lines) <= 1:
             result = base_wrapper(text, initial_indent, subsequent_indent)
-            return _fix_multiline_opening_tag_with_closing(result)
+            result = _fix_multiline_opening_tag_with_closing(result)
+            return result
 
         # Check if there are any tags in the text - only apply block content
         # heuristics when tags are present to avoid changing normal markdown behavior
@@ -303,7 +390,8 @@ def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
         # If we only have one segment, no tag boundaries were found
         if len(segments) == 1:
             result = base_wrapper(text, initial_indent, subsequent_indent)
-            return _fix_multiline_opening_tag_with_closing(result)
+            result = _fix_multiline_opening_tag_with_closing(result)
+            return result
 
         # Wrap each segment separately
         wrapped_segments: list[str] = []

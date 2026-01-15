@@ -1,9 +1,11 @@
 import sys
 from pathlib import Path
+from typing import Literal
 
 from strif import atomic_output_file
 
 from flowmark.linewrapping.markdown_filling import fill_markdown
+from flowmark.linewrapping.tag_handling import TagWrapping
 from flowmark.linewrapping.text_filling import Wrap, fill_text
 from flowmark.linewrapping.text_wrapping import html_md_word_splitter
 
@@ -11,6 +13,7 @@ from flowmark.linewrapping.text_wrapping import html_md_word_splitter
 def reformat_text(
     text: str,
     width: int = 88,
+    tags: Literal["atomic", "wrap"] | TagWrapping = TagWrapping.atomic,
     plaintext: bool = False,
     semantic: bool = True,
     cleanups: bool = True,
@@ -21,6 +24,9 @@ def reformat_text(
     Reformat text or markdown and wrap lines. Simply a convenient wrapper
     around `fill_text()` and `fill_markdown()` with reasonable defaults.
     """
+    # Normalize tags to TagWrapping enum (handles both str literals and TagWrapping)
+    tag_wrapping = tags if isinstance(tags, TagWrapping) else TagWrapping(tags)
+
     if plaintext:
         # Plaintext mode
         result = fill_text(
@@ -34,6 +40,7 @@ def reformat_text(
         result = fill_markdown(
             text,
             width=width,
+            tags=tag_wrapping,
             semantic=semantic,
             cleanups=cleanups,
             smartquotes=smartquotes,
@@ -47,6 +54,7 @@ def reformat_file(
     path: Path | str,
     output: Path | str | None,
     width: int = 88,
+    tags: Literal["atomic", "wrap"] | TagWrapping = TagWrapping.atomic,
     inplace: bool = False,
     nobackup: bool = False,
     plaintext: bool = False,
@@ -88,7 +96,7 @@ def reformat_file(
     else:
         text = Path(path).read_text()
 
-    result = reformat_text(text, width, plaintext, semantic, cleanups, smartquotes, ellipses)
+    result = reformat_text(text, width, tags, plaintext, semantic, cleanups, smartquotes, ellipses)
 
     if inplace:
         backup_suffix = ".orig" if not nobackup else ""
@@ -108,6 +116,7 @@ def reformat_files(
     files: list[str],
     output: str | None = None,
     width: int = 88,
+    tags: Literal["atomic", "wrap"] | TagWrapping = TagWrapping.atomic,
     inplace: bool = False,
     nobackup: bool = False,
     plaintext: bool = False,
@@ -139,6 +148,7 @@ def reformat_files(
             path=files[0],
             output=output,
             width=width,
+            tags=tags,
             inplace=inplace,
             nobackup=nobackup,
             plaintext=plaintext,
@@ -167,6 +177,7 @@ def reformat_files(
             path=file_path,
             output=output,
             width=width,
+            tags=tags,
             inplace=inplace,
             nobackup=nobackup,
             plaintext=plaintext,
