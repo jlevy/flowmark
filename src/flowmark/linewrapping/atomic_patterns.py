@@ -3,8 +3,6 @@ Atomic pattern definitions for constructs that should not be broken during wrapp
 
 Each AtomicPattern defines a regex for a specific type of construct (code span, link,
 template tag, etc.) that should be kept together as a single token during line wrapping.
-
-This module also defines the canonical delimiter constants for all supported tag formats.
 """
 
 from __future__ import annotations
@@ -12,36 +10,23 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-# Delimiter constants for template tags and comments.
-# Raw delimiters
-JINJA_TAG_OPEN = "{%"
-JINJA_TAG_CLOSE = "%}"
-JINJA_COMMENT_OPEN = "{#"
-JINJA_COMMENT_CLOSE = "#}"
-JINJA_VAR_OPEN = "{{"
-JINJA_VAR_CLOSE = "}}"
-HTML_COMMENT_OPEN = "<!--"
-HTML_COMMENT_CLOSE = "-->"
-
-# Regex-escaped delimiters
-JINJA_TAG_OPEN_RE = r"\{%"
-JINJA_TAG_CLOSE_RE = r"%\}"
-JINJA_COMMENT_OPEN_RE = r"\{#"
-JINJA_COMMENT_CLOSE_RE = r"#\}"
-JINJA_VAR_OPEN_RE = r"\{\{"
-JINJA_VAR_CLOSE_RE = r"\}\}"
-HTML_COMMENT_OPEN_RE = r"<!--"
-HTML_COMMENT_CLOSE_RE = r"-->"
-
 
 @dataclass(frozen=True)
 class AtomicPattern:
     """
     Defines a regex pattern for an atomic construct that should not be broken.
+
+    For delimiter-based patterns (tags, comments), `open_delim`/`close_delim` store
+    the raw delimiters and `open_re`/`close_re` store regex-escaped versions.
+    For non-delimiter patterns, these are empty strings.
     """
 
     name: str
     pattern: str
+    open_delim: str
+    close_delim: str
+    open_re: str
+    close_re: str
 
 
 def _make_paired_pattern(open_re: str, close_re: str, middle_char: str) -> str:
@@ -58,60 +43,91 @@ def _make_paired_pattern(open_re: str, close_re: str, middle_char: str) -> str:
     )
 
 
-def _make_single_tag_pattern(open_re: str, close_re: str) -> str:
-    """Generate a single tag pattern: opening...closing."""
-    return rf"{open_re}.*?{close_re}"
-
-
 # Inline code spans with backticks (handles multi-backtick like ``code``)
 INLINE_CODE_SPAN = AtomicPattern(
     name="inline_code_span",
     pattern=r"(`+)(?:(?!\1).)+\1",
+    open_delim="",
+    close_delim="",
+    open_re="",
+    close_re="",
 )
 
 # Markdown links: [text](url) or [text][ref] or [text]
 MARKDOWN_LINK = AtomicPattern(
     name="markdown_link",
     pattern=r"\[[^\]]*\](?:\([^)]*\)|\[[^\]]*\])?",
+    open_delim="",
+    close_delim="",
+    open_re="",
+    close_re="",
 )
 
 # Jinja/Markdoc template tags: {% tag %}, {% /tag %}
 SINGLE_JINJA_TAG = AtomicPattern(
     name="single_jinja_tag",
-    pattern=_make_single_tag_pattern(JINJA_TAG_OPEN_RE, JINJA_TAG_CLOSE_RE),
+    pattern=r"\{%.*?%\}",
+    open_delim="{%",
+    close_delim="%}",
+    open_re=r"\{%",
+    close_re=r"%\}",
 )
 
 PAIRED_JINJA_TAG = AtomicPattern(
     name="paired_jinja_tag",
-    pattern=_make_paired_pattern(JINJA_TAG_OPEN_RE, JINJA_TAG_CLOSE_RE, "%"),
+    pattern=_make_paired_pattern(r"\{%", r"%\}", "%"),
+    open_delim="{%",
+    close_delim="%}",
+    open_re=r"\{%",
+    close_re=r"%\}",
 )
 
 # Jinja comments: {# comment #}
 SINGLE_JINJA_COMMENT = AtomicPattern(
     name="single_jinja_comment",
-    pattern=_make_single_tag_pattern(JINJA_COMMENT_OPEN_RE, JINJA_COMMENT_CLOSE_RE),
+    pattern=r"\{#.*?#\}",
+    open_delim="{#",
+    close_delim="#}",
+    open_re=r"\{#",
+    close_re=r"#\}",
 )
 
 PAIRED_JINJA_COMMENT = AtomicPattern(
     name="paired_jinja_comment",
-    pattern=_make_paired_pattern(JINJA_COMMENT_OPEN_RE, JINJA_COMMENT_CLOSE_RE, "#"),
+    pattern=_make_paired_pattern(r"\{#", r"#\}", "#"),
+    open_delim="{#",
+    close_delim="#}",
+    open_re=r"\{#",
+    close_re=r"#\}",
 )
 
 # Jinja variables: {{ variable }}
 SINGLE_JINJA_VAR = AtomicPattern(
     name="single_jinja_var",
-    pattern=_make_single_tag_pattern(JINJA_VAR_OPEN_RE, JINJA_VAR_CLOSE_RE),
+    pattern=r"\{\{.*?\}\}",
+    open_delim="{{",
+    close_delim="}}",
+    open_re=r"\{\{",
+    close_re=r"\}\}",
 )
 
 PAIRED_JINJA_VAR = AtomicPattern(
     name="paired_jinja_var",
-    pattern=_make_paired_pattern(JINJA_VAR_OPEN_RE, JINJA_VAR_CLOSE_RE, "}"),
+    pattern=_make_paired_pattern(r"\{\{", r"\}\}", "}"),
+    open_delim="{{",
+    close_delim="}}",
+    open_re=r"\{\{",
+    close_re=r"\}\}",
 )
 
 # HTML comments: <!-- comment -->
 SINGLE_HTML_COMMENT = AtomicPattern(
     name="single_html_comment",
-    pattern=_make_single_tag_pattern(HTML_COMMENT_OPEN_RE, HTML_COMMENT_CLOSE_RE),
+    pattern=r"<!--.*?-->",
+    open_delim="<!--",
+    close_delim="-->",
+    open_re=r"<!--",
+    close_re=r"-->",
 )
 
 PAIRED_HTML_COMMENT = AtomicPattern(
@@ -121,17 +137,29 @@ PAIRED_HTML_COMMENT = AtomicPattern(
         r"\s*"
         r"<!--\s*/[^-]*(?:-[^-]+)*-->"
     ),
+    open_delim="<!--",
+    close_delim="-->",
+    open_re=r"<!--",
+    close_re=r"-->",
 )
 
 # HTML/XML tags: <tag>, </tag>
 HTML_OPEN_TAG = AtomicPattern(
     name="html_open_tag",
     pattern=r"<[a-zA-Z][^>]*>",
+    open_delim="",
+    close_delim="",
+    open_re="",
+    close_re="",
 )
 
 HTML_CLOSE_TAG = AtomicPattern(
     name="html_close_tag",
     pattern=r"</[a-zA-Z][^>]*>",
+    open_delim="",
+    close_delim="",
+    open_re="",
+    close_re="",
 )
 
 # All patterns in priority order (more specific patterns first).

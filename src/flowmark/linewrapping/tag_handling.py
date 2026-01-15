@@ -14,22 +14,6 @@ from __future__ import annotations
 import re
 
 from flowmark.linewrapping.atomic_patterns import (
-    HTML_COMMENT_CLOSE,
-    HTML_COMMENT_CLOSE_RE,
-    HTML_COMMENT_OPEN,
-    HTML_COMMENT_OPEN_RE,
-    JINJA_COMMENT_CLOSE,
-    JINJA_COMMENT_CLOSE_RE,
-    JINJA_COMMENT_OPEN,
-    JINJA_COMMENT_OPEN_RE,
-    JINJA_TAG_CLOSE,
-    JINJA_TAG_CLOSE_RE,
-    JINJA_TAG_OPEN,
-    JINJA_TAG_OPEN_RE,
-    JINJA_VAR_CLOSE,
-    JINJA_VAR_CLOSE_RE,
-    JINJA_VAR_OPEN,
-    JINJA_VAR_OPEN_RE,
     PAIRED_HTML_COMMENT,
     PAIRED_JINJA_COMMENT,
     PAIRED_JINJA_TAG,
@@ -74,18 +58,18 @@ PAIRED_TAGS_PATTERN: re.Pattern[str] = re.compile(
 # Pattern to detect adjacent tags (closing tag immediately followed by opening tag)
 # This handles cases like %}{% or --><!-- where there's no space between
 _adjacent_tags_re: re.Pattern[str] = re.compile(
-    rf"({JINJA_TAG_CLOSE_RE})({JINJA_TAG_OPEN_RE})|"
-    rf"({JINJA_COMMENT_CLOSE_RE})({JINJA_COMMENT_OPEN_RE})|"
-    rf"({JINJA_VAR_CLOSE_RE})({JINJA_VAR_OPEN_RE})|"
-    rf"({HTML_COMMENT_CLOSE_RE})({HTML_COMMENT_OPEN_RE})"
+    rf"({SINGLE_JINJA_TAG.close_re})({SINGLE_JINJA_TAG.open_re})|"
+    rf"({SINGLE_JINJA_COMMENT.close_re})({SINGLE_JINJA_COMMENT.open_re})|"
+    rf"({SINGLE_JINJA_VAR.close_re})({SINGLE_JINJA_VAR.open_re})|"
+    rf"({SINGLE_HTML_COMMENT.close_re})({SINGLE_HTML_COMMENT.open_re})"
 )
 
 # Pattern to remove spaces between adjacent tags that were added during word splitting
 _denormalize_tags_re: re.Pattern[str] = re.compile(
-    rf"({JINJA_TAG_CLOSE_RE}) ({JINJA_TAG_OPEN_RE})|"
-    rf"({JINJA_COMMENT_CLOSE_RE}) ({JINJA_COMMENT_OPEN_RE})|"
-    rf"({JINJA_VAR_CLOSE_RE}) ({JINJA_VAR_OPEN_RE})|"
-    rf"({HTML_COMMENT_CLOSE_RE}) ({HTML_COMMENT_OPEN_RE})"
+    rf"({SINGLE_JINJA_TAG.close_re}) ({SINGLE_JINJA_TAG.open_re})|"
+    rf"({SINGLE_JINJA_COMMENT.close_re}) ({SINGLE_JINJA_COMMENT.open_re})|"
+    rf"({SINGLE_JINJA_VAR.close_re}) ({SINGLE_JINJA_VAR.open_re})|"
+    rf"({SINGLE_HTML_COMMENT.close_re}) ({SINGLE_HTML_COMMENT.open_re})"
 )
 
 
@@ -136,18 +120,18 @@ def _is_tag_only_line(line: str) -> bool:
 
     # Check if it starts with a tag
     starts_tag = (
-        stripped.startswith(JINJA_TAG_OPEN)
-        or stripped.startswith(JINJA_COMMENT_OPEN)
-        or stripped.startswith(JINJA_VAR_OPEN)
-        or stripped.startswith(HTML_COMMENT_OPEN)
+        stripped.startswith(SINGLE_JINJA_TAG.open_delim)
+        or stripped.startswith(SINGLE_JINJA_COMMENT.open_delim)
+        or stripped.startswith(SINGLE_JINJA_VAR.open_delim)
+        or stripped.startswith(SINGLE_HTML_COMMENT.open_delim)
     )
 
     # Check if it ends with a tag
     ends_tag = (
-        stripped.endswith(JINJA_TAG_CLOSE)
-        or stripped.endswith(JINJA_COMMENT_CLOSE)
-        or stripped.endswith(JINJA_VAR_CLOSE)
-        or stripped.endswith(HTML_COMMENT_CLOSE)
+        stripped.endswith(SINGLE_JINJA_TAG.close_delim)
+        or stripped.endswith(SINGLE_JINJA_COMMENT.close_delim)
+        or stripped.endswith(SINGLE_JINJA_VAR.close_delim)
+        or stripped.endswith(SINGLE_HTML_COMMENT.close_delim)
     )
 
     return starts_tag and ends_tag
@@ -214,13 +198,13 @@ def line_ends_with_tag(line: str) -> bool:
         return False
     # Check for Jinja-style tags
     if (
-        stripped.endswith(JINJA_TAG_CLOSE)
-        or stripped.endswith(JINJA_COMMENT_CLOSE)
-        or stripped.endswith(JINJA_VAR_CLOSE)
+        stripped.endswith(SINGLE_JINJA_TAG.close_delim)
+        or stripped.endswith(SINGLE_JINJA_COMMENT.close_delim)
+        or stripped.endswith(SINGLE_JINJA_VAR.close_delim)
     ):
         return True
     # Check for HTML comments
-    if stripped.endswith(HTML_COMMENT_CLOSE):
+    if stripped.endswith(SINGLE_HTML_COMMENT.close_delim):
         return True
     return False
 
@@ -232,13 +216,13 @@ def line_starts_with_tag(line: str) -> bool:
         return False
     # Check for Jinja-style tags
     if (
-        stripped.startswith(JINJA_TAG_OPEN)
-        or stripped.startswith(JINJA_COMMENT_OPEN)
-        or stripped.startswith(JINJA_VAR_OPEN)
+        stripped.startswith(SINGLE_JINJA_TAG.open_delim)
+        or stripped.startswith(SINGLE_JINJA_COMMENT.open_delim)
+        or stripped.startswith(SINGLE_JINJA_VAR.open_delim)
     ):
         return True
     # Check for HTML comments
-    if stripped.startswith(HTML_COMMENT_OPEN):
+    if stripped.startswith(SINGLE_HTML_COMMENT.open_delim):
         return True
     return False
 
@@ -444,10 +428,10 @@ def _fix_closing_tag_spacing(text: str) -> str:
 # where a multi-line opening tag ends and a closing tag follows on the same line.
 # Uses named group "closing_tag" to capture the start of the closing tag.
 _multiline_closing_pattern: re.Pattern[str] = re.compile(
-    rf"{JINJA_TAG_CLOSE_RE}\s*(?P<closing_tag>{JINJA_TAG_OPEN_RE}\s*/)|"  # %}{% /
-    rf"{JINJA_COMMENT_CLOSE_RE}\s*(?P<closing_comment>{JINJA_COMMENT_OPEN_RE}\s*/)|"  # #}{# /
-    rf"{JINJA_VAR_CLOSE_RE}\s*(?P<closing_var>{JINJA_VAR_OPEN_RE}\s*/)|"  # }}{{ /
-    rf"{HTML_COMMENT_CLOSE_RE}\s*(?P<closing_html>{HTML_COMMENT_OPEN_RE}\s*/)"  # --><!-- /
+    rf"{SINGLE_JINJA_TAG.close_re}\s*(?P<closing_tag>{SINGLE_JINJA_TAG.open_re}\s*/)|"
+    rf"{SINGLE_JINJA_COMMENT.close_re}\s*(?P<closing_comment>{SINGLE_JINJA_COMMENT.open_re}\s*/)|"
+    rf"{SINGLE_JINJA_VAR.close_re}\s*(?P<closing_var>{SINGLE_JINJA_VAR.open_re}\s*/)|"
+    rf"{SINGLE_HTML_COMMENT.close_re}\s*(?P<closing_html>{SINGLE_HTML_COMMENT.open_re}\s*/)"
 )
 
 
@@ -490,10 +474,10 @@ def _fix_multiline_opening_tag_with_closing(text: str) -> str:
         # Only process lines that are continuations (don't start with a tag opener).
         # If a line starts with a tag opener, the tag began on that line, not a continuation.
         is_tag_start = (
-            stripped.startswith(JINJA_TAG_OPEN)
-            or stripped.startswith(JINJA_COMMENT_OPEN)
-            or stripped.startswith(JINJA_VAR_OPEN)
-            or stripped.startswith(HTML_COMMENT_OPEN)
+            stripped.startswith(SINGLE_JINJA_TAG.open_delim)
+            or stripped.startswith(SINGLE_JINJA_COMMENT.open_delim)
+            or stripped.startswith(SINGLE_JINJA_VAR.open_delim)
+            or stripped.startswith(SINGLE_HTML_COMMENT.open_delim)
         )
 
         if not is_tag_start:
