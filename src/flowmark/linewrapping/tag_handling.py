@@ -211,12 +211,15 @@ def generate_coalescing_patterns(
     return patterns
 
 
-def get_tag_coalescing_patterns() -> list[tuple[str, ...]]:
+def get_tag_coalescing_patterns(max_words: int = MAX_TAG_WORDS) -> list[tuple[str, ...]]:
     """
     Return word coalescing patterns for template tags and HTML comments.
 
     These patterns are used by the word splitter to keep multi-word tag
     constructs together during line wrapping.
+
+    The `max_words` parameter controls how many words can be coalesced.
+    For atomic mode, use a high value (e.g., 128) to prevent tag breaks.
     """
     return [
         # Paired Jinja/Markdoc tags: {% tag %}{% /tag %} (with optional space between)
@@ -237,24 +240,28 @@ def get_tag_coalescing_patterns() -> list[tuple[str, ...]]:
             start=rf"{HTML_COMMENT_OPEN_RE}.*",
             end=rf".*{HTML_COMMENT_CLOSE_RE}",
             middle=r".+",
+            max_words=max_words,
         ),
         # Template tags {% ... %} (Markdoc/Jinja/Nunjucks)
         *generate_coalescing_patterns(
             start=JINJA_TAG_OPEN_RE,
             end=rf".*{JINJA_TAG_CLOSE_RE}",
             middle=r".+",
+            max_words=max_words,
         ),
         # Template comments {# ... #} (Jinja/Nunjucks)
         *generate_coalescing_patterns(
             start=JINJA_COMMENT_OPEN_RE,
             end=rf".*{JINJA_COMMENT_CLOSE_RE}",
             middle=r".+",
+            max_words=max_words,
         ),
         # Template variables {{ ... }} (Jinja/Nunjucks)
         *generate_coalescing_patterns(
             start=JINJA_VAR_OPEN_RE,
             end=rf".*{JINJA_VAR_CLOSE_RE}",
             middle=r".+",
+            max_words=max_words,
         ),
     ]
 

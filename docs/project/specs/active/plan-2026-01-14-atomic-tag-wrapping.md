@@ -326,46 +326,32 @@ def wrap_paragraph_lines(..., tags: TagWrapping = TagWrapping.atomic) -> list[st
     # ... rest of wrapping logic unchanged ...
 ```
 
-## Stage 3: Implementation Phases
+## Stage 3: Implementation
 
-### Phase 1: Add TagWrapping Enum and CLI Option
+### Implementation Checklist
 
+**CLI and API wiring (completed):**
 - [x] Add `TagWrapping` enum with `atomic` and `wrap` values
 - [x] Add `--tags` CLI argument to `cli.py`
 - [x] Add `tags` parameter to `fill_markdown()` and `reformat_text()`
 - [x] Thread parameter through to wrapping functions
+- [x] Add `atomic_tags` parameter to `_HtmlMdWordSplitter`
 
-### Phase 2: Simplified Word Splitter Approach
+**Core logic:**
+- [x] Use higher coalescing limit (128 words) in atomic mode vs 12 in wrap mode
+- [x] Add `max_words` parameter to `get_tag_coalescing_patterns()`
+- [x] Add `_merge_paired_tags()` to merge opening+closing pairs after coalescing
+- [x] Patterns generated with `ATOMIC_MAX_TAG_WORDS=128` in atomic mode
 
-**Note:** During implementation, we discovered that both atomic and wrap modes work
-best with the same coalescing-based word splitting. Long tags can wrap at internal
-whitespace boundaries in both modes (as expected for readability). The key difference
-is in post-processing.
+**Mode behavior:**
+- [x] **Atomic mode**: Tags virtually never break (128-word limit)
+- [x] **Wrap mode**: Uses existing coalescing with `MAX_TAG_WORDS=12` limit
 
-- [x] Add `atomic_tags` parameter to `_HtmlMdWordSplitter` (for future extensibility)
-- [x] Implement `_split_with_atomic_constructs()` that delegates to coalescing
-- [x] Both modes use coalescing to keep tag contents together where possible
-- [x] Long tags wrap at internal whitespace (expected behavior for many attributes)
-
-### Phase 3: Apply Multiline Tag Fix to Both Modes
-
-**Note:** The `_fix_multiline_opening_tag_with_closing()` fix (workaround for Markdoc
-parser bug #17) is needed in BOTH modes, not just wrap mode. When an opening tag spans
-multiple lines, the closing tag should be on its own line regardless of mode.
-
-- [x] Apply `_fix_multiline_opening_tag_with_closing()` in both atomic and wrap modes
-- [x] Update docstrings to reflect that `tags` parameter is for API compatibility
-- [x] Keep placeholder functions (`extract_tags_atomic`, `restore_tags_atomic`) for
-      potential future use, though currently unused
-
-### Phase 4: Testing
-
-- [x] Update `test_multiline_tag_through_pipeline` to test correct behavior
-- [x] Long tags should wrap at internal whitespace
-- [x] Closing tags should be on own line when opening tag spans multiple lines
-- [x] All testdoc expected files unchanged (behavior matches existing expectations)
-- [x] Run full test suite (160 tests pass)
-- [x] Verify lint passes (0 errors, 0 warnings)
+**Testing:**
+- [x] Updated `test_multiline_tag_through_pipeline` to verify atomic vs wrap modes
+- [x] Updated testdoc expected files to reflect atomic mode as default
+- [x] All 160 tests pass
+- [x] Lint passes (0 errors, 0 warnings)
 
 ## Stage 4: Validation Stage
 

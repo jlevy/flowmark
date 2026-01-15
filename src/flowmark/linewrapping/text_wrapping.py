@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Protocol
 
 from flowmark.linewrapping.tag_handling import (
+    MAX_TAG_WORDS,
     TagWrapping,
     denormalize_adjacent_tags,
     generate_coalescing_patterns,
@@ -71,15 +72,21 @@ class _HtmlMdWordSplitter:
     # This protects content inside code spans from being treated as template tags.
     _code_span_pattern: re.Pattern[str] = re.compile(r"[^\s`]*(`+)[^`]+\1[^\s`]*")
 
+    # In atomic mode, use high limit so tags virtually never break internally
+    ATOMIC_MAX_TAG_WORDS: int = 128
+
     atomic_tags: bool
 
     def __init__(self, atomic_tags: bool = False):
         self.atomic_tags = atomic_tags
+        # Use higher word limit for atomic mode so tags stay together
+        tag_max_words = self.ATOMIC_MAX_TAG_WORDS if atomic_tags else MAX_TAG_WORDS
+
         # Patterns for multi-word constructs that should be coalesced into single tokens.
         # Each pattern is a tuple of regexes: (start, middle..., end).
         self.patterns: list[tuple[str, ...]] = [
             # Template tag patterns (Jinja/Markdoc/HTML comments) from tag_handling module
-            *get_tag_coalescing_patterns(),
+            *get_tag_coalescing_patterns(max_words=tag_max_words),
             # Inline code spans with spaces: `code with spaces`
             # Per CommonMark, code spans are delimited by equal-length backtick strings.
             # We coalesce words between opening ` and closing ` to keep them atomic.
@@ -88,12 +95,14 @@ class _HtmlMdWordSplitter:
                 start=r"[^\s`]*`[^`]*",
                 end=r"[^`]*`[^\s`]*",
                 middle=r"[^`]+",
+                max_words=tag_max_words,
             ),
             # HTML/XML tags: <tag attr="value">content</tag>
             *generate_coalescing_patterns(
                 start=r"<[^>]+",
                 end=r"[^<>]+>[^<>]*",
                 middle=r"[^<>]+",
+                max_words=tag_max_words,
             ),
             # Markdown links: [text](url) or [text][ref]
             # Links with multi-word text like [Mark Suster, Upfront Ventures](url) are
@@ -102,6 +111,7 @@ class _HtmlMdWordSplitter:
                 start=r"\[",
                 end=r"[^\[\]]+\][^\[\]]*",
                 middle=r"[^\[\]]+",
+                max_words=tag_max_words,
             ),
         ]
         self.compiled_patterns: list[tuple[re.Pattern[str], ...]] = [
@@ -119,7 +129,7 @@ class _HtmlMdWordSplitter:
             return self._split_with_coalescing(text)
 
     def _split_with_coalescing(self, text: str) -> list[str]:
-        """Original coalescing-based splitting (wrap mode)."""
+        """Coalescing-based splitting."""
         words = text.split()
         result: list[str] = []
         i = 0
@@ -131,29 +141,73 @@ class _HtmlMdWordSplitter:
             else:
                 result.append(words[i])
                 i += 1
+
+        # Second pass: merge adjacent opening+closing tag pairs
+        # This handles cases where opening tag was coalesced but closing tag
+        # is separate (e.g., {% field kind="long" ... %} {% /field %})
+        if self.atomic_tags:
+            result = self._merge_paired_tags(result)
+
         return result
+
+    def _merge_paired_tags(self, tokens: list[str]) -> list[str]:
+        """
+        Merge adjacent opening+closing tag pairs into single tokens.
+
+        After coalescing, an opening tag like `{% field ... %}` becomes one token,
+        but the closing tag `{% /field %}` is separate. This pass merges them.
+        """
+        if len(tokens) < 2:
+            return tokens
+
+        result: list[str] = []
+        i = 0
+        while i < len(tokens):
+            if i + 1 < len(tokens):
+                current = tokens[i]
+                next_token = tokens[i + 1]
+
+                # Check if current ends with tag close and next is closing tag
+                if self._is_tag_close(current) and self._is_closing_tag(next_token):
+                    # Merge them (with the space that normalize_adjacent_tags added)
+                    result.append(current + " " + next_token)
+                    i += 2
+                    continue
+
+            result.append(tokens[i])
+            i += 1
+
+        return result
+
+    def _is_tag_close(self, token: str) -> bool:
+        """Check if token ends with a tag closing delimiter."""
+        return (
+            token.endswith("%}")
+            or token.endswith("#}")
+            or token.endswith("}}")
+            or token.endswith("-->")
+        )
+
+    def _is_closing_tag(self, token: str) -> bool:
+        """Check if token is a closing tag (starts with {% /, {# /, etc.)."""
+        stripped = token.strip()
+        return (
+            stripped.startswith("{% /")
+            or stripped.startswith("{# /")
+            or stripped.startswith("{{ /")
+            or stripped.startswith("<!-- /")
+        )
 
     def _split_with_atomic_constructs(self, text: str) -> list[str]:
         """
-        Split for atomic mode - same as coalescing mode.
+        Split for atomic mode - uses same coalescing with higher word limit.
 
-        Both modes use coalescing to keep tag contents together where possible.
-        The difference is in post-processing: atomic mode ensures closing tags
-        are placed on their own line via `_fix_multiline_opening_tag_with_closing`.
-
-        Tags can still wrap at internal whitespace when they exceed line width,
-        which is the expected behavior for long tags with many attributes.
+        In atomic mode, the patterns were generated with ATOMIC_MAX_TAG_WORDS (128)
+        instead of MAX_TAG_WORDS (12), so tags virtually never break internally.
+        This preserves original whitespace while preventing tag breaks.
         """
-        # Use the same coalescing approach as wrap mode
+        # Patterns were already generated with higher limit in __init__
         return self._split_with_coalescing(text)
-
-    def _inside_existing(self, start: int, end: int, atomics: list[tuple[int, int, str]]) -> bool:
-        """Check if a range overlaps with any existing atomic construct."""
-        for a_start, a_end, _ in atomics:
-            # Check for any overlap
-            if start < a_end and end > a_start:
-                return True
-        return False
 
     def coalesce_words(self, words: list[str]) -> int:
         # Skip coalescing if the first word is already a complete inline code span.

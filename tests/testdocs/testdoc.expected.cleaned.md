@@ -1538,8 +1538,7 @@ Closing tags should NOT be merged onto list item lines:
 
 Empty fields with paired tags on the same line should stay together:
 
-{% field kind="string" id="email" label="Email" required=true placeholder="email@example.com" %}
-{% /field %}
+{% field kind="string" id="email" label="Email" required=true placeholder="email@example.com" %}{% /field %}
 
 <!-- f:field kind="string" id="name" --><!-- /f:field -->
 
@@ -1700,15 +1699,11 @@ be placed on its own line to avoid triggering a Markdoc parser bug.
 
 This tag is long enough to wrap and should have its closing tag on a separate line:
 
-{% field kind="number" id="age" label="Your Age" role="user" required=true min=0 max=150
-integer=true placeholder="Enter your age" %}
-{% /field %}
+{% field kind="number" id="age" label="Your Age" role="user" required=true min=0 max=150 integer=true placeholder="Enter your age" %}{% /field %}
 
 HTML comment version:
 
-<!-- f:field kind="number" id="score" label="Score" role="user" required=true min=0
-max=100 integer=true placeholder="Enter score" -->
-<!-- /f:field -->
+<!-- f:field kind="number" id="score" label="Score" role="user" required=true min=0 max=100 integer=true placeholder="Enter score" --><!-- /f:field -->
 
 Short tags that fit on one line should remain together:
 
@@ -1739,8 +1734,7 @@ Your feedback is valuable to us.
 
 {% /field %}
 
-{% field kind="text" id="comments" label="Additional Comments" placeholder="Enter your comments here..." %}
-{% /field %}
+{% field kind="text" id="comments" label="Additional Comments" placeholder="Enter your comments here..." %}{% /field %}
 
 {% /form %}
 

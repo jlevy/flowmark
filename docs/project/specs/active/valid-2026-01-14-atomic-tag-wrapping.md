@@ -34,7 +34,7 @@ All 160 tests pass. Key test coverage:
 - `test_smart_quotes_preserves_*` - Multiple tests for quote preservation in tags
 - `test_multiline_opening_tag_closing_on_own_line` - Closing tag placement
 - `test_single_line_paired_tags_not_split` - Short paired tags stay together
-- `test_multiline_tag_through_pipeline` - Long tags wrap correctly
+- `test_multiline_tag_through_pipeline` - Verifies atomic vs wrap mode behavior
 - `test_html_comment_multiline_closing` - HTML comment multiline handling
 
 ### Integration and End-to-End Testing
@@ -78,8 +78,10 @@ echo '{% field kind="string" id="name" label="Full Name" required=true %}{% /fie
 echo '{% field kind="string" id="name" label="Full Name" required=true %}{% /field %}' | flowmark -s --tags=wrap
 ```
 
-Expected: Both modes should produce similar output (long tags wrap at internal
-whitespace, closing tags on own line).
+Expected:
+
+- **Atomic mode (default)**: Long tag + closing tag stay on ONE line together
+- **Wrap mode**: Long tag may wrap at internal whitespace, closing tag on own line
 
 ### 2. Verify Testdoc Output
 
@@ -93,9 +95,9 @@ flowmark -s tests/testdocs/testdoc.orig.md > /tmp/output.md
 sed -n '1700,1720p' /tmp/output.md
 ```
 
-Expected: Long tags like `{% field kind="number" id="age" ... %}` should:
-- Wrap at internal whitespace if too long
-- Have closing tag `{% /field %}` on its own line
+Expected with atomic mode (default): Long tags like `{% field ... %}{% /field %}` should:
+- Stay on a single line (may exceed target width)
+- Opening and closing tags remain together (not split)
 
 ### 3. Backward Compatibility Check
 
