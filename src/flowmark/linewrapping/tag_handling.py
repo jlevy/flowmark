@@ -253,15 +253,18 @@ def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
     """
 
     def enhanced_wrapper(text: str, initial_indent: str, subsequent_indent: str) -> str:
-        # If no newlines, nothing to preserve
+        # If no newlines in input, just wrap and apply post-processing fixes.
+        # The base_wrapper may produce multi-line output that needs fixing.
         if "\n" not in text:
-            return base_wrapper(text, initial_indent, subsequent_indent)
+            result = base_wrapper(text, initial_indent, subsequent_indent)
+            return _fix_multiline_opening_tag_with_closing(result)
 
         lines = text.split("\n")
 
-        # If only one line after split, nothing to preserve
+        # If only one line after split, same as above
         if len(lines) <= 1:
-            return base_wrapper(text, initial_indent, subsequent_indent)
+            result = base_wrapper(text, initial_indent, subsequent_indent)
+            return _fix_multiline_opening_tag_with_closing(result)
 
         # Check if there are any tags in the text - only apply block content
         # heuristics when tags are present to avoid changing normal markdown behavior
@@ -299,7 +302,8 @@ def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
 
         # If we only have one segment, no tag boundaries were found
         if len(segments) == 1:
-            return base_wrapper(text, initial_indent, subsequent_indent)
+            result = base_wrapper(text, initial_indent, subsequent_indent)
+            return _fix_multiline_opening_tag_with_closing(result)
 
         # Wrap each segment separately
         wrapped_segments: list[str] = []
@@ -344,6 +348,10 @@ def add_tag_newline_handling(base_wrapper: LineWrapper) -> LineWrapper:
         # Post-process: ensure closing tags have proper spacing and no indentation.
         # The Markdown parser may indent closing tags due to lazy continuation.
         result = _fix_closing_tag_spacing(result)
+
+        # Fix multi-line opening tags that have closing tags on the same line.
+        # This works around a Markdoc parser bug (see GitHub issue #17).
+        result = _fix_multiline_opening_tag_with_closing(result)
 
         return result
 
@@ -394,3 +402,79 @@ def _fix_closing_tag_spacing(text: str) -> str:
             fixed_lines.append(line)
 
     return "\n".join(fixed_lines)
+
+
+# Pattern to detect closing delimiter of opening tag followed by a closing tag.
+# This handles cases like:  %}{% /tag %}  or  --><!-- /tag -->
+# where a multi-line opening tag ends and a closing tag follows on the same line.
+# Uses named group "closing_tag" to capture the start of the closing tag.
+_multiline_closing_pattern: re.Pattern[str] = re.compile(
+    rf"{JINJA_TAG_CLOSE_RE}\s*(?P<closing_tag>{JINJA_TAG_OPEN_RE}\s*/)|"  # %}{% /
+    rf"{JINJA_COMMENT_CLOSE_RE}\s*(?P<closing_comment>{JINJA_COMMENT_OPEN_RE}\s*/)|"  # #}{# /
+    rf"{JINJA_VAR_CLOSE_RE}\s*(?P<closing_var>{JINJA_VAR_OPEN_RE}\s*/)|"  # }}{{ /
+    rf"{HTML_COMMENT_CLOSE_RE}\s*(?P<closing_html>{HTML_COMMENT_OPEN_RE}\s*/)"  # --><!-- /
+)
+
+
+def _fix_multiline_opening_tag_with_closing(text: str) -> str:
+    """
+    Ensure closing tags are on their own line when the opening tag spans multiple lines.
+
+    This works around a Markdoc parser bug where multi-line opening tags with
+    closing tags on the same line cause incorrect AST parsing.
+
+    Problem pattern (triggers Markdoc bug):
+        {% tag attr1=value1
+        attr2=value2 %}{% /tag %}
+
+    Fixed pattern:
+        {% tag attr1=value1
+        attr2=value2 %}
+        {% /tag %}
+
+    Single-line paired tags like `{% field %}{% /field %}` are NOT affected.
+    Tags in the middle of prose like `Before {% field %}{% /field %} after` are
+    also NOT affected because the line contains content before the tag.
+    """
+    # Only apply fix if there are multiple lines - single line input means
+    # no multi-line tags to fix
+    if "\n" not in text:
+        return text
+
+    lines = text.split("\n")
+    result_lines: list[str] = []
+
+    for i, line in enumerate(lines):
+        # Skip the first line - it can't be a continuation of a multi-line tag
+        if i == 0:
+            result_lines.append(line)
+            continue
+
+        stripped = line.lstrip()
+
+        # Only process lines that are continuations (don't start with a tag opener).
+        # If a line starts with a tag opener, the tag began on that line, not a continuation.
+        is_tag_start = (
+            stripped.startswith(JINJA_TAG_OPEN)
+            or stripped.startswith(JINJA_COMMENT_OPEN)
+            or stripped.startswith(JINJA_VAR_OPEN)
+            or stripped.startswith(HTML_COMMENT_OPEN)
+        )
+
+        if not is_tag_start:
+            match = _multiline_closing_pattern.search(line)
+            if match:
+                # Find which named group matched and split at the closing tag
+                for group_name in ["closing_tag", "closing_comment", "closing_var", "closing_html"]:
+                    if match.group(group_name) is not None:
+                        split_pos = match.start(group_name)
+                        before = line[:split_pos].rstrip()
+                        closing = line[split_pos:].lstrip()
+                        result_lines.append(before)
+                        result_lines.append(closing)
+                        break
+                continue
+
+        result_lines.append(line)
+
+    return "\n".join(result_lines)
