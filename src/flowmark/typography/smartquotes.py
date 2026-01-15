@@ -100,20 +100,20 @@ def smart_quotes(text: str) -> str:
     Straight quotes are converted to apostrophes if they are the only straight quote
     in the word, and have word characters on both sides:
 
-    I'm there with "George" -> I'm there with "George"
-    "Hello," he said. -> "Hello," he said.
-    "I know!" -> "I know!"
+    I'm there with "George" -> I’m there with “George”
+    "Hello," he said. -> “Hello,” he said.
+    "I know!" -> “I know!”
 
     Words in 'single quotes' work too -> Words in 'single quotes' work too
 
-    I'm there -> I'm there
-    I'll be there, don't worry -> I'll be there, don't worry
-    X is 'foo' -> X is 'foo'
+    I'm there -> I’m there
+    I'll be there, don't worry -> I’ll be there, don’t worry
+    X is 'foo' -> X is ‘foo’
 
     A few special rules to better help with English:
 
-    Jill's -> Jill's
-    James' -> James'
+    Jill's -> Jill’s
+    James' -> James’
 
     Other patterns are unchanged:
 
