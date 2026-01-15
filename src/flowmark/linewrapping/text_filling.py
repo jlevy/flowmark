@@ -5,7 +5,7 @@ from enum import Enum
 from flowmark.linewrapping.text_wrapping import (
     DEFAULT_LEN_FUNCTION,
     WordSplitter,
-    html_md_word_splitter,
+    get_html_md_word_splitter,
     wrap_paragraph,
 )
 
@@ -92,7 +92,7 @@ def fill_text(
     extra_indent: str = "",
     empty_indent: str = "",
     initial_column: int = 0,
-    word_splitter: WordSplitter = html_md_word_splitter,
+    word_splitter: WordSplitter | None = None,
     len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
 ) -> str:
     """
@@ -102,6 +102,8 @@ def fill_text(
     By default, uses the HTML and Markdown aware word splitter. This is probably
     what you want, but you can also use the `simple_word_splitter` plaintext wrapping.
     """
+    if word_splitter is None:
+        word_splitter = get_html_md_word_splitter(atomic_tags=False)
 
     if not text_wrap.should_wrap:
         indent = extra_indent + DEFAULT_INDENT if text_wrap == Wrap.INDENT_ONLY else extra_indent

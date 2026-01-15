@@ -4,7 +4,7 @@ __all__ = (
     "first_sentence",
     "first_sentences",
     "flowmark_markdown",
-    "html_md_word_splitter",
+    "get_html_md_word_splitter",
     "simple_word_splitter",
     "line_wrap_by_sentence",
     "line_wrap_to_width",
@@ -26,7 +26,7 @@ from flowmark.linewrapping.sentence_split_regex import (
 )
 from flowmark.linewrapping.text_filling import Wrap, fill_text
 from flowmark.linewrapping.text_wrapping import (
-    html_md_word_splitter,
+    get_html_md_word_splitter,
     simple_word_splitter,
     wrap_paragraph,
     wrap_paragraph_lines,

@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := default
 
-.PHONY: default install lint test upgrade build clean format-docs
+.PHONY: default install lint test upgrade build clean format-docs benchmark profile
 
 default: format-docs install lint test
 
@@ -33,6 +33,12 @@ clean:
 
 format-docs:
 	uv run flowmark --auto README.md docs/*.md
+
+benchmark:
+	uv run devtools/benchmark.py --compare 0.6.0
+
+profile:
+	uv run devtools/benchmark.py --profile
 
 # Reset the expected reference docs to the actual ones currently produced.
 reset-ref-docs:

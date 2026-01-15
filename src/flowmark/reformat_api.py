@@ -8,7 +8,7 @@ from flowmark.formats.flowmark_markdown import ListSpacing
 from flowmark.linewrapping.markdown_filling import fill_markdown
 from flowmark.linewrapping.tag_handling import TagWrapping
 from flowmark.linewrapping.text_filling import Wrap, fill_text
-from flowmark.linewrapping.text_wrapping import html_md_word_splitter
+from flowmark.linewrapping.text_wrapping import get_html_md_word_splitter
 
 
 def reformat_text(
@@ -35,7 +35,7 @@ def reformat_text(
             text,
             text_wrap=Wrap.WRAP,
             width=width,
-            word_splitter=html_md_word_splitter,  # Still use HTML/MD aware splitter by default
+            word_splitter=get_html_md_word_splitter(atomic_tags=False),
         )
     else:
         # Markdown mode
