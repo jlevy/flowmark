@@ -1363,7 +1363,6 @@ Variable interpolation like {{ user.name }} should stay together as one unit.
 {% callout type="warning" %}
 This is a callout block. The content inside should wrap normally, but the opening and
 closing tags should remain on their own lines and not be joined with surrounding text.
-
 {% /callout %}
 
 {% if $showAdvanced %}
@@ -1455,13 +1454,11 @@ Opening tags should preserve the newline after them:
 
 {% description ref="example" %}
 This is a multi-line description. It should remain on separate lines after the tag.
-
 {% /description %}
 
 <!-- f:description ref="example" -->
 HTML comment opening tag should also preserve newlines. Content should start on a new
 line.
-
 <!-- /f:description -->
 
 ### Issue 2: Closing Tags After Lists
@@ -1537,6 +1534,116 @@ content required):
 
 {% /field %}
 
+### Issue 6a: Tables with Various Tag Types
+
+Tables inside Jinja-style tags without blank lines (should be normalized to have blank
+lines):
+
+{% table_container id="pricing" %}
+
+| Plan | Price | Features |
+|------|-------|----------|
+| Free | $0 | Basic |
+| Pro | $10 | Advanced |
+
+{% /table_container %}
+
+Tables inside HTML comment tags without blank lines:
+
+<!-- f:table id="comparison" -->
+
+| Feature | Product A | Product B |
+|---------|-----------|-----------|
+| Speed | Fast | Faster |
+| Cost | Low | Medium |
+
+<!-- /f:table -->
+
+Tables inside Jinja variable tags (edge case):
+
+{{ table_header }}
+
+| Column 1 | Column 2 |
+|----------|----------|
+| Data 1 | Data 2 |
+
+{{ table_footer }}
+
+Tables with proper blank lines already (should be unchanged):
+
+{% data_grid id="users" %}
+
+| User | Role |
+| --- | --- |
+| Alice | Admin |
+| Bob | Editor |
+
+{% /data_grid %}
+
+<!-- f:spreadsheet id="data" -->
+
+| Item | Count |
+| --- | --- |
+| Apples | 5 |
+| Oranges | 3 |
+
+<!-- /f:spreadsheet -->
+
+### Issue 6b: Paragraph Text with Tags (No Extra Blank Lines)
+
+Regular paragraph text between tags should NOT get extra blank lines:
+
+{% note %}
+This is a simple note with no lists or tables. Just plain paragraph text that wraps
+normally.
+{% /note %}
+
+<!-- f:warning -->
+This warning contains only paragraph text. No block elements here, so no extra blank
+lines needed.
+<!-- /f:warning -->
+
+{% tip title="Helpful Tip" %}
+Here is some helpful advice in paragraph form. It spans multiple sentences but is still
+just a paragraph.
+{% /tip %}
+
+### Issue 6c: Self-Closing Tags
+
+Self-closing Jinja tags (tags without a separate closing tag):
+
+{% break %}
+
+{% set user_count = 42 %}
+
+{% include "header.html" %}
+
+Self-closing HTML comment tags:
+
+<!-- note: This is a standalone annotation -->
+
+<!-- TODO: Refactor this section -->
+
+<!-- @deprecated Use new_function instead -->
+
+Self-closing tags with tables:
+
+{% divider style="double" /%}
+
+| Before Divider | After Divider |
+|----------------|---------------|
+| A | B |
+
+{% spacer height="20" /%}
+
+<!-- separator -->
+
+| Item | Value |
+|------|-------|
+| X | 1 |
+
+<!-- end-section -->
+
 ### Mixed Content Test
 
 A form with various content types:
@@ -1546,7 +1653,6 @@ A form with various content types:
 {% description %}
 Please complete this survey to help us improve our service. Your feedback is valuable to
 us.
-
 {% /description %}
 
 {% field kind="single_select" id="rating" label="Overall Rating" required=true %}

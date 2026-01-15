@@ -1090,3 +1090,198 @@ def test_adjacent_tags_full_pipeline():
     mixed_input = "Before {% field %}{% /field %} after."
     mixed_result = fill_markdown(mixed_input, semantic=True)
     assert "{% field %}{% /field %}" in mixed_result, f"Mixed: Space inserted in: {mixed_result}"
+
+
+def test_paragraph_text_no_extra_blank_lines():
+    """
+    Test that paragraph text between tags does NOT get extra blank lines.
+
+    Regular paragraph text should NOT trigger blank line insertion before
+    closing tags. Only block content (lists/tables) should get blank lines.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Simple paragraph text between tags - NO blank lines added
+    text = "{% description %}\nThis is a simple note.\nJust paragraph text.\n{% /description %}"
+    result = wrapper(text, "", "")
+
+    # Should NOT have double newlines before the closing tag
+    assert "\n\n{% /description %}" not in result, (
+        f"Unexpected blank line before closing tag: {result}"
+    )
+    # The closing tag should still be on its own line
+    assert "\n{% /description %}" in result
+
+    # HTML comment version
+    text2 = "<!-- f:note -->\nThis is text content.\n<!-- /f:note -->"
+    result2 = wrapper(text2, "", "")
+    assert "\n\n<!-- /f:note -->" not in result2, (
+        f"Unexpected blank line before closing tag: {result2}"
+    )
+    assert "\n<!-- /f:note -->" in result2
+
+
+def test_list_content_gets_blank_lines():
+    """
+    Test that list content between tags DOES get blank lines.
+
+    List items are block content that requires blank lines to prevent
+    CommonMark lazy continuation from merging tags into the list.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # List between tags - SHOULD get blank lines
+    text = "{% field %}\n- Item 1\n- Item 2\n{% /field %}"
+    result = wrapper(text, "", "")
+
+    # Should have blank line after opening tag (before list)
+    assert "{% field %}\n\n" in result, f"Expected blank line after opening tag: {result}"
+
+    # Should have blank line before closing tag (after list)
+    assert "\n\n{% /field %}" in result, f"Expected blank line before closing tag: {result}"
+
+
+def test_table_content_gets_blank_lines():
+    """
+    Test that table content between tags DOES get blank lines.
+
+    Table rows are block content that requires blank lines.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Table between tags - SHOULD get blank lines
+    text = "{% field %}\n| A | B |\n|---|---|\n| 1 | 2 |\n{% /field %}"
+    result = wrapper(text, "", "")
+
+    # Should have blank line before table
+    assert "{% field %}\n\n" in result, f"Expected blank line after opening tag: {result}"
+
+    # Should have blank line before closing tag
+    assert "\n\n{% /field %}" in result, f"Expected blank line before closing tag: {result}"
+
+
+def test_mixed_content_blank_lines_correct():
+    """
+    Test that mixed content (text followed by list) gets correct blank lines.
+
+    Only the transition between tag and block content needs blank lines.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Text then list between tags
+    text = "{% field %}\nSome intro text.\n- Item 1\n- Item 2\n{% /field %}"
+    result = wrapper(text, "", "")
+
+    # Should have blank line before list (list is block content)
+    # and blank line before closing tag (after list)
+    assert "\n\n{% /field %}" in result, f"Expected blank line before closing tag: {result}"
+
+
+def test_closing_tag_spacing_function():
+    """
+    Test the _fix_closing_tag_spacing function directly.
+
+    This function should only add blank lines when the previous line is
+    block content (list item or table row), not for regular text.
+    """
+    from flowmark.linewrapping.tag_handling import (
+        _fix_closing_tag_spacing,  # pyright: ignore[reportPrivateUsage]
+    )
+
+    # Paragraph text - NO blank line added
+    text1 = "Regular text.\n{% /tag %}"
+    result1 = _fix_closing_tag_spacing(text1)
+    assert result1 == "Regular text.\n{% /tag %}", f"Unexpected change: {result1}"
+
+    # List item - blank line added
+    text2 = "- List item\n{% /tag %}"
+    result2 = _fix_closing_tag_spacing(text2)
+    assert result2 == "- List item\n\n{% /tag %}", f"Expected blank line: {result2}"
+
+    # Table row - blank line added
+    text3 = "| A | B |\n{% /tag %}"
+    result3 = _fix_closing_tag_spacing(text3)
+    assert result3 == "| A | B |\n\n{% /tag %}", f"Expected blank line: {result3}"
+
+    # Already has blank line - no change
+    text4 = "- Item\n\n{% /tag %}"
+    result4 = _fix_closing_tag_spacing(text4)
+    assert result4 == "- Item\n\n{% /tag %}", f"Should not add extra: {result4}"
+
+    # Closing tag with indentation gets stripped
+    text5 = "- Item\n   {% /tag %}"
+    result5 = _fix_closing_tag_spacing(text5)
+    # Blank line added AND indentation stripped
+    assert result5 == "- Item\n\n{% /tag %}", f"Expected stripped: {result5}"
+
+    # HTML comment closing tags
+    text6 = "Regular text.\n<!-- /tag -->"
+    result6 = _fix_closing_tag_spacing(text6)
+    assert result6 == "Regular text.\n<!-- /tag -->", f"Unexpected change: {result6}"
+
+    text7 = "- Item\n<!-- /tag -->"
+    result7 = _fix_closing_tag_spacing(text7)
+    assert result7 == "- Item\n\n<!-- /tag -->", f"Expected blank line: {result7}"
+
+
+def test_various_tag_types_with_tables():
+    """
+    Test tables with various tag types (Jinja, HTML comments, variables).
+
+    Tables should always get blank lines regardless of tag type.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Jinja tags with table
+    jinja = "{% table %}\n| A | B |\n{% /table %}"
+    jinja_result = wrapper(jinja, "", "")
+    assert "{% table %}\n\n" in jinja_result
+    assert "\n\n{% /table %}" in jinja_result
+
+    # HTML comment tags with table
+    html = "<!-- f:table -->\n| A | B |\n<!-- /f:table -->"
+    html_result = wrapper(html, "", "")
+    assert "<!-- f:table -->\n\n" in html_result
+    assert "\n\n<!-- /f:table -->" in html_result
+
+    # Jinja variable tags (edge case - less common with tables)
+    var = "{{ header }}\n| A | B |\n{{ footer }}"
+    var_result = wrapper(var, "", "")
+    # Variable tags should also trigger block heuristics
+    assert "{{ header }}\n\n" in var_result
+
+
+def test_paragraph_only_content_various_tags():
+    """
+    Test paragraph-only content with various tag types.
+
+    None of these should get extra blank lines.
+    """
+    from flowmark.linewrapping.line_wrappers import line_wrap_to_width
+
+    wrapper = line_wrap_to_width(width=80, is_markdown=True)
+
+    # Jinja tags
+    jinja = "{% note %}\nSimple paragraph.\n{% /note %}"
+    jinja_result = wrapper(jinja, "", "")
+    assert "\n\n{% /note %}" not in jinja_result
+
+    # HTML comment tags
+    html = "<!-- f:warning -->\nWarning text here.\n<!-- /f:warning -->"
+    html_result = wrapper(html, "", "")
+    assert "\n\n<!-- /f:warning -->" not in html_result
+
+    # Longer paragraph
+    long = "{% tip %}\nThis is a longer paragraph with more text that spans across multiple sentences. It should all be wrapped normally.\n{% /tip %}"
+    long_result = wrapper(long, "", "")
+    assert "\n\n{% /tip %}" not in long_result

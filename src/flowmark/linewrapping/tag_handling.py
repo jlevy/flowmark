@@ -349,15 +349,16 @@ def _is_closing_tag(line: str) -> bool:
 
 def _fix_closing_tag_spacing(text: str) -> str:
     """
-    Ensure closing tags have a blank line before them and no incorrect indentation.
+    Fix closing tag spacing for block content only.
 
-    When a closing tag follows block content (like a list item), the Markdown
-    parser may indent it as list continuation. This function:
-    1. Adds a blank line before closing tags if not already present
+    When a closing tag follows block content (like a list item or table row),
+    the Markdown parser may indent it as list continuation. This function:
+    1. Adds a blank line before closing tags that follow block content
     2. Strips any incorrect indentation from closing tags
 
-    By adding the blank line first, the indentation naturally becomes correct
-    because the closing tag is no longer treated as list continuation.
+    Regular paragraph text before closing tags is NOT modified - no blank line
+    is added. The blank line is only needed to prevent CommonMark lazy
+    continuation for block elements.
     """
     lines = text.split("\n")
     fixed_lines: list[str] = []
@@ -365,15 +366,13 @@ def _fix_closing_tag_spacing(text: str) -> str:
     for i, line in enumerate(lines):
         if _is_closing_tag(line):
             stripped = line.lstrip()
-            # Check if we need to add a blank line before this closing tag
+            # Only add blank line before closing tag if previous line is block content
             if i > 0 and fixed_lines:
                 prev_line = fixed_lines[-1]
                 prev_is_empty = prev_line.strip() == ""
-                # Only skip blank line if prev is a standalone tag (starts with tag opener)
-                # Don't skip for list items that happen to have inline tags
-                prev_is_standalone_tag = line_starts_with_tag(prev_line)
-                if not prev_is_empty and not prev_is_standalone_tag:
-                    # Add blank line before closing tag
+                prev_is_block = line_is_block_content(prev_line)
+                if not prev_is_empty and prev_is_block:
+                    # Add blank line before closing tag to prevent lazy continuation
                     fixed_lines.append("")
             # Add the closing tag without indentation
             fixed_lines.append(stripped)
