@@ -21,6 +21,7 @@ from flowmark.linewrapping.line_wrappers import (
 )
 from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.sentence_split_regex import split_sentences_regex
+from flowmark.linewrapping.tag_handling import TagWrapping
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 from flowmark.transforms.doc_cleanups import doc_cleanups
 from flowmark.transforms.doc_transforms import rewrite_text_content
@@ -36,6 +37,7 @@ def fill_markdown(
     markdown_text: str,
     dedent_input: bool = True,
     width: int = DEFAULT_WRAP_WIDTH,
+    tags: TagWrapping = TagWrapping.atomic,
     semantic: bool = False,
     cleanups: bool = False,
     smartquotes: bool = False,
@@ -59,14 +61,19 @@ def fill_markdown(
     With `semantic` enabled, the line breaks are wrapped approximately
     by sentence boundaries, to make diffs more readable.
 
+    The `tags` parameter controls how template tags (Markdoc, Jinja, HTML
+    comments) are handled during wrapping:
+    - `atomic` (default): Tags are never broken across lines
+    - `wrap`: Tags can wrap like normal text (legacy behavior)
+
     Preserves YAML frontmatter (delimited by --- lines) if present at the
     beginning of the document.
     """
     if line_wrapper is None:
         if semantic:
-            line_wrapper = line_wrap_by_sentence(width=width, is_markdown=True)
+            line_wrapper = line_wrap_by_sentence(width=width, tags=tags, is_markdown=True)
         else:
-            line_wrapper = line_wrap_to_width(width=width, is_markdown=True)
+            line_wrapper = line_wrap_to_width(width=width, tags=tags, is_markdown=True)
 
     # Extract frontmatter before any processing
     frontmatter, content = split_frontmatter(markdown_text)
