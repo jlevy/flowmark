@@ -125,6 +125,26 @@ class _HtmlMdWordSplitter:
             for pattern_group in self.patterns
         ]
 
+        # Group patterns by what character they can match first for faster lookup.
+        # This reduces iterations from O(all_patterns) to O(patterns_for_char).
+        self._patterns_by_start: dict[str, list[tuple[re.Pattern[str], ...]]] = {
+            "{": [],
+            "<": [],
+            "[": [],
+            "`": [],  # For backtick patterns (code spans)
+        }
+        for i, pattern_group in enumerate(self.compiled_patterns):
+            first_pattern_str = self.patterns[i][0]
+            if first_pattern_str.startswith(r"\{") or first_pattern_str.startswith(r".*%\}"):
+                self._patterns_by_start["{"].append(pattern_group)
+            elif first_pattern_str.startswith("<") or first_pattern_str.startswith(r".*-->"):
+                self._patterns_by_start["<"].append(pattern_group)
+            elif first_pattern_str.startswith(r"\["):
+                self._patterns_by_start["["].append(pattern_group)
+            elif "`" in first_pattern_str or first_pattern_str.startswith("[^"):
+                # Code span patterns - can start with various chars containing backtick
+                self._patterns_by_start["`"].append(pattern_group)
+
     def __call__(self, text: str) -> list[str]:
         # First normalize adjacent tags to ensure proper tokenization
         text = normalize_adjacent_tags(text)
@@ -220,11 +240,13 @@ class _HtmlMdWordSplitter:
             return 0
 
         first_word = words[0]
+        first_char = first_word[0]
 
         # Quick reject: if first word doesn't start with a trigger character
         # and doesn't contain a backtick (for code spans like "prefix`code"),
         # it can't match any pattern, so skip expensive pattern matching.
-        if first_word[0] not in self._START_CHARS and "`" not in first_word:
+        has_backtick = "`" in first_word
+        if first_char not in self._START_CHARS and not has_backtick:
             return 0
 
         # Skip coalescing if the first word is already a complete inline code span.
@@ -232,7 +254,15 @@ class _HtmlMdWordSplitter:
         if self._complete_code_span.fullmatch(first_word):
             return 0
 
-        for pattern_group in self.compiled_patterns:
+        # Use grouped patterns for faster lookup - only check patterns that could match
+        # based on the first character, rather than iterating through all patterns.
+        patterns_to_check: list[tuple[re.Pattern[str], ...]] = []
+        if first_char in self._patterns_by_start:
+            patterns_to_check = self._patterns_by_start[first_char]
+        elif has_backtick:
+            patterns_to_check = self._patterns_by_start["`"]
+
+        for pattern_group in patterns_to_check:
             if self.match_pattern_group(words, pattern_group):
                 return len(pattern_group)
         return 0
