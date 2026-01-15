@@ -13,13 +13,13 @@ The main concerns are:
 from __future__ import annotations
 
 import re
-from enum import StrEnum
+from enum import Enum
 
 from flowmark.linewrapping.block_heuristics import line_is_block_content
 from flowmark.linewrapping.protocols import LineWrapper
 
 
-class TagWrapping(StrEnum):
+class TagWrapping(str, Enum):
     """
     Controls how template tags are handled during line wrapping.
 
