@@ -4,6 +4,13 @@ import re
 from collections.abc import Callable
 from typing import Protocol
 
+from flowmark.linewrapping.tag_handling import (
+    denormalize_adjacent_tags,
+    generate_coalescing_patterns,
+    get_tag_coalescing_patterns,
+    normalize_adjacent_tags,
+)
+
 DEFAULT_LEN_FUNCTION = len
 """
 Default length function to use for wrapping.
@@ -21,31 +28,6 @@ def simple_word_splitter(text: str) -> list[str]:
     Split words on whitespace. This is like Python's normal `textwrap`.
     """
     return text.split()
-
-
-# Maximum number of whitespace-separated words to coalesce into a single token.
-# This applies to HTML/XML tags, Markdown links, and template tags.
-MAX_TAG_WORDS = 12
-
-
-def _generate_tag_patterns(
-    start: str, end: str, middle: str = r".+", max_words: int = MAX_TAG_WORDS
-) -> list[tuple[str, ...]]:
-    """
-    Generate coalescing patterns for tags with a given start/end delimiter.
-
-    For example, for template tags {% ... %}:
-        start=r"\\{%", end=r".*%\\}", middle=r".+"
-
-    This generates patterns for 2, 3, 4, ... max_words word spans.
-    """
-    patterns: list[tuple[str, ...]] = []
-    for num_words in range(2, max_words + 1):
-        # Pattern: start, (middle repeated n-2 times), end
-        middle_count = num_words - 2
-        pattern = (start,) + (middle,) * middle_count + (end,)
-        patterns.append(pattern)
-    return patterns
 
 
 class _HtmlMdWordSplitter:
@@ -66,6 +48,9 @@ class _HtmlMdWordSplitter:
     This is compatible with CommonMark because we don't interpret code span
     content—we just keep tokens together for sensible line wrapping.
     See: https://spec.commonmark.org/0.31.2/#code-spans
+
+    Note: This class runs AFTER Markdown parsing, so any CommonMark escape
+    sequences will have already been processed by Marko before we see the text.
     """
 
     # Pattern to detect COMPLETE inline code spans (both opening and closing backticks
@@ -79,26 +64,20 @@ class _HtmlMdWordSplitter:
     def __init__(self):
         # Patterns for multi-word constructs that should be coalesced into single tokens.
         # Each pattern is a tuple of regexes: (start, middle..., end).
-        # All tag types support up to MAX_TAG_WORDS words.
         self.patterns: list[tuple[str, ...]] = [
+            # Template tag patterns (Jinja/Markdoc/HTML comments) from tag_handling module
+            *get_tag_coalescing_patterns(),
             # Inline code spans with spaces: `code with spaces`
             # Per CommonMark, code spans are delimited by equal-length backtick strings.
             # We coalesce words between opening ` and closing ` to keep them atomic.
             # The [^\s`]* prefix/suffix allows punctuation like (`code`) or `code`.
-            *_generate_tag_patterns(
+            *generate_coalescing_patterns(
                 start=r"[^\s`]*`[^`]*",
                 end=r"[^`]*`[^\s`]*",
                 middle=r"[^`]+",
             ),
-            # HTML comments: <!-- comment text -->
-            # Keep inline comments together, don't force to separate lines
-            *_generate_tag_patterns(
-                start=r"<!--.*",
-                end=r".*-->",
-                middle=r".+",
-            ),
             # HTML/XML tags: <tag attr="value">content</tag>
-            *_generate_tag_patterns(
+            *generate_coalescing_patterns(
                 start=r"<[^>]+",
                 end=r"[^<>]+>[^<>]*",
                 middle=r"[^<>]+",
@@ -106,28 +85,10 @@ class _HtmlMdWordSplitter:
             # Markdown links: [text](url) or [text][ref]
             # Links with multi-word text like [Mark Suster, Upfront Ventures](url) are
             # kept together to avoid awkward line breaks within the link text.
-            *_generate_tag_patterns(
+            *generate_coalescing_patterns(
                 start=r"\[",
                 end=r"[^\[\]]+\][^\[\]]*",
                 middle=r"[^\[\]]+",
-            ),
-            # Template tags {% ... %} (Markdoc/Jinja/Nunjucks)
-            *_generate_tag_patterns(
-                start=r"\{%",
-                end=r".*%\}",
-                middle=r".+",
-            ),
-            # Template comments {# ... #} (Jinja/Nunjucks)
-            *_generate_tag_patterns(
-                start=r"\{#",
-                end=r".*#\}",
-                middle=r".+",
-            ),
-            # Template variables {{ ... }} (Jinja/Nunjucks)
-            *_generate_tag_patterns(
-                start=r"\{\{",
-                end=r".*\}\}",
-                middle=r".+",
             ),
         ]
         self.compiled_patterns: list[tuple[re.Pattern[str], ...]] = [
@@ -136,6 +97,9 @@ class _HtmlMdWordSplitter:
         ]
 
     def __call__(self, text: str) -> list[str]:
+        # First normalize adjacent tags to ensure proper tokenization
+        text = normalize_adjacent_tags(text)
+
         words = text.split()
         result: list[str] = []
         i = 0
@@ -310,4 +274,6 @@ def wrap_paragraph(
         lines[0] = initial_indent + lines[0]
     if subsequent_indent and len(lines) > 1:
         lines[1:] = [subsequent_indent + line for line in lines[1:]]
-    return "\n".join(lines)
+    result = "\n".join(lines)
+    # Restore original adjacency for paired tags (remove spaces added during tokenization)
+    return denormalize_adjacent_tags(result)

@@ -16,10 +16,10 @@ from marko.source import Source
 from typing_extensions import override
 
 from flowmark.linewrapping.line_wrappers import (
-    LineWrapper,
     line_wrap_by_sentence,
     line_wrap_to_width,
 )
+from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 
 
