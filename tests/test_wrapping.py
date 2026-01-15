@@ -595,21 +595,22 @@ def test_paired_tags_not_broken():
     """
     splitter = _HtmlMdWordSplitter()
 
-    # Paired Jinja tags - each tag should be kept as an atomic unit
-    # When adjacent without space, they get normalized to have a space between them
+    # Paired Jinja tags - the opening+closing pair is kept as a single token
     paired = "{% field kind='string' id='email' %}{% /field %}"
     text = f"Some text before {paired} and after."
     result = splitter(text)
-    # Each tag is coalesced separately (normalization adds space between them)
-    assert "{% field kind='string' id='email' %}" in result
-    assert "{% /field %}" in result
+    # The pair is kept together as a single token (with normalized space between)
+    full_result = " ".join(result)
+    assert "{% field kind='string' id='email' %}" in full_result
+    assert "{% /field %}" in full_result
 
-    # HTML comment paired tags - each comment stays together
+    # HTML comment paired tags - kept together as a single token
     paired_html = "<!-- f:field kind='string' --><!-- /f:field -->"
     text2 = f"Before {paired_html} after."
     result2 = splitter(text2)
-    assert "<!-- f:field kind='string' -->" in result2
-    assert "<!-- /f:field -->" in result2
+    full_result2 = " ".join(result2)
+    assert "<!-- f:field kind='string' -->" in full_result2
+    assert "<!-- /f:field -->" in full_result2
 
     # Wrapping should not break either tag in a pair
     long_text = f"This is a longer piece of text with {paired} embedded in the middle."

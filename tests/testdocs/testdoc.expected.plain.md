@@ -12,8 +12,7 @@ tags:
 This is a simple test document to verify Flowmark usage. It's sort of a "transparent
 box" test of the Flowmark auto-formatter. Re-run Flowmark and compare output.
 
-*[Everything is
-Free](https://open.spotify.com/track/0H8ukN2MIW2iNvqJP1kb4O?si=PWBwK6QgS8Siksuwbt4K0A)
+*[Everything is Free](https://open.spotify.com/track/0H8ukN2MIW2iNvqJP1kb4O?si=PWBwK6QgS8Siksuwbt4K0A)
 by Gillian Welch*
 
 The dangers of 'culture fit'.
@@ -339,11 +338,11 @@ company worth keeping an eye on.
   certificate of incorporation, or any other stockholder agreement.
 
 Venture capital firms fund companies-commonly referred to as startups-that have
-ambitious goals of being dominant high-value businesses in their target market ([market
-caps](https://www.investopedia.com/terms/m/marketcapitalization.asp) of >$1B and margins
-of >50%). These firms seek to make investments early in a company's life when stock is
-cheap, in hopes of holding through periods of hyper-growth in order to realize
-abnormally large returns (200%+).
+ambitious goals of being dominant high-value businesses in their target market
+([market caps](https://www.investopedia.com/terms/m/marketcapitalization.asp) of >$1B
+and margins of >50%). These firms seek to make investments early in a company's life
+when stock is cheap, in hopes of holding through periods of hyper-growth in order to
+realize abnormally large returns (200%+).
 
 - Preferred stock usually has a
   [**liquidation preference**](http://www.investopedia.com/terms/l/liquidation-preference.asp),
@@ -835,49 +834,48 @@ The same is true for links. "The
 
 ### More URLs
 
-* 📈 adpushup ([2017,
-  Seed](https://www.slideshare.net/AlexanderJarvis/adpushup-seed-pitch-deck))
+* 📈 adpushup
+  ([2017, Seed](https://www.slideshare.net/AlexanderJarvis/adpushup-seed-pitch-deck))
 * 📈 AirBnB ([2009, Seed](http://www.slideshare.net/ryangum/airbnb-pitch-deck-from-2008))
-* 📈 AppNexus ([2007,
-  Seed](http://www.slideshare.net/CamilleRicketts2/appnexus-first-pitch-deck))
+* 📈 AppNexus
+  ([2007, Seed](http://www.slideshare.net/CamilleRicketts2/appnexus-first-pitch-deck))
 * 📈 Bliss ([2017, Seed](https://www.slideshare.net/AlexanderJarvis/blissai-pitch-deck))
 * 📈 Boomtrain ([2014, ?](https://boomtrain.docsend.com/view/3giicsi))
 * 📈 Buffer ([2011, Seed](http://www.slideshare.net/Bufferapp/buffer-seedrounddeck))
-* 📈 BuzzFeed ([2008, Series
-  A](https://qz.com/389752/here-is-buzzfeeds-first-pitch-deck-to-investors-in-2008/))
-* 📈 Castle ([2017,
-  Seed](https://www.slideshare.net/AlexanderJarvis/castle-pitch-deck-75070238))
-* 📈 Coinbase ([2012,
-  Seed](https://www.slideshare.net/BrianArmstrong29/coinbase-seed-round-pitch-deck));
+* 📈 BuzzFeed
+  ([2008, Series A](https://qz.com/389752/here-is-buzzfeeds-first-pitch-deck-to-investors-in-2008/))
+* 📈 Castle
+  ([2017, Seed](https://www.slideshare.net/AlexanderJarvis/castle-pitch-deck-75070238))
+* 📈 Coinbase
+  ([2012, Seed](https://www.slideshare.net/BrianArmstrong29/coinbase-seed-round-pitch-deck));
   [Commentary](https://medium.com/@barmstrong/the-coinbase-seed-round-pitch-deck-50c8ec91d40b)
   on the round by Brian Armstrong, CEO of Coinbase.
-* 📈 Contently ([2014, Series
-  B](https://www.slideshare.net/GoCanvas/the-10-most-interesting-slides-that-helped-our-saas-company-raise-9-million-42566344))
+* 📈 Contently
+  ([2014, Series B](https://www.slideshare.net/GoCanvas/the-10-most-interesting-slides-that-helped-our-saas-company-raise-9-million-42566344))
 * 📈 Cubeit ([2017, Seed](https://www.slideshare.net/AlexanderJarvis/cubeit-pitch-deck))
-* 📈 Crew ([2015, Series
-  A](https://www.slideshare.net/AlexanderJarvis/crew-pitch-deck-seriesa))
+* 📈 Crew
+  ([2015, Series A](https://www.slideshare.net/AlexanderJarvis/crew-pitch-deck-seriesa))
 * 📈 DocSend ([2013, Seed](https://docsend.com/view/n43v89r))
-* 📈 Dwolla ([2013, Series
-  C](http://www.businessinsider.com/18-slide-pitch-deck-lands-payment-startup-dwolla-165-million-2013-4?op=1))
-* 📈 eShares ([2014, Series
-  A](https://esharesinc.app.box.com/s/fjixdt78tl9henx2c75etkx1sootwo9p));
+* 📈 Dwolla
+  ([2013, Series C](http://www.businessinsider.com/18-slide-pitch-deck-lands-payment-startup-dwolla-165-million-2013-4?op=1))
+* 📈 eShares
+  ([2014, Series A](https://esharesinc.app.box.com/s/fjixdt78tl9henx2c75etkx1sootwo9p));
   [Commentary](https://medium.com/eshares-blog/eshares-series-a-c6bad9ad3721#.alf0y6i99)
   on the round by [Henry Ward](https://twitter.com/henrysward), CEO of eShares
 * 📈 Foursquare ([2009, Seed](http://www.slideshare.net/alkarmi/foursquare-1stpitch2009))
-* 📈 Front ([2016, Series
-  A](http://www.slideshare.net/MathildeCollin/front-series-a-deck-64596550?ref=https://cdn.embedly.com/widgets/media.html?src=https%3A%2F%2Fwww.slideshare.net%2Fslideshow%2Fembed_code%2Fkey%2FFXlrFkbldHJoki&url=http%3A%2F%2Fwww.slideshare.net%2FMathildeCollin%2Ffront-series-a-deck-64596550&image=http%3A%2F%2Fcdn.slidesharecdn.com%2Fss_thumbnails%2Fdecktopublish-1-160801215931-thumbnail-4.jpg%3Fcb%3D1470090544&key=d04bfffea46d4aeda930ec88cc64b87c&type=text%2Fhtml&schema=slideshare));
+* 📈 Front
+  ([2016, Series A](http://www.slideshare.net/MathildeCollin/front-series-a-deck-64596550?ref=https://cdn.embedly.com/widgets/media.html?src=https%3A%2F%2Fwww.slideshare.net%2Fslideshow%2Fembed_code%2Fkey%2FFXlrFkbldHJoki&url=http%3A%2F%2Fwww.slideshare.net%2FMathildeCollin%2Ffront-series-a-deck-64596550&image=http%3A%2F%2Fcdn.slidesharecdn.com%2Fss_thumbnails%2Fdecktopublish-1-160801215931-thumbnail-4.jpg%3Fcb%3D1470090544&key=d04bfffea46d4aeda930ec88cc64b87c&type=text%2Fhtml&schema=slideshare));
   [Commentary](https://medium.com/@collinmathilde/front-series-a-deck-f2e2775a419b#.7xlz4lwxz)
   on the round by [Mathilde Collin](https://twitter.com/collinmathilde), CEO of Front
-* 📈 Gaia Design ([2015,
-  ?](https://www.slideshare.net/valentinelanger/presentation-gaia-design-furniture))
-* 📈 Intercom ([2011,
-  Seed](http://www.slideshare.net/eoghanmccabe/intercoms-first-pitch-deck))
+* 📈 Gaia Design
+  ([2015, ?](https://www.slideshare.net/valentinelanger/presentation-gaia-design-furniture))
+* 📈 Intercom
+  ([2011, Seed](http://www.slideshare.net/eoghanmccabe/intercoms-first-pitch-deck))
 
 And some dashes:
 
 - 🔥[The Culture Cliché](https://m.signalvnoise.com/the-culture-cliche/) – Claire Lew
-- 🔥[Most Company Culture Posts are Fluffy Bullshit — Here is what you actually need to
-  know](https://medium.com/evergreen-business-weekly/most-company-culture-posts-are-fluffy-bullshit-here-is-what-you-actually-need-to-know-1cf8597a5c2c)
+- 🔥[Most Company Culture Posts are Fluffy Bullshit — Here is what you actually need to know](https://medium.com/evergreen-business-weekly/most-company-culture-posts-are-fluffy-bullshit-here-is-what-you-actually-need-to-know-1cf8597a5c2c)
   — Eric Jorgenson – summarizing the many dimensions of culture
 - 💳[The Culture Factor](https://hbr.org/2018/01/the-culture-factor) – Boris Groysberg,
   Jeremiah Lee, Jesse Price, J. Yo-Jud Cheng
@@ -971,9 +969,9 @@ This is
 another.
 ```
 
-<div align="center"> <img src="images/rounds.png" alt="awesome">
-<br> Example of company valuation, shares, fundraising, and dilution (<a href="http://ownyourventure.com/equitySim.html">source</a>)
-<br> </div>
+<div align="center"> <img src="images/rounds.png" alt="awesome"> <br> Example of company
+valuation, shares, fundraising, and dilution
+(<a href="http://ownyourventure.com/equitySim.html">source</a>) <br> </div>
 
 | Specific AWS Services | Basics | Tips | Gotchas |
 | --- | --- | --- | --- |
