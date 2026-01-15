@@ -1,6 +1,8 @@
 import re
 from re import Match, Pattern
 
+from flowmark.linewrapping.tag_handling import TEMPLATE_TAG_PATTERN
+
 # Precompiled regex patterns
 PARAGRAPH_BREAK_PATTERN: Pattern[str] = re.compile(r"\n\s*\n")
 
@@ -19,11 +21,76 @@ def is_multi_paragraph(text: str) -> bool:
     return PARAGRAPH_BREAK_PATTERN.search(text) is not None
 
 
+def _apply_smart_quotes_to_text(text: str) -> str:
+    """
+    Apply smart quote conversion to a text segment.
+
+    This is the core smart quotes logic, applied only to text that is NOT inside
+    template tags.
+    """
+
+    # Handle quoted text - both single and double quotes
+    def replace_quotes(match: Match[str]) -> str:
+        prefix = match.group(1)
+        double_content = match.group(2)  # Content of double quotes
+        single_content = match.group(3)  # Content of single quotes
+        suffix = match.group(4)
+
+        # Check for paragraph breaks in the content
+        content = double_content if double_content is not None else single_content
+        if is_multi_paragraph(content):
+            # Don't convert quotes that contain paragraph breaks
+            return match.group(0)
+
+        if double_content is not None:
+            # Replace double quotes with typographic quotes
+            return prefix + "\u201c" + double_content + "\u201d" + suffix
+        else:
+            # Replace single quotes with typographic quotes
+            return prefix + "\u2018" + single_content + "\u2019" + suffix
+
+    result = QUOTE_PATTERN.sub(replace_quotes, text)
+
+    # Handle apostrophes/contractions
+    # Only convert single quotes that are:
+    # 1. The only quote in the word
+    # 2. Have word characters on both sides OR are possessives at end of words ending in s/S
+
+    # Split by whitespace to process words individually
+    words = re.split(r"(\s+)", result)
+
+    for i, word in enumerate(words):
+        # Skip whitespace
+        if word.isspace():
+            continue
+
+        # Count straight quotes in the word
+        quote_count = word.count("'")
+
+        # Only process if there's exactly one straight quote
+        if quote_count == 1:
+            # Check if it's surrounded by word characters (contractions)
+            apostrophe_pattern = r"(\w)\'(\w)"
+            if re.search(apostrophe_pattern, word):
+                # Replace the single quote with apostrophe
+                words[i] = re.sub(r"\'", "\u2019", word)
+            # Check if it's a possessive at the end of a word ending in s/S
+            elif re.match(r"\w*[sS]\'$", word):
+                # Replace the single quote with apostrophe
+                words[i] = re.sub(r"\'", "\u2019", word)
+
+    return "".join(words)
+
+
 def smart_quotes(text: str) -> str:
     r"""
     Replace straight ASCII quotes and apostrophes with typographic quotes and apostrophes
     when this can be done safely. Aims to be conservative so it doesn't break code or
     things that aren't language.
+
+    IMPORTANT: Quotes inside template tags (Jinja/Markdoc `{% %}`, `{# #}`, `{{ }}`,
+    and HTML comments `<!-- -->`) are NEVER converted, as this would break template
+    syntax.
 
     Text that is wrapped in single or double quotes is replaced with typographic quotes
     if it has whitespace or a newline at the front and is followed by whitespace or
@@ -59,59 +126,34 @@ def smart_quotes(text: str) -> str:
     'apos'trophes -> 'apos'trophes
     $James' -> $James'
 
+    Template tag content is never modified:
+
+    {% field kind="string" %} -> {% field kind="string" %}
+    {{ variable }} -> {{ variable }}
+    {# comment "here" #} -> {# comment "here" #}
+    <!-- html kind="comment" --> -> <!-- html kind="comment" -->
+
     """
+    # Split text into segments: template tags (protected) and regular text.
+    # We apply smart quotes only to regular text segments.
+    segments: list[str] = []
+    last_end = 0
 
-    # First handle quoted text - both single and double quotes
-    def replace_quotes(match: Match[str]) -> str:
-        prefix = match.group(1)
-        double_content = match.group(2)  # Content of double quotes
-        single_content = match.group(3)  # Content of single quotes
-        suffix = match.group(4)
+    for match in TEMPLATE_TAG_PATTERN.finditer(text):
+        start, end = match.span()
 
-        # Check for paragraph breaks in the content
-        content = double_content if double_content is not None else single_content
-        if is_multi_paragraph(content):
-            # Don't convert quotes that contain paragraph breaks
-            return match.group(0)
+        # Add the text before this tag (apply smart quotes to it)
+        if start > last_end:
+            before_text = text[last_end:start]
+            segments.append(_apply_smart_quotes_to_text(before_text))
 
-        if double_content is not None:
-            # Replace double quotes with typographic quotes
-            return prefix + "\u201c" + double_content + "\u201d" + suffix
-        else:
-            # Replace single quotes with typographic quotes
-            return prefix + "\u2018" + single_content + "\u2019" + suffix
+        # Add the tag itself unchanged
+        segments.append(match.group(0))
+        last_end = end
 
-    result = QUOTE_PATTERN.sub(replace_quotes, text)
+    # Add any remaining text after the last tag
+    if last_end < len(text):
+        remaining = text[last_end:]
+        segments.append(_apply_smart_quotes_to_text(remaining))
 
-    # Now handle apostrophes/contractions
-    # Only convert single quotes that are:
-    # 1. The only quote in the word
-    # 2. Have word characters on both sides OR are possessives at end of words ending in s/S
-
-    # Pattern for apostrophes: word char + ' + word char, where ' is the only quote in the word
-    # We need to be careful not to match words that have multiple quotes
-
-    # Split by whitespace to process words individually
-    words = re.split(r"(\s+)", result)
-
-    for i, word in enumerate(words):
-        # Skip whitespace
-        if word.isspace():
-            continue
-
-        # Count straight quotes in the word
-        quote_count = word.count("'")
-
-        # Only process if there's exactly one straight quote
-        if quote_count == 1:
-            # Check if it's surrounded by word characters (contractions)
-            apostrophe_pattern = r"(\w)\'(\w)"
-            if re.search(apostrophe_pattern, word):
-                # Replace the single quote with apostrophe
-                words[i] = re.sub(r"\'", "\u2019", word)
-            # Check if it's a possessive at the end of a word ending in s/S
-            elif re.match(r"\w*[sS]\'$", word):
-                # Replace the single quote with apostrophe
-                words[i] = re.sub(r"\'", "\u2019", word)
-
-    return "".join(words)
+    return "".join(segments)

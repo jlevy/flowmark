@@ -47,6 +47,20 @@ HTML_COMMENT_OPEN_RE = r"<!--"
 HTML_COMMENT_CLOSE_RE = r"-->"
 
 
+# Pattern to match complete template tags (for protecting content inside tags).
+# These tags can span multiple lines and may contain quotes in attribute values.
+# Uses DOTALL so . matches newlines within tags.
+# Note: In VERBOSE mode, # starts a comment, so we use [#] for literal hash.
+TEMPLATE_TAG_PATTERN: re.Pattern[str] = re.compile(
+    r"""
+    \{%.*?%\}             # Jinja/Markdoc template tags
+    | \{[#].*?[#]\}       # Jinja comments (use [#] to avoid VERBOSE comment)
+    | \{\{.*?\}\}         # Jinja variables
+    | <!--.*?-->          # HTML comments
+    """,
+    re.VERBOSE | re.DOTALL,
+)
+
 # Pattern to detect adjacent tags (closing tag immediately followed by opening tag)
 # This handles cases like %}{% or --><!-- where there's no space between
 _adjacent_tags_re: re.Pattern[str] = re.compile(

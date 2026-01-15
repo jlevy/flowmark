@@ -1435,7 +1435,7 @@ Long tag:
 
 Jinja blocks: {% block content %}This is the content{% endblock %}
 
-Nunjucks raw block: {% raw %}This {{ won’t }} be {% processed %}{% endraw %}
+Nunjucks raw block: {% raw %}This {{ won't }} be {% processed %}{% endraw %}
 
 ## 17. HTML Comments and Inline Code Preservation
 
@@ -1665,7 +1665,7 @@ Self-closing Jinja tags (tags without a separate closing tag):
 
 {% set user_count = 42 %}
 
-{% include “header.html” %}
+{% include "header.html" %}
 
 Self-closing HTML comment tags:
 
