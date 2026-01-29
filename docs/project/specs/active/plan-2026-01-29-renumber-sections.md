@@ -53,8 +53,8 @@ This will be exposed as:
 ### Per-Level Analysis
 
 For each heading level (H1-H6), we analyze whether a **sufficient majority** of headings
-have numeric prefixes. If they do, we determine the style (`arabic_integer` or
-`arabic_decimal`).
+have numeric prefixes. If they do, we infer the numbering style (e.g., `arabic`,
+`roman_upper`, `alpha_lower`) and format structure.
 
 ### Qualification Rule (First-Two + Two-Thirds)
 
@@ -83,15 +83,16 @@ This ensures:
 
 ### Pattern Consistency
 
-The first two headings determine the pattern (style) for the level:
+The first two headings determine the pattern (style and structure) for the level:
 
-- Both `1.`, `2.` → `arabic_integer`
-- Both `1.1`, `1.2` → `arabic_decimal`
-- `1.` and `1.1` → patterns don't match → level is `none`
-- `1.` and `II.` → patterns don't match → level is `none`
+- Both `1.`, `2.` → single-component `arabic`
+- Both `1.1`, `1.2` → two-component `arabic.arabic`
+- Both `I.`, `II.` → single-component `roman_upper`
+- `1.` and `1.1` → structures don't match → level is `none`
+- `1.` and `II.` → styles don't match → level is `none`
 
 Example:
-- H1s: `# 1. Intro`, `# 2. Design`, `# Conclusion` → First two match `arabic_integer`,
+- H1s: `# 1. Intro`, `# 2. Design`, `# Conclusion` → First two match single `arabic`,
   2/3 = 66% ✓ → H1 qualifies
 - H1s: `# 1. Intro`, `# Design`, `# 3. Conclusion` → First two don't both have prefix
   → H1 is `none`
@@ -115,8 +116,8 @@ Example:
 If a gap is detected, all levels from the gap onward are set to `none`.
 
 Example:
-- Raw inference: H1=`arabic_integer`, H2=`none`, H3=`arabic_decimal`
-- After hierarchical check: H1=`arabic_integer`, H2=`none`, H3=`none`
+- Raw inference: H1=`{h1:arabic}.`, H2=`none`, H3=`{h1:arabic}.{h2:arabic}.{h3:arabic}`
+- After hierarchical check: H1=`{h1:arabic}.`, H2=`none`, H3=`none`
   (H3 disabled because H2 is `none`)
 
 ### Recognized Patterns (General Approach)
@@ -167,13 +168,15 @@ NUMBER_PATTERN = rf'^({COMPONENT}(?:\.{COMPONENT})*)[.\)]?\s+(.+)$'
 
 ### Style Inference
 
-After parsing, we **infer the style** of each component:
+After parsing, we **infer the style** of each component. The order of checks matters
+for ambiguous cases (e.g., "I" could be Roman 1 or Alpha):
 
 ```python
 def infer_style(component: str) -> NumberStyle:
     """Infer the number style from a parsed component."""
     if component.isdigit():
         return NumberStyle.arabic
+    # Check Roman before Alpha (handles ambiguous cases like "I", "C", "D")
     if all(c in 'IVXLCDM' for c in component):
         return NumberStyle.roman_upper
     if all(c in 'ivxlcdm' for c in component):
@@ -184,6 +187,10 @@ def infer_style(component: str) -> NumberStyle:
         return NumberStyle.alpha_lower
     return NumberStyle.arabic  # fallback
 ```
+
+**Note on ambiguity**: Single letters like "I", "V", "X", "C", "D", "M" are interpreted
+as Roman numerals, not alphabetic. To use alphabetic "I", a document would need letters
+outside the Roman set (e.g., "A", "B", "E", "F") to establish the pattern.
 
 ### Examples of Prefix Extraction
 
@@ -226,7 +233,7 @@ Instead of enum values, we use a format string that explicitly describes the str
 "{h1:arabic}.{h2:alpha_lower}.{h3:roman_lower}"  # Mixed: 1.a.i, 1.a.ii
 ```
 
-This is self-documenting and extensible for future number styles (roman, alpha).
+This format string is self-documenting and supports all number styles (arabic, roman, alpha).
 
 ### `NumberStyle` Enum
 
@@ -280,10 +287,11 @@ class FormatComponent:
 
     Examples:
     - FormatComponent(level=1, style=NumberStyle.arabic) → "{h1:arabic}"
-    - FormatComponent(level=2, style=NumberStyle.arabic) → "{h2:arabic}"
+    - FormatComponent(level=2, style=NumberStyle.roman_upper) → "{h2:roman_upper}"
+    - FormatComponent(level=3, style=NumberStyle.alpha_lower) → "{h3:alpha_lower}"
     """
     level: int              # 1-6 for H1-H6
-    style: NumberStyle      # Currently always "arabic"
+    style: NumberStyle      # arabic, roman_upper/lower, alpha_upper/lower
 ```
 
 ### `SectionNumFormat` Data Structure
@@ -321,9 +329,10 @@ class SectionNumFormat:
         """
         Format counters according to this format.
 
-        Example: counters=[2, 3, 0, 0, 0, 0] with H2 format → "2.3"
+        Example: counters=[2, 3, 0, 0, 0, 0] with H2 format → "2.3" (arabic)
+        Example: counters=[2, 3, 0, 0, 0, 0] with H2 format → "II.C" (roman_upper + alpha_upper)
         """
-        parts = [str(counters[c.level - 1]) for c in self.components]
+        parts = [to_number(c.style, counters[c.level - 1]) for c in self.components]
         return ".".join(parts) + self.trailing
 ```
 
@@ -483,16 +492,16 @@ This module is self-contained with:
 # src/flowmark/transforms/section_numbering.py
 
 # === Data Structures ===
-class NumberStyle(str, Enum): ...           # arabic (future: roman, alpha)
+class NumberStyle(str, Enum): ...           # arabic, roman_upper/lower, alpha_upper/lower
 @dataclass class FormatComponent: ...       # {h1:arabic} component
 @dataclass class SectionNumFormat: ...      # Full format for one level
 @dataclass class SectionNumConvention: ...  # Convention for all 6 levels
 @dataclass class ParsedHeading: ...         # Parsed heading with extracted prefix
 
 # === Parsing Functions ===
-def extract_section_prefix(text: str) -> tuple[list[int], str, str] | None: ...
-    # Returns: (number_parts, trailing_char, title) or None
-    # Example: "1.2. Intro" → ([1, 2], ".", "Intro")
+def extract_section_prefix(text: str) -> ParsedPrefix | None: ...
+    # Returns: ParsedPrefix(components, styles, trailing, title) or None
+    # Example: "1.2. Intro" → (["1", "2"], [arabic, arabic], ".", "Intro")
 def parse_heading(level: int, text: str) -> ParsedHeading: ...
 
 # === Inference Functions ===
@@ -552,9 +561,9 @@ CLI: --renumber-sections
 
 | Function | Input | Output | Tests |
 |----------|-------|--------|-------|
-| `extract_section_prefix()` | `"1. Intro"` | `([1], ".", "Intro")` | Integer pattern |
-| `extract_section_prefix()` | `"1.2 Details"` | `([1, 2], "", "Details")` | Decimal pattern |
-| `extract_section_prefix()` | `"1.2) Details"` | `([1, 2], ")", "Details")` | Paren separator |
+| `extract_section_prefix()` | `"1. Intro"` | `(["1"], [arabic], ".", "Intro")` | Arabic single |
+| `extract_section_prefix()` | `"1.2 Details"` | `(["1", "2"], [arabic, arabic], "", "Details")` | Arabic decimal |
+| `extract_section_prefix()` | `"I.A Details"` | `(["I", "A"], [roman_upper, alpha_upper], "", "Details")` | Mixed styles |
 | `extract_section_prefix()` | `"Background"` | `None` | No prefix |
 | `SectionNumFormat.format_string()` | H2 format | `"{h1:arabic}.{h2:arabic}"` | String repr |
 | `SectionNumFormat.format_number()` | `[2, 3, 0, 0, 0, 0]` | `"2.3"` | Number formatting |
