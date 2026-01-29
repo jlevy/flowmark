@@ -765,6 +765,8 @@ class TestInferSectionConvention:
         conv = infer_section_convention(headings)
         assert conv.is_active
         assert conv.max_depth == 2
+        assert conv.levels[0] is not None
+        assert conv.levels[1] is not None
         assert conv.levels[0].format_string() == "{h1:roman_upper}."
         # Note: H2s here have format like I.A where A, B are NOT Roman-only, so they stay alpha_upper
         assert conv.levels[1].format_string() == "{h1:roman_upper}.{h2:alpha_upper}"
@@ -936,6 +938,7 @@ class TestNormalizeConvention:
             levels=(fmt, None, None, None, None, None)
         )
         result = normalize_convention(conv)
+        assert result.levels[0] is not None
         assert result.levels[0].trailing == "."
 
     def test_empty_to_period_for_h1(self) -> None:
@@ -948,6 +951,7 @@ class TestNormalizeConvention:
             levels=(fmt, None, None, None, None, None)
         )
         result = normalize_convention(conv)
+        assert result.levels[0] is not None
         assert result.levels[0].trailing == "."
 
     def test_h2_decimal_stays_empty(self) -> None:
@@ -967,6 +971,8 @@ class TestNormalizeConvention:
             levels=(fmt1, fmt2, None, None, None, None)
         )
         result = normalize_convention(conv)
+        assert result.levels[0] is not None
+        assert result.levels[1] is not None
         # H1 should have trailing period
         assert result.levels[0].trailing == "."
         # H2 should have no trailing (decimal format)
@@ -989,6 +995,7 @@ class TestNormalizeConvention:
             levels=(fmt1, fmt2, None, None, None, None)
         )
         result = normalize_convention(conv)
+        assert result.levels[1] is not None
         # H2 decimal should have no trailing
         assert result.levels[1].trailing == ""
 
@@ -1017,6 +1024,9 @@ class TestNormalizeConvention:
             levels=(fmt1, fmt2, fmt3, None, None, None)
         )
         result = normalize_convention(conv)
+        assert result.levels[0] is not None
+        assert result.levels[1] is not None
+        assert result.levels[2] is not None
         assert result.levels[0].trailing == "."
         assert result.levels[1].trailing == ""
         assert result.levels[2].trailing == ""
@@ -1038,6 +1048,8 @@ class TestNormalizeConvention:
             levels=(fmt1, fmt2, None, None, None, None)
         )
         result = normalize_convention(conv)
+        assert result.levels[0] is not None
+        assert result.levels[1] is not None
         assert result.levels[0].trailing == "."
         assert result.levels[1].trailing == ""
 

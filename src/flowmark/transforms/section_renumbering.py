@@ -31,11 +31,13 @@ def _get_heading_text(heading: block.Heading) -> str:
         if isinstance(element, inline.RawText):
             assert isinstance(element.children, str)
             text_parts.append(element.children)
-        elif hasattr(element, "children") and isinstance(element.children, list):
-            for child in element.children:
-                collect_text(child)
-        elif hasattr(element, "children") and isinstance(element.children, str):
-            text_parts.append(element.children)
+        else:
+            children = getattr(element, "children", None)
+            if isinstance(children, list):
+                for child in children:
+                    collect_text(child)
+            elif isinstance(children, str):
+                text_parts.append(children)
 
     collect_text(heading)
     return "".join(text_parts)
@@ -54,16 +56,19 @@ def _set_heading_text(heading: block.Heading, new_text: str) -> None:
         if isinstance(element, inline.RawText):
             element.children = new_text
             return True
-        elif hasattr(element, "children") and isinstance(element.children, list):
-            for child in element.children:
-                if find_and_replace(child):
-                    return True
+        else:
+            children = getattr(element, "children", None)
+            if isinstance(children, list):
+                for child in children:
+                    if find_and_replace(child):
+                        return True
         return False
 
     # Try to find and replace existing RawText
     if not find_and_replace(heading):
-        # If no RawText found, create one
-        raw_text = inline.RawText()
+        # If no RawText found, create one by setting children directly
+        # We create an object that acts like RawText
+        raw_text = inline.RawText.__new__(inline.RawText)
         raw_text.children = new_text
         heading.children = [raw_text]
 
@@ -89,9 +94,11 @@ def apply_section_renumbering(doc: Document) -> None:
         if isinstance(element, block.Heading):
             text = _get_heading_text(element)
             headings.append((element.level, text, element))
-        elif hasattr(element, "children") and isinstance(element.children, list):
-            for child in element.children:
-                collect_headings(child)
+        else:
+            children = getattr(element, "children", None)
+            if isinstance(children, list):
+                for child in children:
+                    collect_headings(child)
 
     collect_headings(doc)
 
