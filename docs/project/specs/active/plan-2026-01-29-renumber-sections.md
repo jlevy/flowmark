@@ -119,31 +119,56 @@ Example:
 - After hierarchical check: H1=`arabic_integer`, H2=`none`, H3=`none`
   (H3 disabled because H2 is `none`)
 
-### Numeric Prefix Patterns
+### Recognized Patterns (Current Scope)
 
-**Integer pattern** (for H1, typically):
-```
-^(\d+)[.\):\s]\s*(.+)$
-```
-Matches: `1.`, `1)`, `1:`, `1 ` followed by title
+**IMPORTANT**: The current implementation recognizes **only** the following patterns.
+This is intentional and well-defined. Future extensions may add Roman numerals,
+alphabetic numbering, etc., but for now we are conservative.
 
-**Decimal pattern** (for H2+, hierarchical):
+**Recognized patterns:**
+
+| Style | Pattern | Examples | Recognized? |
+|-------|---------|----------|-------------|
+| `arabic_integer` | Integer with optional `.` or `)` | `1.`, `1)`, `1 `, `1` | ✓ |
+| `arabic_decimal` | Decimal with optional `.` or `)` | `1.2`, `1.2.`, `1.2)`, `1.2 ` | ✓ |
+| Roman numerals | `I.`, `II.`, `III.` | - | ✗ (future) |
+| Alphabetic | `A.`, `B.`, `a)`, `b)` | - | ✗ (future) |
+
+**Regex patterns:**
+
+```python
+# Integer pattern (for H1, typically)
+# Matches: 1, 1., 1), 1 followed by title
+INTEGER_PATTERN = r'^(\d+)[.\):]?\s+(.+)$'
+
+# Decimal pattern (for H2+, hierarchical)
+# Matches: 1.2, 1.2., 1.2), 1.2.3, 1.2.3. followed by title
+DECIMAL_PATTERN = r'^(\d+(?:\.\d+)+)[.\):]?\s+(.+)$'
 ```
-^(\d+(?:\.\d+)+)[.\):\s]?\s*(.+)$
-```
-Matches: `1.2`, `1.2.3`, `7.18.3` optionally followed by separator and title
+
+**What we do NOT recognize (by design):**
+- Roman numerals: `I.`, `II.`, `III.`, `i.`, `ii.`
+- Alphabetic: `A.`, `B.`, `a)`, `b)`
+- Mixed: `1.A`, `I.1`
+- Non-standard separators: `1:`, `1-`
 
 ### Style Inference Rules
 
 1. **H1 headings**: If pattern matches integer → `arabic_integer`
-2. **H2+ headings**: If pattern matches decimal with N components → `arabic_decimal`
+2. **H2+ headings**: If pattern matches decimal → `arabic_decimal`
 3. **No match or inconsistent**: `none` for that level
 
 Examples of prefix extraction:
-- `# 1. Introduction` → H1, style: `arabic_integer`, number: `1`, title: `Introduction`
-- `## 1.2 Background` → H2, style: `arabic_decimal`, number: `1.2`, title: `Background`
-- `### 7.18.3 Details` → H3, style: `arabic_decimal`, number: `7.18.3`, title: `Details`
-- `## Background` → H2, style: `none` (no prefix)
+- `# 1. Introduction` → `arabic_integer`, number: `1`, title: `Introduction`
+- `# 1) Introduction` → `arabic_integer`, number: `1`, title: `Introduction`
+- `# 1 Introduction` → `arabic_integer`, number: `1`, title: `Introduction`
+- `## 1.2 Background` → `arabic_decimal`, number: `1.2`, title: `Background`
+- `## 1.2. Background` → `arabic_decimal`, number: `1.2`, title: `Background`
+- `## 1.2) Background` → `arabic_decimal`, number: `1.2`, title: `Background`
+- `### 7.18.3 Details` → `arabic_decimal`, number: `7.18.3`, title: `Details`
+- `## Background` → `none` (no prefix)
+- `# I. Introduction` → `none` (Roman not supported yet)
+- `# A. Introduction` → `none` (alphabetic not supported yet)
 
 ## Inferred Numbering Conventions
 
@@ -242,18 +267,40 @@ class SectionNumConvention:
 
 ### Normalization Rules
 
-When renumbering, we normalize to consistent conventions:
+**When we recognize a pattern, we normalize to a consistent convention.**
+
+The only normalization we currently perform is the trailing character:
 
 1. **Trailing character**: Always normalize to `.` (period)
-   - Input: `1) Intro` or `1 Intro` → Output: `1. Intro`
+   - `1)` → `1.`
+   - `1` (no trailing) → `1.`
+   - `1.` → `1.` (unchanged)
+   - `1.2)` → `1.2`
+   - `1.2` (no trailing) → `1.2` (unchanged for decimals)
    - Rationale: Period is the most traditional and readable separator
 
-2. **Spacing**: Always one space after the trailing character
+2. **Spacing**: Always one space after the number/trailing character
    - Input: `1.Intro` → Output: `1. Intro`
 
-3. **Decimal format**: Use minimal dots (no trailing dot in decimals)
+3. **Decimal format**: No trailing dot on decimals (the dots are internal separators)
    - `1.2` not `1.2.` for H2 under H1
    - `1.2.3` not `1.2.3.` for H3 under H2
+
+**Normalization examples:**
+
+| Input | Output | Notes |
+|-------|--------|-------|
+| `# 1. Intro` | `# 1. Intro` | Already normalized |
+| `# 1) Intro` | `# 1. Intro` | `)` → `.` |
+| `# 1 Intro` | `# 1. Intro` | Add trailing `.` |
+| `## 1.2 Details` | `## 1.2 Details` | Already normalized |
+| `## 1.2. Details` | `## 1.2 Details` | Remove trailing `.` |
+| `## 1.2) Details` | `## 1.2 Details` | Remove `)` |
+
+**IMPORTANT**: Normalization only happens for patterns we recognize. If a document
+uses Roman numerals (`I.`, `II.`) or alphabetic (`A.`, `B.`), we do NOT recognize
+the pattern, so no renumbering or normalization occurs. The document passes through
+unchanged.
 
 ## Architecture
 
