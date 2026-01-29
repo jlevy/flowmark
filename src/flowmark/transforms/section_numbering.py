@@ -311,9 +311,7 @@ _COMPONENT = rf"({_ARABIC}|{_ROMAN_UPPER}|{_ROMAN_LOWER}|{_ALPHA_UPPER}|{_ALPHA_
 # Full number pattern: one or more components separated by dots
 # with optional trailing . or )
 # Captures: (full_number_with_dots)(trailing)(space+title)
-_NUMBER_PATTERN = re.compile(
-    rf"^({_COMPONENT}(?:\.{_COMPONENT})*)" r"([.\)])?" r"\s+" r"(.+)$"
-)
+_NUMBER_PATTERN = re.compile(rf"^({_COMPONENT}(?:\.{_COMPONENT})*)" r"([.\)])?" r"\s+" r"(.+)$")
 
 
 def extract_section_prefix(text: str) -> ParsedPrefix | None:
@@ -354,4 +352,368 @@ def extract_section_prefix(text: str) -> ParsedPrefix | None:
         styles=styles,
         trailing=trailing,
         title=title,
+    )
+
+
+# === Convention Inference ===
+
+
+def _are_prefixes_compatible(p1: ParsedPrefix, p2: ParsedPrefix) -> bool:
+    """
+    Check if two prefixes are compatible (same structure and styles).
+
+    Two prefixes are compatible if:
+    - They have the same number of components
+    - Each component has the same style
+    """
+    if len(p1.components) != len(p2.components):
+        return False
+    if len(p1.styles) != len(p2.styles):
+        return False
+    for s1, s2 in zip(p1.styles, p2.styles, strict=True):
+        if s1 != s2:
+            return False
+    return True
+
+
+def _disambiguate_level_styles(
+    prefixes: list[ParsedPrefix],
+) -> list[ParsedPrefix]:
+    """
+    Apply level-wide disambiguation for Roman vs Alphabetic.
+
+    If any heading at this level contains non-Roman letters (A, B, E, F, G, etc.),
+    then all Roman-only letters (I, V, X, C, D, M) are reinterpreted as alphabetic.
+
+    This handles cases like "A, B, C, D" where C and D might be misread as Roman.
+    """
+    if not prefixes:
+        return prefixes
+
+    # For each component position, check if any prefix has non-Roman letters
+    num_components = len(prefixes[0].components)
+
+    for pos in range(num_components):
+        # Collect all styles at this position
+        styles_at_pos = [p.styles[pos] for p in prefixes if pos < len(p.styles)]
+
+        # Check if this position has a mix of Roman and non-Roman interpretations
+        has_roman_upper = NumberStyle.roman_upper in styles_at_pos
+        has_alpha_upper = NumberStyle.alpha_upper in styles_at_pos
+        has_roman_lower = NumberStyle.roman_lower in styles_at_pos
+        has_alpha_lower = NumberStyle.alpha_lower in styles_at_pos
+
+        # If we have both Roman and Alpha at same position, convert all to Alpha
+        if has_roman_upper and has_alpha_upper:
+            # Convert all roman_upper to alpha_upper at this position
+            for p in prefixes:
+                if pos < len(p.styles) and p.styles[pos] == NumberStyle.roman_upper:
+                    p.styles[pos] = NumberStyle.alpha_upper
+        if has_roman_lower and has_alpha_lower:
+            # Convert all roman_lower to alpha_lower at this position
+            for p in prefixes:
+                if pos < len(p.styles) and p.styles[pos] == NumberStyle.roman_lower:
+                    p.styles[pos] = NumberStyle.alpha_lower
+
+    return prefixes
+
+
+def infer_format_for_level(headings: list[tuple[int, str]], level: int) -> SectionNumFormat | None:
+    """
+    Infer the section number format for a specific heading level.
+
+    Applies the First-Two + Two-Thirds qualification rules:
+    1. First two headings at this level must have matching numeric prefixes
+    2. At least 2/3 (66%) of all headings at this level must have prefixes
+
+    Args:
+        headings: List of (level, text) tuples for all headings in the document.
+        level: The heading level to analyze (1-6).
+
+    Returns:
+        SectionNumFormat if the level qualifies, None otherwise.
+    """
+    # Filter headings to this level
+    level_headings = [(lvl, text) for lvl, text in headings if lvl == level]
+
+    if len(level_headings) < 2:
+        return None
+
+    # Parse prefixes for all headings at this level
+    parsed: list[tuple[int, str, ParsedPrefix | None]] = []
+    for lvl, text in level_headings:
+        prefix = extract_section_prefix(text)
+        parsed.append((lvl, text, prefix))
+
+    # First-two rule: first two must both have prefixes
+    if parsed[0][2] is None or parsed[1][2] is None:
+        return None
+
+    # Collect all valid prefixes
+    valid_prefixes = [p[2] for p in parsed if p[2] is not None]
+
+    # Apply level-wide disambiguation (Roman vs Alpha) BEFORE compatibility check
+    valid_prefixes = _disambiguate_level_styles(valid_prefixes)
+
+    # Two-thirds rule: at least 66% must have prefixes
+    total = len(parsed)
+    with_prefix = len(valid_prefixes)
+    if with_prefix / total < 2 / 3:
+        return None
+
+    # First-two rule: prefixes must be compatible (same structure and styles)
+    # Check AFTER disambiguation
+    first_prefix = valid_prefixes[0]
+    second_prefix = valid_prefixes[1]
+
+    if not _are_prefixes_compatible(first_prefix, second_prefix):
+        return None
+
+    # Build FormatComponents from the prefix structure
+    components = []
+    for i, style in enumerate(first_prefix.styles):
+        # Component level is i+1 for the i-th component
+        # e.g., "1.2" has components [h1, h2] for levels 1 and 2
+        component_level = i + 1
+        components.append(FormatComponent(level=component_level, style=style))
+
+    # Determine trailing character (use first prefix's trailing, normalized later)
+    trailing = first_prefix.trailing
+
+    return SectionNumFormat(components=components, trailing=trailing)
+
+
+def infer_section_convention(
+    headings: list[tuple[int, str]],
+) -> SectionNumConvention:
+    """
+    Infer the complete section numbering convention for a document.
+
+    Analyzes headings at each level (H1-H6) and returns a convention
+    describing the numbering format at each level.
+
+    Args:
+        headings: List of (level, text) tuples for all headings in the document.
+
+    Returns:
+        SectionNumConvention with format for each level (or None for unnumbered levels).
+    """
+    levels: list[SectionNumFormat | None] = []
+
+    for level in range(1, 7):
+        fmt = infer_format_for_level(headings, level)
+        levels.append(fmt)
+
+    return SectionNumConvention(
+        levels=(levels[0], levels[1], levels[2], levels[3], levels[4], levels[5])
+    )
+
+
+def renumber_headings(
+    headings: list[tuple[int, str]],
+) -> list[tuple[int, str]]:
+    """
+    Top-level API to renumber section headings.
+
+    Takes a list of (level, text) tuples and returns them with corrected
+    section numbers, if the document qualifies for renumbering.
+
+    Args:
+        headings: List of (level, text) tuples representing headings.
+
+    Returns:
+        List of (level, text) tuples with renumbered headings.
+        If the document doesn't qualify, returns the original list unchanged.
+    """
+    # Infer convention from headings
+    convention = infer_section_convention(headings)
+
+    # Apply hierarchical constraint
+    convention = apply_hierarchical_constraint(convention)
+
+    # Normalize trailing characters
+    convention = normalize_convention(convention)
+
+    # If no active convention, return unchanged
+    if not convention.is_active:
+        return headings
+
+    # Create renumberer and process headings
+    renumberer = SectionRenumberer(convention)
+    result: list[tuple[int, str]] = []
+
+    for level, text in headings:
+        fmt = convention.levels[level - 1]
+
+        if fmt is None:
+            # Level not numbered, pass through unchanged
+            result.append((level, text))
+        else:
+            # Extract prefix from heading
+            prefix = extract_section_prefix(text)
+            if prefix is None:
+                # Heading doesn't have a prefix, pass through unchanged
+                result.append((level, text))
+            else:
+                # Renumber the heading
+                new_text = renumberer.format_heading(level, prefix.title)
+                result.append((level, new_text))
+
+    return result
+
+
+class SectionRenumberer:
+    """
+    Renumbers section headings according to a convention.
+
+    Tracks counters for each heading level and generates sequential numbers.
+    When a shallower heading is encountered, deeper level counters are reset.
+
+    Usage:
+        renumberer = SectionRenumberer(convention)
+        new_h1 = renumberer.format_heading(1, "Introduction")  # "1. Introduction"
+        new_h2 = renumberer.format_heading(2, "Background")    # "1.1 Background"
+    """
+
+    def __init__(self, convention: SectionNumConvention) -> None:
+        """
+        Initialize the renumberer with a convention.
+
+        Args:
+            convention: The section numbering convention to use.
+        """
+        self.convention = convention
+        # Counters for each level (H1-H6), initialized to 0
+        self.counters = [0, 0, 0, 0, 0, 0]
+
+    def next_number(self, level: int) -> str:
+        """
+        Generate the next number for a heading level.
+
+        Increments the counter for the level and resets all deeper levels.
+
+        Args:
+            level: Heading level (1-6).
+
+        Returns:
+            Formatted number string (e.g., "1.", "1.1", "II.A").
+        """
+        if level < 1 or level > 6:
+            raise ValueError(f"Level must be 1-6, got {level}")
+
+        fmt = self.convention.levels[level - 1]
+        if fmt is None:
+            return ""
+
+        # Increment this level's counter
+        self.counters[level - 1] += 1
+
+        # Reset all deeper level counters
+        for i in range(level, 6):
+            self.counters[i] = 0
+
+        # Format the number using the convention
+        return fmt.format_number(self.counters)
+
+    def format_heading(self, level: int, title: str) -> str:
+        """
+        Format a complete heading with number and title.
+
+        Args:
+            level: Heading level (1-6).
+            title: The heading text (without number prefix).
+
+        Returns:
+            Complete heading text (e.g., "1. Introduction").
+            If the level is not numbered, returns just the title.
+        """
+        fmt = self.convention.levels[level - 1]
+        if fmt is None:
+            return title
+
+        number = self.next_number(level)
+        # Add space between number and title
+        # The trailing char is already in the number (e.g., "1." or "1.1")
+        if number:
+            return f"{number} {title}"
+        return title
+
+
+def normalize_convention(
+    convention: SectionNumConvention,
+) -> SectionNumConvention:
+    """
+    Normalize a convention to use consistent trailing characters.
+
+    Normalization rules:
+    - Single-component formats (H1 style): trailing becomes "."
+    - Multi-component formats (decimal style like "1.2"): trailing becomes ""
+
+    Args:
+        convention: The convention to normalize.
+
+    Returns:
+        A new convention with normalized trailing characters.
+    """
+    levels: list[SectionNumFormat | None] = []
+
+    for fmt in convention.levels:
+        if fmt is None:
+            levels.append(None)
+        else:
+            # Single component (like "1.") gets trailing "."
+            # Multi-component (like "1.2") gets no trailing
+            if len(fmt.components) == 1:
+                normalized_trailing = "."
+            else:
+                normalized_trailing = ""
+
+            levels.append(
+                SectionNumFormat(
+                    components=fmt.components,
+                    trailing=normalized_trailing,
+                )
+            )
+
+    return SectionNumConvention(
+        levels=(levels[0], levels[1], levels[2], levels[3], levels[4], levels[5])
+    )
+
+
+def apply_hierarchical_constraint(
+    convention: SectionNumConvention,
+) -> SectionNumConvention:
+    """
+    Apply the hierarchical constraint to a convention.
+
+    Conventions must be contiguous starting from H1:
+    - H1 only: valid
+    - H1 + H2: valid
+    - H1 + H2 + H3: valid
+    - H2 only (no H1): invalid, all become None
+    - H1 + H3 (gap at H2): invalid, H3+ become None
+
+    Args:
+        convention: The raw convention from inference.
+
+    Returns:
+        A new convention with gaps filled (levels after first gap set to None).
+    """
+    levels = list(convention.levels)
+
+    # Find the first gap in the contiguous chain from H1
+    # If H1 is None, all levels become None
+    first_gap = 0
+    for i in range(6):
+        if levels[i] is None:
+            first_gap = i
+            break
+        first_gap = i + 1
+
+    # Set all levels from the first gap onward to None
+    for i in range(first_gap, 6):
+        levels[i] = None
+
+    return SectionNumConvention(
+        levels=(levels[0], levels[1], levels[2], levels[3], levels[4], levels[5])
     )

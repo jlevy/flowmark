@@ -66,6 +66,7 @@ class Options:
     cleanups: bool
     smartquotes: bool
     ellipses: bool
+    renumber_sections: bool
     inplace: bool
     nobackup: bool
     version: bool
@@ -148,6 +149,14 @@ def _parse_args(args: list[str] | None = None) -> Options:
         "(default: %(default)s)",
     )
     parser.add_argument(
+        "--renumber-sections",
+        action="store_true",
+        default=False,
+        help="Automatically renumber section headings in documents that use numbered sections "
+        "(e.g., 1., 1.1, 1.2). Only applies when a clear numbering pattern is detected "
+        "(only applies to Markdown mode)",
+    )
+    parser.add_argument(
         "-i", "--inplace", action="store_true", help="Edit the file in place (ignores --output)"
     )
     parser.add_argument(
@@ -158,8 +167,8 @@ def _parse_args(args: list[str] | None = None) -> Options:
     parser.add_argument(
         "--auto",
         action="store_true",
-        help="Same as `--inplace --nobackup --semantic --cleanups --smartquotes --ellipses`, as a convenience for "
-        "fully auto-formatting files",
+        help="Same as `--inplace --nobackup --semantic --cleanups --smartquotes --ellipses "
+        "--renumber-sections`, as a convenience for fully auto-formatting files",
     )
     parser.add_argument(
         "--version",
@@ -175,6 +184,7 @@ def _parse_args(args: list[str] | None = None) -> Options:
         opts.cleanups = True
         opts.smartquotes = True
         opts.ellipses = True
+        opts.renumber_sections = True
 
     return Options(
         files=opts.files,
@@ -185,6 +195,7 @@ def _parse_args(args: list[str] | None = None) -> Options:
         cleanups=opts.cleanups,
         smartquotes=opts.smartquotes,
         ellipses=opts.ellipses,
+        renumber_sections=opts.renumber_sections,
         inplace=opts.inplace,
         nobackup=opts.nobackup,
         version=opts.version,
@@ -225,6 +236,7 @@ def main(args: list[str] | None = None) -> int:
             cleanups=options.cleanups,
             smartquotes=options.smartquotes,
             ellipses=options.ellipses,
+            renumber_sections=options.renumber_sections,
             make_parents=True,
             list_spacing=options.list_spacing,
         )

@@ -25,6 +25,7 @@ from flowmark.linewrapping.tag_handling import preprocess_tag_block_spacing
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 from flowmark.transforms.doc_cleanups import doc_cleanups
 from flowmark.transforms.doc_transforms import rewrite_text_content
+from flowmark.transforms.section_renumbering import apply_section_renumbering
 from flowmark.typography.ellipses import ellipses as apply_ellipses
 from flowmark.typography.smartquotes import smart_quotes
 
@@ -41,6 +42,7 @@ def fill_markdown(
     cleanups: bool = False,
     smartquotes: bool = False,
     ellipses: bool = False,
+    renumber_sections: bool = False,
     line_wrapper: LineWrapper | None = None,
     list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> str:
@@ -98,6 +100,8 @@ def fill_markdown(
         rewrite_text_content(document, smart_quotes, coalesce_lines=True)
     if ellipses:
         rewrite_text_content(document, apply_ellipses, coalesce_lines=True)
+    if renumber_sections:
+        apply_section_renumbering(document)
     result = marko.render(document)
 
     # Reattach frontmatter if it was present
