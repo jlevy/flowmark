@@ -172,49 +172,93 @@ Examples of prefix extraction:
 
 ## Inferred Numbering Conventions
 
-To preserve the document's existing style, we analyze each heading level independently and
-infer per-level conventions.
+To preserve the document's existing style, we analyze heading levels and infer a
+**format string** that describes the numbering convention.
 
-### `SectionNumStyle` Enum
+### Format String Representation
 
-Each heading level can have one of these numbering styles:
+Instead of enum values, we use a format string that explicitly describes the structure:
 
-```python
-class SectionNumStyle(str, Enum):
-    """
-    The numbering style for a single heading level.
-    """
-    none = "none"                    # No numbering at this level
-    arabic_integer = "arabic_integer"  # Simple integer: 1, 2, 3
-    arabic_decimal = "arabic_decimal"  # Hierarchical decimal: 1.1, 1.2.3
-
-    # Future extensions:
-    # roman_upper = "roman_upper"    # I, II, III
-    # roman_lower = "roman_lower"    # i, ii, iii
-    # alpha_upper = "alpha_upper"    # A, B, C
-    # alpha_lower = "alpha_lower"    # a, b, c
+```
+"{h1:arabic}."                      # H1 only: 1., 2., 3.
+"{h1:arabic}.{h2:arabic}"           # H1+H2: 1.1, 1.2, 2.1
+"{h1:arabic}.{h2:arabic}.{h3:arabic}"  # H1+H2+H3: 1.1.1, 1.1.2
 ```
 
-**Style meanings:**
-- `none`: This heading level has no numeric prefix (e.g., `## Background`)
-- `arabic_integer`: Simple integer prefix (e.g., `# 1. Introduction`, `# 2. Design`)
-- `arabic_decimal`: Hierarchical decimal prefix (e.g., `## 1.1 Overview`, `### 2.3.1 Details`)
+This is self-documenting and extensible for future number styles (roman, alpha).
 
-### `SectionLevelConfig` Data Structure
+### `NumberStyle` Enum
 
-Configuration for a single heading level:
+The style of numbers (extensible for future):
+
+```python
+class NumberStyle(str, Enum):
+    """Number style within a format component."""
+    arabic = "arabic"      # 1, 2, 3 (currently supported)
+    # Future:
+    # roman_upper = "roman_upper"  # I, II, III
+    # roman_lower = "roman_lower"  # i, ii, iii
+    # alpha_upper = "alpha_upper"  # A, B, C
+    # alpha_lower = "alpha_lower"  # a, b, c
+```
+
+### `FormatComponent` Data Structure
+
+A single component of the format string:
 
 ```python
 @dataclass
-class SectionLevelConfig:
+class FormatComponent:
     """
-    Numbering configuration for a single heading level (H1-H6).
-    """
-    style: SectionNumStyle
+    One component of a section number format.
 
-    # The trailing character after the number (typically ".")
-    # Only meaningful when style != none
-    trailing_char: str = "."
+    Examples:
+    - FormatComponent(level=1, style=NumberStyle.arabic) → "{h1:arabic}"
+    - FormatComponent(level=2, style=NumberStyle.arabic) → "{h2:arabic}"
+    """
+    level: int              # 1-6 for H1-H6
+    style: NumberStyle      # Currently always "arabic"
+```
+
+### `SectionNumFormat` Data Structure
+
+The complete format for a heading level:
+
+```python
+@dataclass
+class SectionNumFormat:
+    """
+    The inferred format for section numbers at a given heading level.
+
+    Examples:
+    - H1: components=[h1:arabic], trailing="." → "1.", "2.", "3."
+    - H2: components=[h1:arabic, h2:arabic], trailing="" → "1.1", "1.2", "2.1"
+    - H3: components=[h1:arabic, h2:arabic, h3:arabic], trailing="" → "1.1.1"
+    """
+    # The components that make up the number (e.g., [h1, h2] for "1.2")
+    components: list[FormatComponent]
+
+    # The trailing character after the final number (typically "." for H1, "" for H2+)
+    trailing: str
+
+    def format_string(self) -> str:
+        """
+        Return the format as a string like "{h1:arabic}.{h2:arabic}".
+        """
+        parts = [f"{{h{c.level}:{c.style.value}}}" for c in self.components]
+        result = ".".join(parts)
+        if self.trailing:
+            result += self.trailing
+        return result
+
+    def format_number(self, counters: list[int]) -> str:
+        """
+        Format counters according to this format.
+
+        Example: counters=[2, 3, 0, 0, 0, 0] with H2 format → "2.3"
+        """
+        parts = [str(counters[c.level - 1]) for c in self.components]
+        return ".".join(parts) + self.trailing
 ```
 
 ### `SectionNumConvention` Data Structure
@@ -227,27 +271,25 @@ class SectionNumConvention:
     """
     Represents the inferred numbering conventions for a document's sections.
 
-    Contains per-level configuration for H1 through H6.
+    Contains the format for each heading level (H1-H6).
+    None means the level is not numbered.
     """
-    # Configuration for each heading level (index 0 = H1, index 5 = H6)
+    # Format for each heading level (index 0 = H1, index 5 = H6)
+    # None means the level is not numbered
     levels: tuple[
-        SectionLevelConfig,  # H1
-        SectionLevelConfig,  # H2
-        SectionLevelConfig,  # H3
-        SectionLevelConfig,  # H4
-        SectionLevelConfig,  # H5
-        SectionLevelConfig,  # H6
+        SectionNumFormat | None,  # H1
+        SectionNumFormat | None,  # H2
+        SectionNumFormat | None,  # H3
+        SectionNumFormat | None,  # H4
+        SectionNumFormat | None,  # H5
+        SectionNumFormat | None,  # H6
     ]
 
     @property
     def max_depth(self) -> int:
-        """
-        The deepest heading level with numbering (1-6), or 0 if no numbering.
-
-        A document is "active" for renumbering if max_depth >= 1.
-        """
-        for i in range(5, -1, -1):  # Check H6 down to H1
-            if self.levels[i].style != SectionNumStyle.none:
+        """The deepest heading level with numbering (1-6), or 0 if no numbering."""
+        for i in range(5, -1, -1):
+            if self.levels[i] is not None:
                 return i + 1
         return 0
 
@@ -255,15 +297,58 @@ class SectionNumConvention:
     def is_active(self) -> bool:
         """Whether this document qualifies for section renumbering."""
         return self.max_depth >= 1
+
+    def __str__(self) -> str:
+        """Human-readable representation of the convention."""
+        parts = []
+        for i, fmt in enumerate(self.levels):
+            if fmt is not None:
+                parts.append(f"H{i+1}: {fmt.format_string()}")
+        return ", ".join(parts) if parts else "none"
 ```
 
 ### Common Patterns
 
-| Pattern | H1 | H2 | H3 | H4-H6 | Example |
-|---------|----|----|----|----|---------|
-| H1 only | `arabic_integer` | `none` | `none` | `none` | `# 1. Intro`, `## Background` |
-| H1+H2 | `arabic_integer` | `arabic_decimal` | `none` | `none` | `# 1. Intro`, `## 1.1 Details` |
-| H1+H2+H3 | `arabic_integer` | `arabic_decimal` | `arabic_decimal` | `none` | `# 1.`, `## 1.1`, `### 1.1.1` |
+| Pattern | H1 Format | H2 Format | H3 Format | Example Output |
+|---------|-----------|-----------|-----------|----------------|
+| H1 only | `{h1:arabic}.` | None | None | `1.`, `2.`, `3.` |
+| H1+H2 | `{h1:arabic}.` | `{h1:arabic}.{h2:arabic}` | None | `1.`, `1.1`, `1.2` |
+| H1+H2+H3 | `{h1:arabic}.` | `{h1:arabic}.{h2:arabic}` | `{h1:arabic}.{h2:arabic}.{h3:arabic}` | `1.`, `1.1`, `1.1.1` |
+
+### Inference Example
+
+Given a document:
+```markdown
+# 1. Introduction
+## 1.1 Background
+## 1.2 Motivation
+# 2. Design
+## 2.1 Architecture
+```
+
+Inferred convention:
+```python
+SectionNumConvention(
+    levels=(
+        SectionNumFormat(  # H1
+            components=[FormatComponent(1, NumberStyle.arabic)],
+            trailing="."
+        ),
+        SectionNumFormat(  # H2
+            components=[
+                FormatComponent(1, NumberStyle.arabic),
+                FormatComponent(2, NumberStyle.arabic),
+            ],
+            trailing=""
+        ),
+        None,  # H3
+        None,  # H4
+        None,  # H5
+        None,  # H6
+    )
+)
+# String representation: "H1: {h1:arabic}., H2: {h1:arabic}.{h2:arabic}"
+```
 
 ### Normalization Rules
 
@@ -324,17 +409,20 @@ This module is self-contained with:
 # src/flowmark/transforms/section_numbering.py
 
 # === Data Structures ===
-class SectionNumStyle(str, Enum): ...
-@dataclass class SectionLevelConfig: ...
-@dataclass class SectionNumConvention: ...
-@dataclass class ParsedHeading: ...
+class NumberStyle(str, Enum): ...           # arabic (future: roman, alpha)
+@dataclass class FormatComponent: ...       # {h1:arabic} component
+@dataclass class SectionNumFormat: ...      # Full format for one level
+@dataclass class SectionNumConvention: ...  # Convention for all 6 levels
+@dataclass class ParsedHeading: ...         # Parsed heading with extracted prefix
 
 # === Parsing Functions ===
-def extract_section_prefix(text: str) -> tuple[SectionNumStyle, str, str] | None: ...
+def extract_section_prefix(text: str) -> tuple[list[int], str, str] | None: ...
+    # Returns: (number_parts, trailing_char, title) or None
+    # Example: "1.2. Intro" → ([1, 2], ".", "Intro")
 def parse_heading(level: int, text: str) -> ParsedHeading: ...
 
 # === Inference Functions ===
-def infer_level_convention(headings: list[ParsedHeading], level: int) -> SectionLevelConfig: ...
+def infer_format_for_level(headings: list[ParsedHeading], level: int) -> SectionNumFormat | None: ...
 def infer_section_convention(headings: list[ParsedHeading]) -> SectionNumConvention: ...
 def apply_hierarchical_constraint(convention: SectionNumConvention) -> SectionNumConvention: ...
 def normalize_convention(convention: SectionNumConvention) -> SectionNumConvention: ...
@@ -342,7 +430,7 @@ def normalize_convention(convention: SectionNumConvention) -> SectionNumConventi
 # === Renumbering Functions ===
 class SectionRenumberer:
     def __init__(self, convention: SectionNumConvention): ...
-    def next_number(self, level: int) -> str: ...
+    def next_number(self, level: int) -> str: ...      # Increment and format
     def format_heading(self, level: int, title: str) -> str: ...
 
 # === Top-Level API ===
@@ -390,14 +478,17 @@ CLI: --renumber-sections
 
 | Function | Input | Output | Tests |
 |----------|-------|--------|-------|
-| `extract_section_prefix()` | `"1. Intro"` | `(arabic_integer, "1", "Intro")` | Pattern matching |
-| `extract_section_prefix()` | `"1.2 Details"` | `(arabic_decimal, "1.2", "Details")` | Decimal patterns |
+| `extract_section_prefix()` | `"1. Intro"` | `([1], ".", "Intro")` | Integer pattern |
+| `extract_section_prefix()` | `"1.2 Details"` | `([1, 2], "", "Details")` | Decimal pattern |
+| `extract_section_prefix()` | `"1.2) Details"` | `([1, 2], ")", "Details")` | Paren separator |
 | `extract_section_prefix()` | `"Background"` | `None` | No prefix |
-| `infer_level_convention()` | List of H1s | `SectionLevelConfig` | 2/3 threshold |
+| `SectionNumFormat.format_string()` | H2 format | `"{h1:arabic}.{h2:arabic}"` | String repr |
+| `SectionNumFormat.format_number()` | `[2, 3, 0, 0, 0, 0]` | `"2.3"` | Number formatting |
+| `infer_format_for_level()` | List of H1s | `SectionNumFormat` or `None` | First-two + 2/3 |
 | `apply_hierarchical_constraint()` | Convention with gaps | Convention with gaps filled | Contiguity |
 | `normalize_convention()` | Convention | Convention with `.` trailing | Normalization |
-| `SectionRenumberer.next_number()` | level=1 | `"1"`, `"2"`, ... | Counter state |
-| `SectionRenumberer.format_heading()` | level=2, title="Foo" | `"1.1 Foo"` | Formatting |
+| `SectionRenumberer.next_number()` | level=1 | `"1."`, `"2."`, ... | Counter state |
+| `SectionRenumberer.format_heading()` | level=2, title="Foo" | `"1.1 Foo"` | Full heading |
 
 ### Section Renumbering State
 
@@ -422,36 +513,51 @@ All code goes in `src/flowmark/transforms/section_numbering.py` with tests in
 
 ### Phase 1: Core Data Structures
 
-- [ ] Add `SectionNumStyle` enum (`none`, `arabic_integer`, `arabic_decimal`)
-- [ ] Add `SectionLevelConfig` dataclass (style + trailing_char)
-- [ ] Add `SectionNumConvention` dataclass (tuple of 6 level configs)
-- [ ] Add `ParsedHeading` dataclass (level, original_text, style, number, title)
-- [ ] Unit tests: dataclass creation, `max_depth` property, `is_active` property
+- [ ] Add `NumberStyle` enum (`arabic`, future: `roman_upper`, `roman_lower`, etc.)
+- [ ] Add `FormatComponent` dataclass (level + style)
+- [ ] Add `SectionNumFormat` dataclass (components + trailing)
+  - `format_string()` method → `"{h1:arabic}.{h2:arabic}"`
+  - `format_number(counters)` method → `"1.2"`
+- [ ] Add `SectionNumConvention` dataclass (tuple of 6 formats, each `SectionNumFormat | None`)
+  - `max_depth` property
+  - `is_active` property
+  - `__str__` method for debugging
+- [ ] Add `ParsedHeading` dataclass (level, original_text, number_parts, trailing, title)
+- [ ] Unit tests: dataclass creation, format_string(), format_number(), max_depth, is_active
 
 ### Phase 2: Prefix Extraction (Parsing)
 
 - [ ] Implement `extract_section_prefix(text: str)` function
-  - Returns: `(SectionNumStyle, number_str, title)` or `None`
-  - Regex matches: integer (`1.`), decimal (`1.2`, `1.2.3`), various separators
+  - Returns: `(number_parts: list[int], trailing: str, title: str)` or `None`
+  - `number_parts`: The numeric components, e.g., `[1]` or `[1, 2]` or `[1, 2, 3]`
+  - `trailing`: The character after the number (`.`, `)`, or `""`)
+  - `title`: The heading text after the prefix
 - [ ] Unit tests for `extract_section_prefix()`:
-  - `"1. Intro"` → `(arabic_integer, "1", "Intro")`
-  - `"1) Intro"` → `(arabic_integer, "1", "Intro")`
-  - `"1 Intro"` → `(arabic_integer, "1", "Intro")`
-  - `"1.2 Details"` → `(arabic_decimal, "1.2", "Details")`
-  - `"1.2.3 Deep"` → `(arabic_decimal, "1.2.3", "Deep")`
-  - `"7.18 Big"` → `(arabic_decimal, "7.18", "Big")`
+  - `"1. Intro"` → `([1], ".", "Intro")`
+  - `"1) Intro"` → `([1], ")", "Intro")`
+  - `"1 Intro"` → `([1], "", "Intro")`
+  - `"1.2 Details"` → `([1, 2], "", "Details")`
+  - `"1.2. Details"` → `([1, 2], ".", "Details")`
+  - `"1.2) Details"` → `([1, 2], ")", "Details")`
+  - `"1.2.3 Deep"` → `([1, 2, 3], "", "Deep")`
+  - `"7.18 Big"` → `([7, 18], "", "Big")`
   - `"Background"` → `None`
   - `"The 1st Item"` → `None` (number not at start)
+  - `"I. Intro"` → `None` (Roman not supported)
+  - `"A. Intro"` → `None` (alphabetic not supported)
 
 ### Phase 3: Convention Inference
 
-- [ ] Implement `infer_level_convention(headings, level)` function
+- [ ] Implement `infer_format_for_level(headings, level)` function
   - Filters headings to given level
-  - Checks first-two rule: first two headings must have matching prefix
+  - Checks first-two rule: first two headings must have matching prefix structure
   - Checks two-thirds rule: ≥66% of all headings have prefix
-  - Returns `SectionLevelConfig`
+  - Returns `SectionNumFormat` or `None`
+  - The format is built from the number_parts structure:
+    - H1 with `[n]` → `SectionNumFormat([h1:arabic], trailing)`
+    - H2 with `[n, m]` → `SectionNumFormat([h1:arabic, h2:arabic], trailing)`
 - [ ] Implement `infer_section_convention(headings)` function
-  - Calls `infer_level_convention()` for each level H1-H6
+  - Calls `infer_format_for_level()` for each level H1-H6
   - Returns raw `SectionNumConvention`
 - [ ] Unit tests for first-two rule:
   - First two numbered → passes first-two
@@ -466,10 +572,10 @@ All code goes in `src/flowmark/transforms/section_numbering.py` with tests in
   - 2/4 (50%) → does not qualify
   - 4/6 (66%) → qualifies
   - 3/6 (50%) → does not qualify
-- [ ] Unit tests for pattern consistency:
-  - First two both `arabic_integer` → pattern is `arabic_integer`
-  - First two both `arabic_decimal` → pattern is `arabic_decimal`
-  - First two different patterns → level is `none`
+- [ ] Unit tests for format inference:
+  - H1s with `[1], [2], [3]` → format `{h1:arabic}.`
+  - H2s with `[1,1], [1,2], [2,1]` → format `{h1:arabic}.{h2:arabic}`
+  - First two with different structures (e.g., `[1]` and `[1,2]`) → `None`
 
 ### Phase 4: Hierarchical Constraint
 
