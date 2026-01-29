@@ -52,36 +52,72 @@ This will be exposed as:
 
 ### Per-Level Analysis
 
-For each heading level (H1-H6), we analyze whether **all headings at that level** have
-numeric prefixes. If they do, we determine the style (`arabic_integer` or `arabic_decimal`).
+For each heading level (H1-H6), we analyze whether a **sufficient majority** of headings
+have numeric prefixes. If they do, we determine the style (`arabic_integer` or
+`arabic_decimal`).
 
-The analysis is per-level and independent:
-- H1 might be numbered while H2 is not
-- H2 might be numbered while H3 is not
+### Qualification Rule (First-Two + Two-Thirds)
+
+A heading level qualifies for renumbering if **both** conditions are met:
+
+1. **First-two rule**: The **first two headings** at that level (in document order) must
+   have matching numeric prefixes with the same pattern
+2. **Two-thirds rule**: At least **2/3 (66%)** of all headings at that level must have
+   a matching numeric prefix
+
+This ensures:
+- We always have at least 2 numbered headings (from the first-two rule)
+- The document clearly follows a numbered pattern (from the two-thirds rule)
+- Occasional missing numbers don't break renumbering
+
+| Total Headings | First Two | 2/3 Threshold | Qualifies? |
+|----------------|-----------|---------------|------------|
+| 2 | Both numbered | 2/2 | ✓ |
+| 3 | Both numbered | 2/3 | ✓ |
+| 3 | First numbered, second not | - | ✗ (first-two fails) |
+| 4 | Both numbered | 3/4 | ✓ |
+| 4 | Both numbered | 2/4 | ✗ (2/3 fails) |
+| 5 | Both numbered | 4/5 | ✓ |
+| 6 | Both numbered | 4/6 | ✓ |
+| 1 | Only one heading | - | ✗ (need at least 2) |
+
+### Pattern Consistency
+
+The first two headings determine the pattern (style) for the level:
+
+- Both `1.`, `2.` → `arabic_integer`
+- Both `1.1`, `1.2` → `arabic_decimal`
+- `1.` and `1.1` → patterns don't match → level is `none`
+- `1.` and `II.` → patterns don't match → level is `none`
+
+Example:
+- H1s: `# 1. Intro`, `# 2. Design`, `# Conclusion` → First two match `arabic_integer`,
+  2/3 = 66% ✓ → H1 qualifies
+- H1s: `# 1. Intro`, `# Design`, `# 3. Conclusion` → First two don't both have prefix
+  → H1 is `none`
+
+### Hierarchical Constraint (Final Check)
+
+**Conventions must be contiguous starting from H1.** Valid configurations:
+
+- ✓ H1 only
+- ✓ H1 + H2
+- ✓ H1 + H2 + H3
+- ✓ H1 + H2 + H3 + H4
 - etc.
 
-### Qualifying Documents
+**Invalid configurations** (gaps or missing H1):
 
-A document qualifies for section renumbering if at least one heading level has consistent
-numbering (i.e., `max_depth >= 1`).
+- ✗ H2 only (missing H1)
+- ✗ H1 + H3 (missing H2)
+- ✗ H2 + H3 (missing H1)
 
-Examples:
+If a gap is detected, all levels from the gap onward are set to `none`.
 
-| Document | H1 Style | H2 Style | H3 Style | max_depth | Qualifies? |
-|----------|----------|----------|----------|-----------|------------|
-| All H1s numbered, all H2s numbered | `arabic_integer` | `arabic_decimal` | `none` | 2 | Yes |
-| All H1s numbered, H2s not numbered | `arabic_integer` | `none` | `none` | 1 | Yes |
-| Some H1s numbered, some not | `none` | `none` | `none` | 0 | No |
-| No headings numbered | `none` | `none` | `none` | 0 | No |
-
-**Key rules**:
-1. For a level to qualify as numbered, **all** headings at that level must have a numeric
-   prefix. If even one heading at a level lacks a prefix, that level is `none`.
-2. **Minimum threshold**: A level must have **2 or more headings** to qualify for
-   renumbering. A single numbered heading is not enough to infer a convention.
-
-This minimum threshold ensures very low false positive rates—a document won't accidentally
-trigger renumbering unless it clearly follows a numbered section pattern.
+Example:
+- Raw inference: H1=`arabic_integer`, H2=`none`, H3=`arabic_decimal`
+- After hierarchical check: H1=`arabic_integer`, H2=`none`, H3=`none`
+  (H3 disabled because H2 is `none`)
 
 ### Numeric Prefix Patterns
 
@@ -99,10 +135,9 @@ Matches: `1.2`, `1.2.3`, `7.18.3` optionally followed by separator and title
 
 ### Style Inference Rules
 
-1. **H1 headings**: If all H1s match integer pattern → `arabic_integer`
-2. **H2+ headings**: If all headings at level N match decimal pattern with N components
-   → `arabic_decimal`
-3. **Mixed or partial**: If not all headings at a level match → `none` for that level
+1. **H1 headings**: If pattern matches integer → `arabic_integer`
+2. **H2+ headings**: If pattern matches decimal with N components → `arabic_decimal`
+3. **No match or inconsistent**: `none` for that level
 
 Examples of prefix extraction:
 - `# 1. Introduction` → H1, style: `arabic_integer`, number: `1`, title: `Introduction`
@@ -222,6 +257,51 @@ When renumbering, we normalize to consistent conventions:
 
 ## Architecture
 
+### Self-Contained Module
+
+All section numbering logic lives in a single, testable module:
+
+```
+src/flowmark/transforms/section_numbering.py
+```
+
+This module is self-contained with:
+- Data structures (enums, dataclasses)
+- Parsing functions (regex-based extraction)
+- Inference functions (convention detection)
+- Renumbering functions (number generation)
+
+### Module Structure
+
+```python
+# src/flowmark/transforms/section_numbering.py
+
+# === Data Structures ===
+class SectionNumStyle(str, Enum): ...
+@dataclass class SectionLevelConfig: ...
+@dataclass class SectionNumConvention: ...
+@dataclass class ParsedHeading: ...
+
+# === Parsing Functions ===
+def extract_section_prefix(text: str) -> tuple[SectionNumStyle, str, str] | None: ...
+def parse_heading(level: int, text: str) -> ParsedHeading: ...
+
+# === Inference Functions ===
+def infer_level_convention(headings: list[ParsedHeading], level: int) -> SectionLevelConfig: ...
+def infer_section_convention(headings: list[ParsedHeading]) -> SectionNumConvention: ...
+def apply_hierarchical_constraint(convention: SectionNumConvention) -> SectionNumConvention: ...
+def normalize_convention(convention: SectionNumConvention) -> SectionNumConvention: ...
+
+# === Renumbering Functions ===
+class SectionRenumberer:
+    def __init__(self, convention: SectionNumConvention): ...
+    def next_number(self, level: int) -> str: ...
+    def format_heading(self, level: int, title: str) -> str: ...
+
+# === Top-Level API ===
+def renumber_headings(headings: list[tuple[int, str]]) -> list[tuple[int, str]]: ...
+```
+
 ### Processing Flow
 
 ```
@@ -231,30 +311,46 @@ CLI: --renumber-sections
     reformat_file()
          │
          ▼
-    [Pre-processing step: analyze headings]
-         │
-         ├── Extract all headings with levels
-         ├── Detect numeric prefixes
-         ├── Infer numbering convention
+    [1. Parse all headings from document]
          │
          ▼
-    fill_markdown(renumber_sections=True, convention=inferred)
+    [2. infer_section_convention()]
+         │
+         ├── For each level H1-H6:
+         │   ├── Extract prefixes from all headings at level
+         │   ├── Check first 2+ for pattern consistency
+         │   ├── Check 2/3 threshold
+         │   └── Set level config (style + trailing_char)
+         │
+         ├── apply_hierarchical_constraint()
+         │   └── Disable levels after first gap
+         │
+         └── normalize_convention()
+             └── Set trailing_char = "." for all active levels
          │
          ▼
-    flowmark_markdown(..., section_renumberer=renumberer)
+    [3. SectionRenumberer with inferred convention]
          │
          ▼
-    MarkdownNormalizer with section renumbering
+    [4. render_heading() applies renumbering]
          │
-         └── render_heading() → applies renumbering
+         └── For each heading:
+             ├── If level is active: generate new number, format heading
+             └── If level is none: pass through unchanged
 ```
 
-### Key Components
+### Key Functions (Unit Testable)
 
-1. **`SectionNumberExtractor`**: Parses heading text to extract numeric prefix and title
-2. **`SectionConventionDetector`**: Analyzes all headings to infer the convention
-3. **`SectionRenumberer`**: Generates new section numbers based on document structure
-4. **Modified `render_heading()`**: Applies renumbering during Markdown normalization
+| Function | Input | Output | Tests |
+|----------|-------|--------|-------|
+| `extract_section_prefix()` | `"1. Intro"` | `(arabic_integer, "1", "Intro")` | Pattern matching |
+| `extract_section_prefix()` | `"1.2 Details"` | `(arabic_decimal, "1.2", "Details")` | Decimal patterns |
+| `extract_section_prefix()` | `"Background"` | `None` | No prefix |
+| `infer_level_convention()` | List of H1s | `SectionLevelConfig` | 2/3 threshold |
+| `apply_hierarchical_constraint()` | Convention with gaps | Convention with gaps filled | Contiguity |
+| `normalize_convention()` | Convention | Convention with `.` trailing | Normalization |
+| `SectionRenumberer.next_number()` | level=1 | `"1"`, `"2"`, ... | Counter state |
+| `SectionRenumberer.format_heading()` | level=2, title="Foo" | `"1.1 Foo"` | Formatting |
 
 ### Section Renumbering State
 
@@ -274,60 +370,137 @@ During rendering, track:
 
 ## Implementation Plan
 
+All code goes in `src/flowmark/transforms/section_numbering.py` with tests in
+`tests/test_section_numbering.py`.
+
 ### Phase 1: Core Data Structures
 
 - [ ] Add `SectionNumStyle` enum (`none`, `arabic_integer`, `arabic_decimal`)
 - [ ] Add `SectionLevelConfig` dataclass (style + trailing_char)
 - [ ] Add `SectionNumConvention` dataclass (tuple of 6 level configs)
-- [ ] Add unit tests for data structures
+- [ ] Add `ParsedHeading` dataclass (level, original_text, style, number, title)
+- [ ] Unit tests: dataclass creation, `max_depth` property, `is_active` property
 
-### Phase 2: Detection and Extraction
+### Phase 2: Prefix Extraction (Parsing)
 
-- [ ] Implement `extract_section_prefix()` function (regex-based)
-  - Returns: `(style, number_parts, title)` or `None` if no prefix
-- [ ] Implement `infer_section_convention()` function
-  - Analyzes all headings in document
-  - Returns `SectionNumConvention` with per-level styles
-- [ ] Add unit tests for extraction and inference
+- [ ] Implement `extract_section_prefix(text: str)` function
+  - Returns: `(SectionNumStyle, number_str, title)` or `None`
+  - Regex matches: integer (`1.`), decimal (`1.2`, `1.2.3`), various separators
+- [ ] Unit tests for `extract_section_prefix()`:
+  - `"1. Intro"` → `(arabic_integer, "1", "Intro")`
+  - `"1) Intro"` → `(arabic_integer, "1", "Intro")`
+  - `"1 Intro"` → `(arabic_integer, "1", "Intro")`
+  - `"1.2 Details"` → `(arabic_decimal, "1.2", "Details")`
+  - `"1.2.3 Deep"` → `(arabic_decimal, "1.2.3", "Deep")`
+  - `"7.18 Big"` → `(arabic_decimal, "7.18", "Big")`
+  - `"Background"` → `None`
+  - `"The 1st Item"` → `None` (number not at start)
 
-### Phase 3: Renumbering Logic
+### Phase 3: Convention Inference
+
+- [ ] Implement `infer_level_convention(headings, level)` function
+  - Filters headings to given level
+  - Checks first-two rule: first two headings must have matching prefix
+  - Checks two-thirds rule: ≥66% of all headings have prefix
+  - Returns `SectionLevelConfig`
+- [ ] Implement `infer_section_convention(headings)` function
+  - Calls `infer_level_convention()` for each level H1-H6
+  - Returns raw `SectionNumConvention`
+- [ ] Unit tests for first-two rule:
+  - First two numbered → passes first-two
+  - First numbered, second not → fails first-two
+  - First not, second numbered → fails first-two
+  - Only one heading total → fails (need at least 2)
+- [ ] Unit tests for two-thirds rule:
+  - 2/2 (100%) → qualifies
+  - 2/3 (66%) → qualifies
+  - 1/3 (33%) → does not qualify
+  - 3/4 (75%) → qualifies
+  - 2/4 (50%) → does not qualify
+  - 4/6 (66%) → qualifies
+  - 3/6 (50%) → does not qualify
+- [ ] Unit tests for pattern consistency:
+  - First two both `arabic_integer` → pattern is `arabic_integer`
+  - First two both `arabic_decimal` → pattern is `arabic_decimal`
+  - First two different patterns → level is `none`
+
+### Phase 4: Hierarchical Constraint
+
+- [ ] Implement `apply_hierarchical_constraint(convention)` function
+  - Checks for gaps in H1 → H2 → H3 → ... chain
+  - Sets all levels after first gap to `none`
+- [ ] Unit tests:
+  - H1+H2+H3 → unchanged
+  - H1+H3 (gap at H2) → H1 only
+  - H2 only (no H1) → all `none`
+  - H1+H2+H4 (gap at H3) → H1+H2 only
+
+### Phase 5: Normalization
+
+- [ ] Implement `normalize_convention(convention)` function
+  - Sets `trailing_char = "."` for all active levels
+- [ ] Unit tests:
+  - Convention with `)` → Convention with `.`
+  - Convention with mixed separators → all `.`
+
+### Phase 6: Renumbering Logic
 
 - [ ] Implement `SectionRenumberer` class
-  - Counter state: `list[int]` for H1-H6 counters
-  - Method: `next_number(level: int) -> str` - increment and format
-  - Method: `format_number(level: int, counters: list[int]) -> str`
-- [ ] Add unit tests for renumbering logic
+  - `__init__(convention)`: Store convention, initialize counters to [0,0,0,0,0,0]
+  - `next_number(level)`: Increment counter, reset deeper levels, return formatted
+  - `format_heading(level, title)`: Combine number + trailing_char + space + title
+- [ ] Unit tests for counter state:
+  - H1 → "1", H1 → "2", H1 → "3"
+  - H1 → "1", H2 → "1.1", H2 → "1.2", H1 → "2", H2 → "2.1"
+  - H1 → "1", H2 → "1.1", H3 → "1.1.1", H3 → "1.1.2", H2 → "1.2", H3 → "1.2.1"
+- [ ] Unit tests for formatting:
+  - `format_heading(1, "Intro")` → `"1. Intro"`
+  - `format_heading(2, "Details")` → `"1.1 Details"` (after H1)
 
-### Phase 4: Integration with Renderer
+### Phase 7: Integration with Renderer
 
 - [ ] Add `section_renumberer` parameter to `MarkdownNormalizer`
 - [ ] Modify `render_heading()` to apply renumbering when enabled
 - [ ] Thread `renumber_sections` through API: `fill_markdown()`, `reformat_text()`, etc.
+- [ ] Integration tests with full markdown documents
 
-### Phase 5: CLI Integration
+### Phase 8: CLI Integration
 
 - [ ] Add `--renumber-sections` flag to CLI
 - [ ] Update help text
-- [ ] Include in `--auto` flag (reliable due to 2+ header threshold)
+- [ ] Include in `--auto` flag
 
-### Phase 6: Testing and Edge Cases
+### Phase 9: End-to-End Testing
 
-- [ ] Add comprehensive tests for various numbering styles
-- [ ] Test documents with partial numbering (H1 yes, H2 no)
-- [ ] Test deeply nested heading levels (H1-H4)
-- [ ] Test edge cases: empty headings, headings with only numbers
-- [ ] Test separator normalization (`)` → `.`)
+- [ ] Test documents with various numbering styles
+- [ ] Test 2/3 threshold edge cases
+- [ ] Test hierarchical constraint edge cases
+- [ ] Test separator normalization
 - [ ] Update documentation
 
 ## Acceptance Criteria
 
+### Functional
 1. `flowmark --renumber-sections file.md` correctly renumbers sections in a numbered
    document
-2. Documents without consistent numbering are left unchanged
-3. The inferred convention (separator style, spacing) is preserved
-4. Nested numbering is handled correctly (1.1, 1.2, 2.1, etc.)
-5. Unnumbered headings below the max_depth are left unchanged
-6. `make lint` and `make test` pass
+2. `flowmark --auto file.md` includes section renumbering
+3. Documents without consistent numbering are left unchanged
+4. 2/3 threshold correctly qualifies/disqualifies levels
+5. Hierarchical constraint enforced (no gaps, must start at H1)
+6. Nested numbering is handled correctly (1.1, 1.2, 2.1, etc.)
+7. Unnumbered headings at qualified levels pass through unchanged
+8. Trailing separators normalized to period
+
+### Quality
+9. `make lint` passes (ruff, pyright, etc.)
+10. `make test` passes with comprehensive coverage
+11. All public functions have docstrings
+12. Module has comprehensive docstring with usage example
+
+### Documentation
+13. README.md updated with section renumbering documentation
+14. CLI help text includes `--renumber-sections` flag
+15. `--auto` description updated to include section renumbering
 
 ## Test Cases
 
@@ -356,14 +529,50 @@ def test_nested_renumber():
 ## 2.1 Sub C"""
     assert reformat(input, renumber_sections=True) == expected
 
-# No change when not all H1s are numbered
-def test_partial_h1_numbering_unchanged():
+# First-two + 2/3: First two numbered, 2/3 total → qualifies
+def test_first_two_and_two_thirds_qualifies():
+    input = """# 1. Intro
+# 2. Design
+# Background"""
+    expected = """# 1. Intro
+# 2. Design
+# Background"""
+    # First two H1s numbered ✓, 2/3 total ✓ → H1 qualifies
+    # Already correctly numbered, so output same (but would renumber if wrong)
+    assert reformat(input, renumber_sections=True) == expected
+
+# First-two fails: First two not both numbered → does NOT qualify
+def test_first_two_fails():
     input = """# 1. Intro
 # Background
 # 3. Conclusion"""
-    # H1 level doesn't qualify - not all H1s are numbered
+    # First two H1s: only first is numbered → first-two fails
     # Document left unchanged
     assert reformat(input, renumber_sections=True) == input
+
+# 2/3 fails: First two numbered, but only 2/4 total → does NOT qualify
+def test_two_thirds_fails():
+    input = """# 1. Intro
+# 2. Design
+# Background
+# Conclusion"""
+    # First two H1s numbered ✓, but only 2/4 = 50% < 66% → 2/3 fails
+    # Document left unchanged
+    assert reformat(input, renumber_sections=True) == input
+
+# Both pass: First two numbered, 3/4 total → qualifies and renumbers
+def test_first_two_and_two_thirds_renumbers():
+    input = """# 1. Intro
+# 3. Design
+# Background
+# 5. Conclusion"""
+    expected = """# 1. Intro
+# 2. Design
+# Background
+# 3. Conclusion"""
+    # First two H1s numbered ✓, 3/4 = 75% ✓ → H1 qualifies, renumbered
+    # Unnumbered H1 ("Background") passes through unchanged
+    assert reformat(input, renumber_sections=True) == expected
 
 # H1 numbered, H2 not numbered (mixed levels)
 def test_h1_numbered_h2_not():
@@ -380,24 +589,49 @@ def test_h1_numbered_h2_not():
     # Only H1s are renumbered; H2s have no numbers so they stay as-is
     assert reformat(input, renumber_sections=True) == expected
 
-# IMPORTANT: Partial H2 numbering - some H2s numbered, some not
-# H2 level does NOT qualify, so numbered H2s keep original numbers
-def test_partial_h2_numbering_not_renumbered():
+# 2/3 threshold for H2: 4 of 6 H2s numbered → qualifies
+def test_h2_two_thirds_threshold():
     input = """# 1. Intro
-## 1.1 First Sub
+## 1.1 Sub A
+## 1.2 Sub B
 ## Background
 # 3. Design
-## 3.1 Architecture
+## 3.1 Arch
+## 3.2 Impl
 ## Overview"""
     expected = """# 1. Intro
-## 1.1 First Sub
+## 1.1 Sub A
+## 1.2 Sub B
 ## Background
 # 2. Design
-## 3.1 Architecture
+## 2.1 Arch
+## 2.2 Impl
 ## Overview"""
-    # H1s: all numbered → renumbered (1, 2 instead of 1, 3)
-    # H2s: some numbered, some not → H2 level is `none`, NO renumbering
-    # The numbered H2s keep their ORIGINAL numbers (1.1, 3.1 unchanged)
+    # H1s: 2/2 numbered → renumbered
+    # H2s: 4/6 numbered (66%) → renumbered
+    # Unnumbered H2s pass through unchanged
+    assert reformat(input, renumber_sections=True) == expected
+
+# H2 below threshold: 2 of 6 H2s numbered → does NOT qualify
+def test_h2_below_threshold_not_renumbered():
+    input = """# 1. Intro
+## 1.1 Sub A
+## Background
+## Details
+# 3. Design
+## 3.1 Arch
+## Overview
+## Notes"""
+    expected = """# 1. Intro
+## 1.1 Sub A
+## Background
+## Details
+# 2. Design
+## 3.1 Arch
+## Overview
+## Notes"""
+    # H1s: 2/2 numbered → renumbered
+    # H2s: 2/6 numbered (33%) → does NOT qualify, originals preserved
     assert reformat(input, renumber_sections=True) == expected
 
 # Separator normalization - always use period
@@ -442,7 +676,8 @@ def test_decimal_without_period():
 1. **Should `--renumber-sections` be included in `--auto`?**
    - **Decision**: Yes, include it in `--auto`.
    - **Rationale**: The feature is equally reliable as smart quotes because:
-     - It requires 2+ headers at a level to activate (prevents false positives)
+     - It requires 2+ headers with matching patterns to activate
+     - The 2/3 threshold prevents false positives while allowing occasional mistakes
      - We infer conventions from the document and reinforce the same patterns
      - The only normalization is trailing punctuation → period (consistent style)
    - A document won't trigger renumbering unless it clearly follows a numbered pattern.
@@ -452,20 +687,145 @@ def test_decimal_without_period():
    - Input variations like `1)` or `1:` will be normalized to `1.`
 
 3. **How to handle headings without numbers at a numbered level?**
-   - **Decision**: A level only qualifies as numbered if **all** headings at that level
-     have numeric prefixes. If any heading lacks a prefix, the level is `none`.
-   - This means we never add numbers to unnumbered headings.
+   - **Decision**: Use 2/3 threshold. A level qualifies if:
+     - At least 2 headings have a matching prefix, AND
+     - At least 66% of headings at that level have a matching prefix
+   - Unnumbered headings at a qualifying level pass through unchanged (no numbers added).
+   - This allows for occasional missing numbers while still requiring clear intent.
 
 4. **How to handle inconsistent numbering depth per section?**
-   - **Decision**: Per-level analysis. Each level is evaluated independently.
-   - If all H1s are numbered but only some H2s are numbered, then H1 is `arabic_integer`
-     and H2 is `none`.
+   - **Decision**: Per-level analysis with hierarchical constraint.
+   - Each level is evaluated independently using the 2/3 threshold.
+   - Then hierarchical constraint is applied: conventions must be contiguous from H1.
+   - If H1 is `none`, all levels are `none`. If H2 is `none`, H3+ are `none`.
+
+5. **What if H2s are numbered but H1s are not?**
+   - **Decision**: Not supported. Hierarchical constraint requires contiguous levels.
+   - H2 numbering without H1 → all levels are `none` (no renumbering).
 
 ## Open Questions
 
-1. **Edge case: What if H2s are numbered but H1s are not?**
-   - This would be unusual but possible. Should we support it?
-   - Tentative: Yes, support it. H1 would be `none`, H2 would be `arabic_decimal`.
+None at this time.
+
+## Documentation Plan
+
+All documentation should follow the existing conventions for typography features
+(smart quotes, ellipses). Section renumbering is part of `--auto`.
+
+### README.md Updates
+
+Add a new subsection under "Typographic Cleanups" or create a new section
+"Structural Cleanups":
+
+```markdown
+### Section Renumbering
+
+Flowmark can automatically renumber section headings when a document uses a consistent
+numbered section convention (e.g., `# 1. Introduction`, `## 1.1 Background`).
+
+This is useful for documents where section numbers have become inconsistent after
+editing—inserting, moving, or removing sections no longer requires manual renumbering.
+
+The feature:
+- Detects if a document uses numbered sections (requires 2+ headings with matching
+  patterns at each level, with at least 2/3 of headings following the convention)
+- Infers the numbering style from existing content
+- Renumbers to maintain sequential order while preserving unnumbered headings
+
+Section renumbering only applies to documents that clearly follow a numbered pattern.
+Unnumbered headings within a numbered document pass through unchanged.
+
+This feature is enabled with the `--renumber-sections` flag or the `--auto`
+convenience flag.
+```
+
+### CLI Help Text Updates
+
+Update the `--auto` flag description:
+
+```
+--auto               Same as `--inplace --nobackup --semantic --cleanups --smartquotes
+                     --ellipses --renumber-sections`, as a convenience for fully
+                     auto-formatting files
+```
+
+Add new flag:
+
+```
+--renumber-sections  Automatically renumber section headings in documents that use
+                     numbered sections (e.g., 1., 1.1, 1.2). Only applies when a
+                     clear numbering pattern is detected. (only applies to Markdown
+                     mode)
+```
+
+### API Docstrings
+
+Update `reformat_text()` and related functions:
+
+```python
+def reformat_text(
+    text: str,
+    *,
+    renumber_sections: bool = False,
+    # ... other params
+) -> str:
+    """
+    Reformat Markdown text with optional section renumbering.
+
+    Args:
+        renumber_sections: If True, automatically renumber section headings
+            when a consistent numbering convention is detected. Requires
+            2+ headings with matching numeric prefixes at each level.
+    """
+```
+
+### Module Docstring
+
+`src/flowmark/transforms/section_numbering.py`:
+
+```python
+"""
+Section numbering detection and renumbering for Markdown documents.
+
+This module provides:
+- Detection of numbered section conventions (e.g., "1. Intro", "1.1 Details")
+- Inference of numbering style from existing content
+- Automatic renumbering to maintain sequential order
+
+Key concepts:
+- A heading level qualifies for renumbering if 2/3+ of headings at that level
+  have matching numeric prefixes (minimum 2 headings with prefixes)
+- Conventions must be contiguous from H1 (H1, H1+H2, H1+H2+H3, etc.)
+- Trailing separators are normalized to periods (e.g., "1)" → "1.")
+- Unnumbered headings pass through unchanged
+
+Usage:
+    from flowmark.transforms.section_numbering import (
+        infer_section_convention,
+        SectionRenumberer,
+    )
+
+    # Infer convention from document headings
+    convention = infer_section_convention(headings)
+
+    # Create renumberer and apply to headings
+    if convention.is_active:
+        renumberer = SectionRenumberer(convention)
+        for level, title in headings:
+            new_heading = renumberer.format_heading(level, title)
+"""
+```
+
+### Self-Documentation Checklist
+
+- [ ] README.md: Add section under "Typographic Cleanups" or new "Structural Cleanups"
+- [ ] README.md: Update `--auto` flag description in usage examples
+- [ ] CLI help: Add `--renumber-sections` flag with clear description
+- [ ] CLI help: Update `--auto` to include `--renumber-sections`
+- [ ] Module docstring: Comprehensive explanation with usage example
+- [ ] Function docstrings: All public functions documented
+- [ ] Type hints: All parameters and return types annotated
+- [ ] Inline comments: Complex regex patterns explained
 
 ## Future Extensions
 
