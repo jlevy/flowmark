@@ -119,56 +119,94 @@ Example:
 - After hierarchical check: H1=`arabic_integer`, H2=`none`, H3=`none`
   (H3 disabled because H2 is `none`)
 
-### Recognized Patterns (Current Scope)
+### Recognized Patterns (General Approach)
 
-**IMPORTANT**: The current implementation recognizes **only** the following patterns.
-This is intentional and well-defined. Future extensions may add Roman numerals,
-alphabetic numbering, etc., but for now we are conservative.
+We use a **single general regex** that recognizes all standard numbering styles in any
+decimal combination, with optional trailing `.` or `)`.
 
-**Recognized patterns:**
+**Recognized number styles:**
 
-| Style | Pattern | Examples | Recognized? |
-|-------|---------|----------|-------------|
-| `arabic_integer` | Integer with optional `.` or `)` | `1.`, `1)`, `1 `, `1` | ✓ |
-| `arabic_decimal` | Decimal with optional `.` or `)` | `1.2`, `1.2.`, `1.2)`, `1.2 ` | ✓ |
-| Roman numerals | `I.`, `II.`, `III.` | - | ✗ (future) |
-| Alphabetic | `A.`, `B.`, `a)`, `b)` | - | ✗ (future) |
+| Style | Pattern | Examples |
+|-------|---------|----------|
+| `arabic` | Decimal digits | `1`, `2`, `10`, `100` |
+| `roman_upper` | Uppercase Roman | `I`, `II`, `III`, `IV`, `V`, `IX`, `X`, `XI` |
+| `roman_lower` | Lowercase Roman | `i`, `ii`, `iii`, `iv`, `v`, `ix`, `x`, `xi` |
+| `alpha_upper` | Uppercase letters | `A`, `B`, `C`, ... `Z`, `AA`, `AB` |
+| `alpha_lower` | Lowercase letters | `a`, `b`, `c`, ... `z`, `aa`, `ab` |
 
-**Regex patterns:**
+**Recognized decimal patterns:**
+
+Any combination of the above styles separated by `.`:
+- `1.2.3` (all arabic)
+- `I.A.1` (roman, alpha, arabic)
+- `1.a.i` (arabic, alpha_lower, roman_lower)
+- `A.1` (alpha, arabic)
+
+**Trailing characters:**
+- `.` (period) - normalized output
+- `)` (parenthesis) - recognized, normalized to `.`
+- ` ` (space only) - recognized, normalized to `.`
+
+**General regex pattern:**
 
 ```python
-# Integer pattern (for H1, typically)
-# Matches: 1, 1., 1), 1 followed by title
-INTEGER_PATTERN = r'^(\d+)[.\):]?\s+(.+)$'
+# Component patterns
+ARABIC = r'\d+'
+ROMAN_UPPER = r'[IVXLCDM]+'
+ROMAN_LOWER = r'[ivxlcdm]+'
+ALPHA_UPPER = r'[A-Z]+'
+ALPHA_LOWER = r'[a-z]+'
 
-# Decimal pattern (for H2+, hierarchical)
-# Matches: 1.2, 1.2., 1.2), 1.2.3, 1.2.3. followed by title
-DECIMAL_PATTERN = r'^(\d+(?:\.\d+)+)[.\):]?\s+(.+)$'
+# Single component (any style)
+COMPONENT = rf'({ARABIC}|{ROMAN_UPPER}|{ROMAN_LOWER}|{ALPHA_UPPER}|{ALPHA_LOWER})'
+
+# Full number pattern: one or more components separated by dots
+# with optional trailing . or )
+NUMBER_PATTERN = rf'^({COMPONENT}(?:\.{COMPONENT})*)[.\)]?\s+(.+)$'
 ```
 
-**What we do NOT recognize (by design):**
-- Roman numerals: `I.`, `II.`, `III.`, `i.`, `ii.`
-- Alphabetic: `A.`, `B.`, `a)`, `b)`
-- Mixed: `1.A`, `I.1`
-- Non-standard separators: `1:`, `1-`
+### Style Inference
 
-### Style Inference Rules
+After parsing, we **infer the style** of each component:
 
-1. **H1 headings**: If pattern matches integer → `arabic_integer`
-2. **H2+ headings**: If pattern matches decimal → `arabic_decimal`
-3. **No match or inconsistent**: `none` for that level
+```python
+def infer_style(component: str) -> NumberStyle:
+    """Infer the number style from a parsed component."""
+    if component.isdigit():
+        return NumberStyle.arabic
+    if all(c in 'IVXLCDM' for c in component):
+        return NumberStyle.roman_upper
+    if all(c in 'ivxlcdm' for c in component):
+        return NumberStyle.roman_lower
+    if component.isupper():
+        return NumberStyle.alpha_upper
+    if component.islower():
+        return NumberStyle.alpha_lower
+    return NumberStyle.arabic  # fallback
+```
 
-Examples of prefix extraction:
-- `# 1. Introduction` → `arabic_integer`, number: `1`, title: `Introduction`
-- `# 1) Introduction` → `arabic_integer`, number: `1`, title: `Introduction`
-- `# 1 Introduction` → `arabic_integer`, number: `1`, title: `Introduction`
-- `## 1.2 Background` → `arabic_decimal`, number: `1.2`, title: `Background`
-- `## 1.2. Background` → `arabic_decimal`, number: `1.2`, title: `Background`
-- `## 1.2) Background` → `arabic_decimal`, number: `1.2`, title: `Background`
-- `### 7.18.3 Details` → `arabic_decimal`, number: `7.18.3`, title: `Details`
-- `## Background` → `none` (no prefix)
-- `# I. Introduction` → `none` (Roman not supported yet)
-- `# A. Introduction` → `none` (alphabetic not supported yet)
+### Examples of Prefix Extraction
+
+| Input | Parsed Components | Inferred Styles | Title |
+|-------|-------------------|-----------------|-------|
+| `1. Introduction` | `["1"]` | `[arabic]` | `Introduction` |
+| `1.2 Background` | `["1", "2"]` | `[arabic, arabic]` | `Background` |
+| `I. Introduction` | `["I"]` | `[roman_upper]` | `Introduction` |
+| `I.A Overview` | `["I", "A"]` | `[roman_upper, alpha_upper]` | `Overview` |
+| `1.a Details` | `["1", "a"]` | `[arabic, alpha_lower]` | `Details` |
+| `A.1.i Deep` | `["A", "1", "i"]` | `[alpha_upper, arabic, roman_lower]` | `Deep` |
+| `Background` | None | - | - (no prefix) |
+
+### Validation Rules
+
+After parsing and style inference, we validate:
+
+1. **Consistent style per level**: All H1 prefixes must use the same style for position 1,
+   all H2 prefixes must use the same styles for positions 1-2, etc.
+2. **Valid Roman numerals**: `IIII` is not valid (should be `IV`). We validate known Roman
+   numeral sequences.
+3. **Hierarchical structure**: H2 prefixes should have 2 components, H3 should have 3, etc.
+   (though H1 can have 1 component with trailing `.`)
 
 ## Inferred Numbering Conventions
 
@@ -180,26 +218,54 @@ To preserve the document's existing style, we analyze heading levels and infer a
 Instead of enum values, we use a format string that explicitly describes the structure:
 
 ```
-"{h1:arabic}."                      # H1 only: 1., 2., 3.
-"{h1:arabic}.{h2:arabic}"           # H1+H2: 1.1, 1.2, 2.1
-"{h1:arabic}.{h2:arabic}.{h3:arabic}"  # H1+H2+H3: 1.1.1, 1.1.2
+"{h1:arabic}."                              # H1 only: 1., 2., 3.
+"{h1:arabic}.{h2:arabic}"                   # H1+H2: 1.1, 1.2, 2.1
+"{h1:arabic}.{h2:arabic}.{h3:arabic}"       # H1+H2+H3: 1.1.1, 1.1.2
+"{h1:roman_upper}."                         # Roman H1: I., II., III.
+"{h1:roman_upper}.{h2:alpha_upper}"         # Roman H1 + Alpha H2: I.A, I.B
+"{h1:arabic}.{h2:alpha_lower}.{h3:roman_lower}"  # Mixed: 1.a.i, 1.a.ii
 ```
 
 This is self-documenting and extensible for future number styles (roman, alpha).
 
 ### `NumberStyle` Enum
 
-The style of numbers (extensible for future):
+The style of numbers (all supported):
 
 ```python
 class NumberStyle(str, Enum):
     """Number style within a format component."""
-    arabic = "arabic"      # 1, 2, 3 (currently supported)
-    # Future:
-    # roman_upper = "roman_upper"  # I, II, III
-    # roman_lower = "roman_lower"  # i, ii, iii
-    # alpha_upper = "alpha_upper"  # A, B, C
-    # alpha_lower = "alpha_lower"  # a, b, c
+    arabic = "arabic"            # 1, 2, 3, 10, 100
+    roman_upper = "roman_upper"  # I, II, III, IV, V
+    roman_lower = "roman_lower"  # i, ii, iii, iv, v
+    alpha_upper = "alpha_upper"  # A, B, C, ... Z, AA, AB
+    alpha_lower = "alpha_lower"  # a, b, c, ... z, aa, ab
+```
+
+**Conversion functions:**
+
+```python
+def to_number(style: NumberStyle, value: int) -> str:
+    """Convert an integer to its string representation in the given style."""
+    if style == NumberStyle.arabic:
+        return str(value)
+    elif style == NumberStyle.roman_upper:
+        return int_to_roman(value).upper()
+    elif style == NumberStyle.roman_lower:
+        return int_to_roman(value).lower()
+    elif style == NumberStyle.alpha_upper:
+        return int_to_alpha(value).upper()
+    elif style == NumberStyle.alpha_lower:
+        return int_to_alpha(value).lower()
+
+def from_number(style: NumberStyle, text: str) -> int:
+    """Convert a string representation back to an integer."""
+    if style == NumberStyle.arabic:
+        return int(text)
+    elif style in (NumberStyle.roman_upper, NumberStyle.roman_lower):
+        return roman_to_int(text)
+    elif style in (NumberStyle.alpha_upper, NumberStyle.alpha_lower):
+        return alpha_to_int(text)
 ```
 
 ### `FormatComponent` Data Structure
@@ -311,9 +377,13 @@ class SectionNumConvention:
 
 | Pattern | H1 Format | H2 Format | H3 Format | Example Output |
 |---------|-----------|-----------|-----------|----------------|
-| H1 only | `{h1:arabic}.` | None | None | `1.`, `2.`, `3.` |
-| H1+H2 | `{h1:arabic}.` | `{h1:arabic}.{h2:arabic}` | None | `1.`, `1.1`, `1.2` |
-| H1+H2+H3 | `{h1:arabic}.` | `{h1:arabic}.{h2:arabic}` | `{h1:arabic}.{h2:arabic}.{h3:arabic}` | `1.`, `1.1`, `1.1.1` |
+| Arabic H1 only | `{h1:arabic}.` | None | None | `1.`, `2.`, `3.` |
+| Arabic H1+H2 | `{h1:arabic}.` | `{h1:arabic}.{h2:arabic}` | None | `1.`, `1.1`, `1.2` |
+| Arabic H1+H2+H3 | `{h1:arabic}.` | `{h1:arabic}.{h2:arabic}` | `{h1:arabic}.{h2:arabic}.{h3:arabic}` | `1.`, `1.1`, `1.1.1` |
+| Roman H1 only | `{h1:roman_upper}.` | None | None | `I.`, `II.`, `III.` |
+| Roman H1 + Alpha H2 | `{h1:roman_upper}.` | `{h1:roman_upper}.{h2:alpha_upper}` | None | `I.`, `I.A`, `I.B` |
+| Alpha H1 only | `{h1:alpha_upper}.` | None | None | `A.`, `B.`, `C.` |
+| Mixed: Arabic/alpha/roman | `{h1:arabic}.` | `{h1:arabic}.{h2:alpha_lower}` | `{h1:arabic}.{h2:alpha_lower}.{h3:roman_lower}` | `1.`, `1.a`, `1.a.i` |
 
 ### Inference Example
 
@@ -381,11 +451,15 @@ The only normalization we currently perform is the trailing character:
 | `## 1.2 Details` | `## 1.2 Details` | Already normalized |
 | `## 1.2. Details` | `## 1.2 Details` | Remove trailing `.` |
 | `## 1.2) Details` | `## 1.2 Details` | Remove `)` |
+| `# I. Intro` | `# I. Intro` | Roman, already normalized |
+| `# I) Intro` | `# I. Intro` | Roman, `)` → `.` |
+| `## I.A Details` | `## I.A Details` | Roman+Alpha, no trailing |
+| `# A. Intro` | `# A. Intro` | Alpha, already normalized |
+| `# a) intro` | `# a. intro` | Alpha lowercase, `)` → `.` |
 
-**IMPORTANT**: Normalization only happens for patterns we recognize. If a document
-uses Roman numerals (`I.`, `II.`) or alphabetic (`A.`, `B.`), we do NOT recognize
-the pattern, so no renumbering or normalization occurs. The document passes through
-unchanged.
+**Style preservation**: Normalization only affects trailing characters, not number
+styles. If a document uses Roman numerals (`I.`, `II.`) or alphabetic (`A.`, `B.`),
+the style is preserved during renumbering—only the sequence is corrected.
 
 ## Architecture
 
@@ -513,7 +587,7 @@ All code goes in `src/flowmark/transforms/section_numbering.py` with tests in
 
 ### Phase 1: Core Data Structures
 
-- [ ] Add `NumberStyle` enum (`arabic`, future: `roman_upper`, `roman_lower`, etc.)
+- [ ] Add `NumberStyle` enum (`arabic`, `roman_upper`, `roman_lower`, `alpha_upper`, `alpha_lower`)
 - [ ] Add `FormatComponent` dataclass (level + style)
 - [ ] Add `SectionNumFormat` dataclass (components + trailing)
   - `format_string()` method → `"{h1:arabic}.{h2:arabic}"`
@@ -528,23 +602,44 @@ All code goes in `src/flowmark/transforms/section_numbering.py` with tests in
 ### Phase 2: Prefix Extraction (Parsing)
 
 - [ ] Implement `extract_section_prefix(text: str)` function
-  - Returns: `(number_parts: list[int], trailing: str, title: str)` or `None`
-  - `number_parts`: The numeric components, e.g., `[1]` or `[1, 2]` or `[1, 2, 3]`
+  - Returns: `ParsedPrefix(components, styles, trailing, title)` or `None`
+  - `components`: The raw string components, e.g., `["1"]` or `["1", "2"]` or `["I", "A"]`
+  - `styles`: The inferred style for each component, e.g., `[arabic]` or `[roman_upper, alpha_upper]`
   - `trailing`: The character after the number (`.`, `)`, or `""`)
   - `title`: The heading text after the prefix
+- [ ] Implement helper functions:
+  - `infer_style(component: str) -> NumberStyle`
+  - `int_to_roman(n: int) -> str` and `roman_to_int(s: str) -> int`
+  - `int_to_alpha(n: int) -> str` and `alpha_to_int(s: str) -> int`
 - [ ] Unit tests for `extract_section_prefix()`:
-  - `"1. Intro"` → `([1], ".", "Intro")`
-  - `"1) Intro"` → `([1], ")", "Intro")`
-  - `"1 Intro"` → `([1], "", "Intro")`
-  - `"1.2 Details"` → `([1, 2], "", "Details")`
-  - `"1.2. Details"` → `([1, 2], ".", "Details")`
-  - `"1.2) Details"` → `([1, 2], ")", "Details")`
-  - `"1.2.3 Deep"` → `([1, 2, 3], "", "Deep")`
-  - `"7.18 Big"` → `([7, 18], "", "Big")`
-  - `"Background"` → `None`
-  - `"The 1st Item"` → `None` (number not at start)
-  - `"I. Intro"` → `None` (Roman not supported)
-  - `"A. Intro"` → `None` (alphabetic not supported)
+  - Arabic:
+    - `"1. Intro"` → `(["1"], [arabic], ".", "Intro")`
+    - `"1) Intro"` → `(["1"], [arabic], ")", "Intro")`
+    - `"1 Intro"` → `(["1"], [arabic], "", "Intro")`
+    - `"1.2 Details"` → `(["1", "2"], [arabic, arabic], "", "Details")`
+    - `"1.2.3 Deep"` → `(["1", "2", "3"], [arabic, arabic, arabic], "", "Deep")`
+  - Roman:
+    - `"I. Intro"` → `(["I"], [roman_upper], ".", "Intro")`
+    - `"II.A Overview"` → `(["II", "A"], [roman_upper, alpha_upper], "", "Overview")`
+    - `"i. intro"` → `(["i"], [roman_lower], ".", "intro")`
+  - Alphabetic:
+    - `"A. Intro"` → `(["A"], [alpha_upper], ".", "Intro")`
+    - `"A.1 Details"` → `(["A", "1"], [alpha_upper, arabic], "", "Details")`
+    - `"a) intro"` → `(["a"], [alpha_lower], ")", "intro")`
+  - Mixed:
+    - `"1.a.i Deep"` → `(["1", "a", "i"], [arabic, alpha_lower, roman_lower], "", "Deep")`
+  - No prefix:
+    - `"Background"` → `None`
+    - `"The 1st Item"` → `None` (number not at start)
+- [ ] Unit tests for style inference:
+  - `"1"` → `arabic`, `"123"` → `arabic`
+  - `"I"` → `roman_upper`, `"IV"` → `roman_upper`, `"XII"` → `roman_upper`
+  - `"i"` → `roman_lower`, `"iv"` → `roman_lower`
+  - `"A"` → `alpha_upper`, `"AA"` → `alpha_upper`, `"AZ"` → `alpha_upper`
+  - `"a"` → `alpha_lower`, `"aa"` → `alpha_lower`
+- [ ] Unit tests for number conversion:
+  - `int_to_roman(4)` → `"IV"`, `roman_to_int("IV")` → `4`
+  - `int_to_alpha(1)` → `"A"`, `int_to_alpha(27)` → `"AA"`, `alpha_to_int("AA")` → `27`
 
 ### Phase 3: Convention Inference
 
@@ -575,7 +670,11 @@ All code goes in `src/flowmark/transforms/section_numbering.py` with tests in
 - [ ] Unit tests for format inference:
   - H1s with `[1], [2], [3]` → format `{h1:arabic}.`
   - H2s with `[1,1], [1,2], [2,1]` → format `{h1:arabic}.{h2:arabic}`
+  - H1s with `[I], [II], [III]` → format `{h1:roman_upper}.`
+  - H1s with `[A], [B], [C]` → format `{h1:alpha_upper}.`
+  - H1s with `[I], [II]`, H2s with `[I.A], [I.B]` → format `{h1:roman_upper}.{h2:alpha_upper}`
   - First two with different structures (e.g., `[1]` and `[1,2]`) → `None`
+  - First two with different styles (e.g., `[1]` and `[I]`) → `None`
 
 ### Phase 4: Hierarchical Constraint
 
@@ -602,13 +701,21 @@ All code goes in `src/flowmark/transforms/section_numbering.py` with tests in
   - `__init__(convention)`: Store convention, initialize counters to [0,0,0,0,0,0]
   - `next_number(level)`: Increment counter, reset deeper levels, return formatted
   - `format_heading(level, title)`: Combine number + trailing_char + space + title
-- [ ] Unit tests for counter state:
+- [ ] Unit tests for counter state (Arabic):
   - H1 → "1", H1 → "2", H1 → "3"
   - H1 → "1", H2 → "1.1", H2 → "1.2", H1 → "2", H2 → "2.1"
   - H1 → "1", H2 → "1.1", H3 → "1.1.1", H3 → "1.1.2", H2 → "1.2", H3 → "1.2.1"
+- [ ] Unit tests for counter state (Roman):
+  - H1 → "I", H1 → "II", H1 → "III", H1 → "IV"
+  - H1 → "I", H2 → "I.A", H2 → "I.B", H1 → "II", H2 → "II.A"
+- [ ] Unit tests for counter state (Mixed styles):
+  - H1 roman_upper, H2 alpha_upper: H1 → "I", H2 → "I.A", H2 → "I.B", H1 → "II"
+  - H1 arabic, H2 alpha_lower, H3 roman_lower: "1", "1.a", "1.a.i", "1.a.ii"
 - [ ] Unit tests for formatting:
-  - `format_heading(1, "Intro")` → `"1. Intro"`
-  - `format_heading(2, "Details")` → `"1.1 Details"` (after H1)
+  - `format_heading(1, "Intro")` → `"1. Intro"` (arabic)
+  - `format_heading(2, "Details")` → `"1.1 Details"` (after H1, arabic)
+  - `format_heading(1, "Chapter")` → `"I. Chapter"` (roman_upper)
+  - `format_heading(2, "Section")` → `"I.A Section"` (roman_upper + alpha_upper)
 
 ### Phase 7: Integration with Renderer
 
@@ -822,6 +929,78 @@ def test_decimal_without_period():
 # 2. Conclusion"""
     # Missing periods are added
     assert reformat(input, renumber_sections=True) == expected
+
+# Roman numeral renumbering
+def test_roman_numeral_renumber():
+    input = """# I. Introduction
+# III. Middle
+# II. End"""
+    expected = """# I. Introduction
+# II. Middle
+# III. End"""
+    # Roman numerals renumbered sequentially
+    assert reformat(input, renumber_sections=True) == expected
+
+# Roman H1 with alphabetic H2
+def test_roman_h1_alpha_h2():
+    input = """# I. Chapter One
+## A. Overview
+## C. Details
+# III. Chapter Two
+## A. Summary"""
+    expected = """# I. Chapter One
+## A. Overview
+## B. Details
+# II. Chapter Two
+## A. Summary"""
+    # Roman H1 + Alpha H2, both renumbered
+    assert reformat(input, renumber_sections=True) == expected
+
+# Mixed styles: Arabic H1, alpha_lower H2, roman_lower H3
+def test_mixed_styles_three_levels():
+    input = """# 1. First
+## a. Sub A
+### i. Detail X
+### iii. Detail Y
+## b. Sub B
+# 3. Second"""
+    expected = """# 1. First
+## a. Sub A
+### i. Detail X
+### ii. Detail Y
+## b. Sub B
+# 2. Second"""
+    assert reformat(input, renumber_sections=True) == expected
+
+# Lowercase Roman numerals
+def test_lowercase_roman():
+    input = """# i. first
+# iii. second
+# ii. third"""
+    expected = """# i. first
+# ii. second
+# iii. third"""
+    assert reformat(input, renumber_sections=True) == expected
+
+# Alphabetic only (uppercase)
+def test_alpha_uppercase_only():
+    input = """# A. Introduction
+# C. Middle
+# B. Conclusion"""
+    expected = """# A. Introduction
+# B. Middle
+# C. Conclusion"""
+    assert reformat(input, renumber_sections=True) == expected
+
+# Alphabetic sequence beyond Z (AA, AB, etc.)
+def test_alpha_beyond_z():
+    # Testing that AA comes after Z
+    input = """# Z. Last single letter
+# AB. Wrong double"""
+    expected = """# Z. Last single letter
+# AA. Wrong double"""
+    # AA should be renumbered (Z=26, next is AA=27)
+    assert reformat(input, renumber_sections=True) == expected
 ```
 
 ## Resolved Questions
@@ -982,11 +1161,10 @@ Usage:
 
 ## Future Extensions
 
-- Roman numeral support (`I.`, `II.`, `III.`)
-- Alphabetic numbering (`A.`, `B.`, `C.`)
-- Mixed styles (Roman for H1, Arabic for H2)
 - Option to add numbers to unnumbered documents
 - Option to remove numbers from numbered documents
+- Option to convert between number styles (e.g., Roman → Arabic)
+- Support for nested list-style numbering (e.g., "1.1.1.1" beyond H3)
 
 ## References
 
