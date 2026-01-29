@@ -31,6 +31,7 @@ Usage:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 
@@ -242,3 +243,115 @@ class SectionNumConvention:
             if fmt is not None:
                 parts.append(f"H{i + 1}: {fmt.format_string()}")
         return ", ".join(parts) if parts else "none"
+
+
+@dataclass
+class ParsedPrefix:
+    """
+    Result of parsing a section number prefix from a heading.
+
+    Examples:
+    - "1. Introduction" -> ParsedPrefix(["1"], [arabic], ".", "Introduction")
+    - "1.2 Details" -> ParsedPrefix(["1", "2"], [arabic, arabic], "", "Details")
+    - "I.A Overview" -> ParsedPrefix(["I", "A"], [roman_upper, alpha_upper], "", "Overview")
+    """
+
+    components: list[str]  # Raw string components, e.g., ["1", "2"] or ["I", "A"]
+    styles: list[NumberStyle]  # Inferred style for each component
+    trailing: str  # Trailing character (".", ")", or "")
+    title: str  # The heading text after the prefix
+
+
+# === Style Inference ===
+
+# Characters that can appear in Roman numerals
+ROMAN_CHARS_UPPER = set("IVXLCDM")
+ROMAN_CHARS_LOWER = set("ivxlcdm")
+
+
+def infer_style(component: str) -> NumberStyle:
+    """
+    Infer the number style from a parsed component.
+
+    The order of checks matters for ambiguous cases (e.g., "I" could be Roman 1 or Alpha).
+    We check Roman before Alpha to handle these ambiguous single letters.
+
+    Args:
+        component: A single component string like "1", "I", "A", etc.
+
+    Returns:
+        The inferred NumberStyle for this component.
+    """
+    if component.isdigit():
+        return NumberStyle.arabic
+    # Check Roman before Alpha (handles ambiguous cases like "I", "C", "D")
+    if all(c in ROMAN_CHARS_UPPER for c in component):
+        return NumberStyle.roman_upper
+    if all(c in ROMAN_CHARS_LOWER for c in component):
+        return NumberStyle.roman_lower
+    if component.isupper():
+        return NumberStyle.alpha_upper
+    if component.islower():
+        return NumberStyle.alpha_lower
+    return NumberStyle.arabic  # fallback
+
+
+# === Prefix Extraction ===
+
+# Pattern components for matching section prefixes
+_ARABIC = r"\d+"
+_ROMAN_UPPER = r"[IVXLCDM]+"
+_ROMAN_LOWER = r"[ivxlcdm]+"
+_ALPHA_UPPER = r"[A-Z]+"
+_ALPHA_LOWER = r"[a-z]+"
+
+# Single component (any style)
+_COMPONENT = rf"({_ARABIC}|{_ROMAN_UPPER}|{_ROMAN_LOWER}|{_ALPHA_UPPER}|{_ALPHA_LOWER})"
+
+# Full number pattern: one or more components separated by dots
+# with optional trailing . or )
+# Captures: (full_number_with_dots)(trailing)(space+title)
+_NUMBER_PATTERN = re.compile(
+    rf"^({_COMPONENT}(?:\.{_COMPONENT})*)" r"([.\)])?" r"\s+" r"(.+)$"
+)
+
+
+def extract_section_prefix(text: str) -> ParsedPrefix | None:
+    """
+    Extract a section number prefix from heading text.
+
+    Args:
+        text: The heading text, e.g., "1. Introduction" or "1.2 Details"
+
+    Returns:
+        ParsedPrefix with components, styles, trailing, and title.
+        Returns None if no valid prefix is found.
+
+    Examples:
+        >>> extract_section_prefix("1. Introduction")
+        ParsedPrefix(["1"], [arabic], ".", "Introduction")
+        >>> extract_section_prefix("1.2 Details")
+        ParsedPrefix(["1", "2"], [arabic, arabic], "", "Details")
+        >>> extract_section_prefix("Background")
+        None
+    """
+    match = _NUMBER_PATTERN.match(text)
+    if not match:
+        return None
+
+    full_number = match.group(1)
+    trailing = match.group(len(match.groups()) - 1) or ""
+    title = match.group(len(match.groups()))
+
+    # Split by dots to get components
+    components = full_number.split(".")
+
+    # Infer style for each component
+    styles = [infer_style(comp) for comp in components]
+
+    return ParsedPrefix(
+        components=components,
+        styles=styles,
+        trailing=trailing,
+        title=title,
+    )
