@@ -192,6 +192,11 @@ def infer_style(component: str) -> NumberStyle:
 as Roman numerals, not alphabetic. To use alphabetic "I", a document would need letters
 outside the Roman set (e.g., "A", "B", "E", "F") to establish the pattern.
 
+**Level-wide disambiguation**: If headings at a single level contain *both* Roman-only
+letters (I, V, X, C, D, M) and non-Roman letters (A, B, E, F, G, etc.), we treat the
+entire level as alphabetic. For example, if H1s are "A.", "B.", "C.", "D.", the "C" and
+"D" are not misinterpreted as Roman—the presence of "A", "B" establishes alphabetic intent.
+
 ### Examples of Prefix Extraction
 
 | Input | Parsed Components | Inferred Styles | Title |
@@ -684,6 +689,10 @@ All code goes in `src/flowmark/transforms/section_numbering.py` with tests in
   - H1s with `[I], [II]`, H2s with `[I.A], [I.B]` → format `{h1:roman_upper}.{h2:alpha_upper}`
   - First two with different structures (e.g., `[1]` and `[1,2]`) → `None`
   - First two with different styles (e.g., `[1]` and `[I]`) → `None`
+- [ ] Unit tests for level-wide disambiguation:
+  - H1s with `[A], [B], [C], [D]` → all `alpha_upper` (C, D not misread as Roman)
+  - H1s with `[I], [II], [III], [IV]` → all `roman_upper` (pure Roman set)
+  - H1s with `[a], [b], [c], [d]` → all `alpha_lower` (c, d not misread as Roman)
 
 ### Phase 4: Hierarchical Constraint
 
