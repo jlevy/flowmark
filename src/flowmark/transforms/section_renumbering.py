@@ -34,8 +34,8 @@ def _get_heading_text(heading: block.Heading) -> str:
         else:
             children = getattr(element, "children", None)
             if isinstance(children, list):
-                for child in children:
-                    collect_text(child)
+                for child in children:  # pyright: ignore[reportUnknownVariableType]
+                    collect_text(child)  # pyright: ignore[reportUnknownArgumentType]
             elif isinstance(children, str):
                 text_parts.append(children)
 
@@ -59,8 +59,8 @@ def _set_heading_text(heading: block.Heading, new_text: str) -> None:
         else:
             children = getattr(element, "children", None)
             if isinstance(children, list):
-                for child in children:
-                    if find_and_replace(child):
+                for child in children:  # pyright: ignore[reportUnknownVariableType]
+                    if find_and_replace(child):  # pyright: ignore[reportUnknownArgumentType]
                         return True
         return False
 
@@ -97,8 +97,8 @@ def apply_section_renumbering(doc: Document) -> None:
         else:
             children = getattr(element, "children", None)
             if isinstance(children, list):
-                for child in children:
-                    collect_headings(child)
+                for child in children:  # pyright: ignore[reportUnknownVariableType]
+                    collect_headings(child)  # pyright: ignore[reportUnknownArgumentType]
 
     collect_headings(doc)
 

@@ -53,7 +53,7 @@ def int_to_roman(n: int) -> str:
     """Convert an integer to uppercase Roman numeral string."""
     if n <= 0:
         raise ValueError("Roman numerals must be positive")
-    result = []
+    result: list[str] = []
     for value, numeral in [
         (1000, "M"),
         (900, "CM"),
@@ -95,7 +95,7 @@ def int_to_alpha(n: int) -> str:
     """Convert an integer to uppercase alphabetic string (A, B, ..., Z, AA, AB, ...)."""
     if n <= 0:
         raise ValueError("Alpha values must be positive")
-    result = []
+    result: list[str] = []
     while n > 0:
         n -= 1
         result.append(chr(ord("A") + (n % 26)))
@@ -122,10 +122,8 @@ def to_number(style: NumberStyle, value: int) -> str:
         return int_to_roman(value).lower()
     elif style == NumberStyle.alpha_upper:
         return int_to_alpha(value)
-    elif style == NumberStyle.alpha_lower:
+    else:  # style == NumberStyle.alpha_lower
         return int_to_alpha(value).lower()
-    else:
-        return str(value)
 
 
 def from_number(style: NumberStyle, text: str) -> int:
@@ -134,10 +132,8 @@ def from_number(style: NumberStyle, text: str) -> int:
         return int(text)
     elif style in (NumberStyle.roman_upper, NumberStyle.roman_lower):
         return roman_to_int(text)
-    elif style in (NumberStyle.alpha_upper, NumberStyle.alpha_lower):
+    else:  # style in (NumberStyle.alpha_upper, NumberStyle.alpha_lower)
         return alpha_to_int(text)
-    else:
-        return int(text)
 
 
 # === Data Structures ===
@@ -236,9 +232,9 @@ class SectionNumConvention:
         """Whether this document qualifies for section renumbering."""
         return self.max_depth >= 1
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pyright: ignore[reportImplicitOverride]
         """Human-readable representation of the convention."""
-        parts = []
+        parts: list[str] = []
         for i, fmt in enumerate(self.levels):
             if fmt is not None:
                 parts.append(f"H{i + 1}: {fmt.format_string()}")
@@ -470,7 +466,7 @@ def infer_format_for_level(headings: list[tuple[int, str]], level: int) -> Secti
         return None
 
     # Build FormatComponents from the prefix structure
-    components = []
+    components: list[FormatComponent] = []
     for i, style in enumerate(first_prefix.styles):
         # Component level is i+1 for the i-th component
         # e.g., "1.2" has components [h1, h2] for levels 1 and 2
@@ -574,6 +570,9 @@ class SectionRenumberer:
         new_h1 = renumberer.format_heading(1, "Introduction")  # "1. Introduction"
         new_h2 = renumberer.format_heading(2, "Background")    # "1.1 Background"
     """
+
+    convention: SectionNumConvention
+    counters: list[int]
 
     def __init__(self, convention: SectionNumConvention) -> None:
         """
