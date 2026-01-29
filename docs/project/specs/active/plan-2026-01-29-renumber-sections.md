@@ -380,6 +380,26 @@ def test_h1_numbered_h2_not():
     # Only H1s are renumbered; H2s have no numbers so they stay as-is
     assert reformat(input, renumber_sections=True) == expected
 
+# IMPORTANT: Partial H2 numbering - some H2s numbered, some not
+# H2 level does NOT qualify, so numbered H2s keep original numbers
+def test_partial_h2_numbering_not_renumbered():
+    input = """# 1. Intro
+## 1.1 First Sub
+## Background
+# 3. Design
+## 3.1 Architecture
+## Overview"""
+    expected = """# 1. Intro
+## 1.1 First Sub
+## Background
+# 2. Design
+## 3.1 Architecture
+## Overview"""
+    # H1s: all numbered → renumbered (1, 2 instead of 1, 3)
+    # H2s: some numbered, some not → H2 level is `none`, NO renumbering
+    # The numbered H2s keep their ORIGINAL numbers (1.1, 3.1 unchanged)
+    assert reformat(input, renumber_sections=True) == expected
+
 # Separator normalization - always use period
 def test_separator_normalized_to_period():
     input = """# 1) Intro
