@@ -148,9 +148,7 @@ class TestSectionNumConvention:
 
     def test_max_depth_none(self) -> None:
         """max_depth returns 0 when no levels are numbered."""
-        conv = SectionNumConvention(
-            levels=(None, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(None, None, None, None, None, None))
         assert conv.max_depth == 0
 
     def test_max_depth_h1_only(self) -> None:
@@ -159,9 +157,7 @@ class TestSectionNumConvention:
             components=[FormatComponent(level=1, style=NumberStyle.arabic)],
             trailing=".",
         )
-        conv = SectionNumConvention(
-            levels=(fmt, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt, None, None, None, None, None))
         assert conv.max_depth == 1
 
     def test_max_depth_h1_h2(self) -> None:
@@ -177,16 +173,12 @@ class TestSectionNumConvention:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, None, None, None, None))
         assert conv.max_depth == 2
 
     def test_is_active_false_when_no_levels(self) -> None:
         """is_active returns False when no levels are numbered."""
-        conv = SectionNumConvention(
-            levels=(None, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(None, None, None, None, None, None))
         assert conv.is_active is False
 
     def test_is_active_true_when_h1_numbered(self) -> None:
@@ -195,16 +187,12 @@ class TestSectionNumConvention:
             components=[FormatComponent(level=1, style=NumberStyle.arabic)],
             trailing=".",
         )
-        conv = SectionNumConvention(
-            levels=(fmt, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt, None, None, None, None, None))
         assert conv.is_active is True
 
     def test_str_none(self) -> None:
         """__str__ returns 'none' when no levels are numbered."""
-        conv = SectionNumConvention(
-            levels=(None, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(None, None, None, None, None, None))
         assert str(conv) == "none"
 
     def test_str_h1_only(self) -> None:
@@ -213,9 +201,7 @@ class TestSectionNumConvention:
             components=[FormatComponent(level=1, style=NumberStyle.arabic)],
             trailing=".",
         )
-        conv = SectionNumConvention(
-            levels=(fmt, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt, None, None, None, None, None))
         assert str(conv) == "H1: {h1:arabic}."
 
     def test_str_h1_h2(self) -> None:
@@ -231,9 +217,7 @@ class TestSectionNumConvention:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, None, None, None, None))
         assert str(conv) == "H1: {h1:arabic}., H2: {h1:arabic}.{h2:arabic}"
 
 
@@ -458,7 +442,11 @@ class TestExtractSectionPrefix:
         result = extract_section_prefix("1.a.i Deep")
         assert result is not None
         assert result.components == ["1", "a", "i"]
-        assert result.styles == [NumberStyle.arabic, NumberStyle.alpha_lower, NumberStyle.roman_lower]
+        assert result.styles == [
+            NumberStyle.arabic,
+            NumberStyle.alpha_lower,
+            NumberStyle.roman_lower,
+        ]
         assert result.trailing == ""
         assert result.title == "Deep"
 
@@ -686,7 +674,7 @@ class TestLevelWideDisambiguation:
             (1, "A. Intro"),
             (1, "B. Design"),
             (1, "C. More"),  # C is Roman-only but...
-            (1, "D. End"),   # D is Roman-only but A, B are not
+            (1, "D. End"),  # D is Roman-only but A, B are not
         ]
         result = infer_format_for_level(headings, 1)
         assert result is not None
@@ -812,9 +800,7 @@ class TestApplyHierarchicalConstraint:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, fmt3, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, fmt3, None, None, None))
         result = apply_hierarchical_constraint(conv)
         # Should be unchanged
         assert result.levels[0] is not None
@@ -836,9 +822,7 @@ class TestApplyHierarchicalConstraint:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, None, fmt3, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, None, fmt3, None, None, None))
         result = apply_hierarchical_constraint(conv)
         # H1 should remain, H2 is None, H3 should become None
         assert result.levels[0] is not None
@@ -855,9 +839,7 @@ class TestApplyHierarchicalConstraint:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(None, fmt2, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(None, fmt2, None, None, None, None))
         result = apply_hierarchical_constraint(conv)
         # All should be None (H1 is required)
         assert result.levels[0] is None
@@ -887,9 +869,7 @@ class TestApplyHierarchicalConstraint:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, None, fmt4, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, None, fmt4, None, None))
         result = apply_hierarchical_constraint(conv)
         # H1, H2 should remain, H3 is None, H4+ should become None
         assert result.levels[0] is not None
@@ -904,9 +884,7 @@ class TestApplyHierarchicalConstraint:
             components=[FormatComponent(level=1, style=NumberStyle.arabic)],
             trailing=".",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, None, None, None, None, None))
         result = apply_hierarchical_constraint(conv)
         assert result.levels[0] is not None
         assert result.max_depth == 1
@@ -914,9 +892,7 @@ class TestApplyHierarchicalConstraint:
 
     def test_all_none_stays_none(self) -> None:
         """All None stays all None."""
-        conv = SectionNumConvention(
-            levels=(None, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(None, None, None, None, None, None))
         result = apply_hierarchical_constraint(conv)
         assert result.max_depth == 0
         assert not result.is_active
@@ -934,9 +910,7 @@ class TestNormalizeConvention:
             components=[FormatComponent(level=1, style=NumberStyle.arabic)],
             trailing=")",
         )
-        conv = SectionNumConvention(
-            levels=(fmt, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt, None, None, None, None, None))
         result = normalize_convention(conv)
         assert result.levels[0] is not None
         assert result.levels[0].trailing == "."
@@ -947,9 +921,7 @@ class TestNormalizeConvention:
             components=[FormatComponent(level=1, style=NumberStyle.arabic)],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt, None, None, None, None, None))
         result = normalize_convention(conv)
         assert result.levels[0] is not None
         assert result.levels[0].trailing == "."
@@ -967,9 +939,7 @@ class TestNormalizeConvention:
             ],
             trailing="",  # No trailing for decimal formats
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, None, None, None, None))
         result = normalize_convention(conv)
         assert result.levels[0] is not None
         assert result.levels[1] is not None
@@ -991,9 +961,7 @@ class TestNormalizeConvention:
             ],
             trailing=")",  # Paren should be removed for decimals
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, None, None, None, None))
         result = normalize_convention(conv)
         assert result.levels[1] is not None
         # H2 decimal should have no trailing
@@ -1020,9 +988,7 @@ class TestNormalizeConvention:
             ],
             trailing=".",  # period -> empty for decimal
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, fmt3, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, fmt3, None, None, None))
         result = normalize_convention(conv)
         assert result.levels[0] is not None
         assert result.levels[1] is not None
@@ -1044,9 +1010,7 @@ class TestNormalizeConvention:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, None, None, None, None))
         result = normalize_convention(conv)
         assert result.levels[0] is not None
         assert result.levels[1] is not None
@@ -1059,9 +1023,7 @@ class TestNormalizeConvention:
             components=[FormatComponent(level=1, style=NumberStyle.arabic)],
             trailing=")",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, None, None, None, None, None))
         result = normalize_convention(conv)
         assert result.levels[0] is not None
         assert result.levels[1] is None
@@ -1080,9 +1042,7 @@ class TestSectionRenumbererArabic:
             components=[FormatComponent(level=1, style=NumberStyle.arabic)],
             trailing=".",
         )
-        conv = SectionNumConvention(
-            levels=(fmt, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt, None, None, None, None, None))
         renumberer = SectionRenumberer(conv)
         assert renumberer.next_number(1) == "1."
         assert renumberer.next_number(1) == "2."
@@ -1101,9 +1061,7 @@ class TestSectionRenumbererArabic:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, None, None, None, None))
         renumberer = SectionRenumberer(conv)
         assert renumberer.next_number(1) == "1."
         assert renumberer.next_number(2) == "1.1"
@@ -1132,9 +1090,7 @@ class TestSectionRenumbererArabic:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, fmt3, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, fmt3, None, None, None))
         renumberer = SectionRenumberer(conv)
         assert renumberer.next_number(1) == "1."
         assert renumberer.next_number(2) == "1.1"
@@ -1156,9 +1112,7 @@ class TestSectionRenumbererArabic:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, None, None, None, None))
         renumberer = SectionRenumberer(conv)
         assert renumberer.next_number(1) == "1."
         assert renumberer.next_number(2) == "1.1"
@@ -1177,9 +1131,7 @@ class TestSectionRenumbererRoman:
             components=[FormatComponent(level=1, style=NumberStyle.roman_upper)],
             trailing=".",
         )
-        conv = SectionNumConvention(
-            levels=(fmt, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt, None, None, None, None, None))
         renumberer = SectionRenumberer(conv)
         assert renumberer.next_number(1) == "I."
         assert renumberer.next_number(1) == "II."
@@ -1199,9 +1151,7 @@ class TestSectionRenumbererRoman:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, None, None, None, None))
         renumberer = SectionRenumberer(conv)
         assert renumberer.next_number(1) == "I."
         assert renumberer.next_number(2) == "I.A"
@@ -1234,9 +1184,7 @@ class TestSectionRenumbererMixed:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, fmt3, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, fmt3, None, None, None))
         renumberer = SectionRenumberer(conv)
         assert renumberer.next_number(1) == "1."
         assert renumberer.next_number(2) == "1.a"
@@ -1255,9 +1203,7 @@ class TestSectionRenumbererFormatHeading:
             components=[FormatComponent(level=1, style=NumberStyle.arabic)],
             trailing=".",
         )
-        conv = SectionNumConvention(
-            levels=(fmt, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt, None, None, None, None, None))
         renumberer = SectionRenumberer(conv)
         assert renumberer.format_heading(1, "Introduction") == "1. Introduction"
         assert renumberer.format_heading(1, "Design") == "2. Design"
@@ -1275,9 +1221,7 @@ class TestSectionRenumbererFormatHeading:
             ],
             trailing="",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, fmt2, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, fmt2, None, None, None, None))
         renumberer = SectionRenumberer(conv)
         assert renumberer.format_heading(1, "First") == "1. First"
         assert renumberer.format_heading(2, "Details") == "1.1 Details"
@@ -1289,9 +1233,7 @@ class TestSectionRenumbererFormatHeading:
             components=[FormatComponent(level=1, style=NumberStyle.roman_upper)],
             trailing=".",
         )
-        conv = SectionNumConvention(
-            levels=(fmt, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt, None, None, None, None, None))
         renumberer = SectionRenumberer(conv)
         assert renumberer.format_heading(1, "Chapter") == "I. Chapter"
         assert renumberer.format_heading(1, "Chapter Two") == "II. Chapter Two"
@@ -1302,9 +1244,7 @@ class TestSectionRenumbererFormatHeading:
             components=[FormatComponent(level=1, style=NumberStyle.arabic)],
             trailing=".",
         )
-        conv = SectionNumConvention(
-            levels=(fmt1, None, None, None, None, None)
-        )
+        conv = SectionNumConvention(levels=(fmt1, None, None, None, None, None))
         renumberer = SectionRenumberer(conv)
         renumberer.next_number(1)  # Advance H1 counter
         # H2 is not numbered, should return title only
@@ -1432,14 +1372,14 @@ class TestRenumberHeadingsHighLevel:
     def test_h2_below_threshold_h1_renumbered(self) -> None:
         """H1 renumbered but H2 below threshold stays unchanged."""
         headings = [
-            (1, "1. Intro"),     # index 0
-            (2, "1.1 Sub A"),    # index 1
-            (2, "Background"),   # index 2
-            (2, "Details"),      # index 3
-            (1, "3. Design"),    # index 4
-            (2, "3.1 Arch"),     # index 5
-            (2, "Overview"),     # index 6
-            (2, "Notes"),        # index 7
+            (1, "1. Intro"),  # index 0
+            (2, "1.1 Sub A"),  # index 1
+            (2, "Background"),  # index 2
+            (2, "Details"),  # index 3
+            (1, "3. Design"),  # index 4
+            (2, "3.1 Arch"),  # index 5
+            (2, "Overview"),  # index 6
+            (2, "Notes"),  # index 7
         ]
         # H1s: 2/2 numbered → renumbered
         # H2s: 2/6 numbered (33%) → NOT renumbered (below threshold)
