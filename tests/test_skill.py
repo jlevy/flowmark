@@ -34,16 +34,18 @@ class TestGetDocsContent:
     """Tests for get_docs_content function."""
 
     def test_docs_content_loads(self) -> None:
-        """Documentation content can be loaded."""
+        """README.md content can be loaded."""
         content = get_docs_content()
         assert content is not None
         assert len(content) > 0
 
-    def test_docs_content_has_sections(self) -> None:
-        """Documentation contains expected sections."""
+    def test_docs_content_is_readme(self) -> None:
+        """get_docs_content returns README.md content."""
         content = get_docs_content()
-        # Should have some documentation content
-        assert "flowmark" in content.lower()
+        # README.md has these distinctive sections
+        assert "# flowmark" in content.lower()
+        assert "## Installation" in content
+        assert "## Semantic Line Breaks" in content
 
 
 class TestInstallSkill:

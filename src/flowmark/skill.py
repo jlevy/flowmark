@@ -30,36 +30,21 @@ def get_skill_content() -> str:
 
 
 def get_docs_content() -> str:
-    """Read flowmark-docs.md from the docs directory.
+    """Read README.md from the repository root.
 
     Returns:
-        The content of the flowmark-docs.md file as a string.
-
-    Raises:
-        ImportError: If the docs file cannot be accessed.
+        The content of the README.md file as a string.
     """
-    try:
-        # Try to read from package data first
-        from importlib.resources import files
+    # Find README.md relative to this file (src/flowmark/skill.py -> repo root)
+    current_file = Path(__file__).resolve()
+    repo_root = current_file.parent.parent.parent
+    readme_path = repo_root / "README.md"
 
-        # The docs are not in the package, so read from installed location
-        docs_file = files("flowmark").joinpath("../../../docs/flowmark-docs.md")
-        return docs_file.read_text(encoding="utf-8")
-    except Exception:
-        # Fallback: try reading from relative path (for development)
-        try:
-            # Find the docs directory relative to this file
-            current_file = Path(__file__).resolve()
-            # Go up from src/flowmark/skill.py to repo root
-            repo_root = current_file.parent.parent.parent
-            docs_path = repo_root / "docs" / "flowmark-docs.md"
-            if docs_path.exists():
-                return docs_path.read_text(encoding="utf-8")
-        except Exception:
-            pass
+    if readme_path.exists():
+        return readme_path.read_text(encoding="utf-8")
 
-        # Final fallback: return basic help text
-        return """# Flowmark Documentation
+    # Fallback: return basic help text with link to online docs
+    return """# Flowmark Documentation
 
 Run `flowmark --help` for command-line options.
 
