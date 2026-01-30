@@ -21,23 +21,12 @@ def get_skill_content() -> str:
         ImportError: If package resources cannot be accessed.
         FileNotFoundError: If SKILL.md cannot be found in package data.
     """
-    try:
-        # Python 3.9+ importlib.resources API
-        from importlib.resources import files
+    # importlib.resources.files() is available in Python 3.9+
+    # This project requires Python 3.10+, so no fallback needed
+    from importlib.resources import files
 
-        skill_file = files("flowmark").joinpath("skills/SKILL.md")
-        return skill_file.read_text(encoding="utf-8")
-    except (ImportError, AttributeError):
-        # Fallback for older Python versions
-        try:
-            import pkg_resources  # type: ignore[import-not-found]  # pyright: ignore[reportMissingImports]
-
-            return pkg_resources.resource_string("flowmark", "skills/SKILL.md").decode("utf-8")
-        except Exception as e:
-            raise ImportError(
-                f"Could not load skill from package data: {e}\n"
-                "Ensure flowmark is installed as a package, not run as a standalone script."
-            ) from e
+    skill_file = files("flowmark").joinpath("skills/SKILL.md")
+    return skill_file.read_text(encoding="utf-8")
 
 
 def get_docs_content() -> str:
