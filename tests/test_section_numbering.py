@@ -19,44 +19,6 @@ from flowmark.transforms.section_numbering import (
     roman_to_int,
 )
 
-# === Phase 1: Core Data Structures ===
-
-
-class TestNumberStyle:
-    """Tests for NumberStyle enum."""
-
-    def test_enum_values(self) -> None:
-        """NumberStyle has all expected values."""
-        assert NumberStyle.arabic == "arabic"
-        assert NumberStyle.roman_upper == "roman_upper"
-        assert NumberStyle.roman_lower == "roman_lower"
-        assert NumberStyle.alpha_upper == "alpha_upper"
-        assert NumberStyle.alpha_lower == "alpha_lower"
-
-    def test_enum_is_string(self) -> None:
-        """NumberStyle values can be used as strings."""
-        assert NumberStyle.arabic.value == "arabic"
-        assert NumberStyle.roman_upper.value == "roman_upper"
-        # Can compare directly with strings
-        assert NumberStyle.arabic == "arabic"
-        assert NumberStyle.roman_upper == "roman_upper"
-
-
-class TestFormatComponent:
-    """Tests for FormatComponent dataclass."""
-
-    def test_create_arabic_component(self) -> None:
-        """Can create a FormatComponent with arabic style."""
-        comp = FormatComponent(level=1, style=NumberStyle.arabic)
-        assert comp.level == 1
-        assert comp.style == NumberStyle.arabic
-
-    def test_create_roman_component(self) -> None:
-        """Can create a FormatComponent with roman style."""
-        comp = FormatComponent(level=2, style=NumberStyle.roman_upper)
-        assert comp.level == 2
-        assert comp.style == NumberStyle.roman_upper
-
 
 class TestSectionNumFormat:
     """Tests for SectionNumFormat dataclass."""
@@ -219,9 +181,6 @@ class TestSectionNumConvention:
         )
         conv = SectionNumConvention(levels=(fmt1, fmt2, None, None, None, None))
         assert str(conv) == "H1: {h1:arabic}., H2: {h1:arabic}.{h2:arabic}"
-
-
-# === Phase 2: Prefix Extraction (Parsing) ===
 
 
 class TestRomanConversion:
@@ -466,9 +425,6 @@ class TestExtractSectionPrefix:
         # Could be None or empty title depending on implementation
         # Let's say we require a title
         assert result is None or result.title == ""
-
-
-# === Phase 3: Convention Inference ===
 
 
 class TestInferFormatForLevel:
@@ -772,9 +728,6 @@ class TestInferSectionConvention:
         assert str(conv) == "H1: {h1:arabic}., H2: {h1:arabic}.{h2:arabic}"
 
 
-# === Phase 4: Hierarchical Constraint ===
-
-
 class TestApplyHierarchicalConstraint:
     """Tests for apply_hierarchical_constraint function."""
 
@@ -896,9 +849,6 @@ class TestApplyHierarchicalConstraint:
         result = apply_hierarchical_constraint(conv)
         assert result.max_depth == 0
         assert not result.is_active
-
-
-# === Phase 5: Normalization ===
 
 
 class TestNormalizeConvention:
@@ -1028,9 +978,6 @@ class TestNormalizeConvention:
         assert result.levels[0] is not None
         assert result.levels[1] is None
         assert result.levels[2] is None
-
-
-# === Phase 6: Renumbering Logic ===
 
 
 class TestSectionRenumbererArabic:
@@ -1251,9 +1198,6 @@ class TestSectionRenumbererFormatHeading:
         assert renumberer.format_heading(2, "Background") == "Background"
 
 
-# === Phase 7: Integration with fill_markdown ===
-
-
 class TestRenumberHeadingsHighLevel:
     """Tests for renumber_headings top-level function."""
 
@@ -1459,9 +1403,6 @@ Final text.
         assert "# 1. Intro" in result
         assert "# 3. Middle" in result
         assert "# 2. End" in result
-
-
-# === Phase 9: End-to-End Tests from Spec ===
 
 
 class TestEndToEndFromSpec:

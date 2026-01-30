@@ -35,6 +35,19 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 
+# Module constants
+MAX_HEADING_LEVELS = 6
+"""Maximum number of heading levels supported (H1-H6)."""
+
+TWO_THIRDS_THRESHOLD = 2 / 3
+"""Minimum fraction of headings at a level that must be numbered to qualify."""
+
+MIN_HEADINGS_FOR_INFERENCE = 2
+"""Minimum number of headings required at a level to infer a convention."""
+
+ALPHABET_SIZE = 26
+"""Number of letters in the alphabet for alpha numbering."""
+
 
 class NumberStyle(str, Enum):
     """Number style within a format component."""
@@ -44,9 +57,6 @@ class NumberStyle(str, Enum):
     roman_lower = "roman_lower"  # i, ii, iii, iv, v
     alpha_upper = "alpha_upper"  # A, B, C, ... Z, AA, AB
     alpha_lower = "alpha_lower"  # a, b, c, ... z, aa, ab
-
-
-# === Number Conversion Functions ===
 
 
 def int_to_roman(n: int) -> str:
@@ -98,8 +108,8 @@ def int_to_alpha(n: int) -> str:
     result: list[str] = []
     while n > 0:
         n -= 1
-        result.append(chr(ord("A") + (n % 26)))
-        n //= 26
+        result.append(chr(ord("A") + (n % ALPHABET_SIZE)))
+        n //= ALPHABET_SIZE
     return "".join(reversed(result))
 
 
@@ -108,7 +118,7 @@ def alpha_to_int(s: str) -> int:
     s = s.upper()
     result = 0
     for char in s:
-        result = result * 26 + (ord(char) - ord("A") + 1)
+        result = result * ALPHABET_SIZE + (ord(char) - ord("A") + 1)
     return result
 
 
@@ -134,9 +144,6 @@ def from_number(style: NumberStyle, text: str) -> int:
         return roman_to_int(text)
     else:  # style in (NumberStyle.alpha_upper, NumberStyle.alpha_lower)
         return alpha_to_int(text)
-
-
-# === Data Structures ===
 
 
 @dataclass
@@ -222,7 +229,7 @@ class SectionNumConvention:
     @property
     def max_depth(self) -> int:
         """The deepest heading level with numbering (1-6), or 0 if no numbering."""
-        for i in range(5, -1, -1):
+        for i in range(MAX_HEADING_LEVELS - 1, -1, -1):
             if self.levels[i] is not None:
                 return i + 1
         return 0
@@ -258,8 +265,6 @@ class ParsedPrefix:
     title: str  # The heading text after the prefix
 
 
-# === Style Inference ===
-
 # Characters that can appear in Roman numerals
 ROMAN_CHARS_UPPER = set("IVXLCDM")
 ROMAN_CHARS_LOWER = set("ivxlcdm")
@@ -291,8 +296,6 @@ def infer_style(component: str) -> NumberStyle:
         return NumberStyle.alpha_lower
     return NumberStyle.arabic  # fallback
 
-
-# === Prefix Extraction ===
 
 # Pattern components for matching section prefixes
 _ARABIC = r"\d+"
@@ -349,9 +352,6 @@ def extract_section_prefix(text: str) -> ParsedPrefix | None:
         trailing=trailing,
         title=title,
     )
-
-
-# === Convention Inference ===
 
 
 def _are_prefixes_compatible(p1: ParsedPrefix, p2: ParsedPrefix) -> bool:
@@ -432,7 +432,7 @@ def infer_format_for_level(headings: list[tuple[int, str]], level: int) -> Secti
     # Filter headings to this level
     level_headings = [(lvl, text) for lvl, text in headings if lvl == level]
 
-    if len(level_headings) < 2:
+    if len(level_headings) < MIN_HEADINGS_FOR_INFERENCE:
         return None
 
     # Parse prefixes for all headings at this level
@@ -454,7 +454,7 @@ def infer_format_for_level(headings: list[tuple[int, str]], level: int) -> Secti
     # Two-thirds rule: at least 66% must have prefixes
     total = len(parsed)
     with_prefix = len(valid_prefixes)
-    if with_prefix / total < 2 / 3:
+    if with_prefix / total < TWO_THIRDS_THRESHOLD:
         return None
 
     # First-two rule: prefixes must be compatible (same structure and styles)
@@ -496,7 +496,7 @@ def infer_section_convention(
     """
     levels: list[SectionNumFormat | None] = []
 
-    for level in range(1, 7):
+    for level in range(1, MAX_HEADING_LEVELS + 1):
         fmt = infer_format_for_level(headings, level)
         levels.append(fmt)
 
@@ -583,7 +583,7 @@ class SectionRenumberer:
         """
         self.convention = convention
         # Counters for each level (H1-H6), initialized to 0
-        self.counters = [0, 0, 0, 0, 0, 0]
+        self.counters = [0] * MAX_HEADING_LEVELS
 
     def next_number(self, level: int) -> str:
         """
@@ -597,8 +597,8 @@ class SectionRenumberer:
         Returns:
             Formatted number string (e.g., "1.", "1.1", "II.A").
         """
-        if level < 1 or level > 6:
-            raise ValueError(f"Level must be 1-6, got {level}")
+        if level < 1 or level > MAX_HEADING_LEVELS:
+            raise ValueError(f"Level must be 1-{MAX_HEADING_LEVELS}, got {level}")
 
         fmt = self.convention.levels[level - 1]
         if fmt is None:
@@ -608,7 +608,7 @@ class SectionRenumberer:
         self.counters[level - 1] += 1
 
         # Reset all deeper level counters
-        for i in range(level, 6):
+        for i in range(level, MAX_HEADING_LEVELS):
             self.counters[i] = 0
 
         # Format the number using the convention
@@ -703,14 +703,14 @@ def apply_hierarchical_constraint(
     # Find the first gap in the contiguous chain from H1
     # If H1 is None, all levels become None
     first_gap = 0
-    for i in range(6):
+    for i in range(MAX_HEADING_LEVELS):
         if levels[i] is None:
             first_gap = i
             break
         first_gap = i + 1
 
     # Set all levels from the first gap onward to None
-    for i in range(first_gap, 6):
+    for i in range(first_gap, MAX_HEADING_LEVELS):
         levels[i] = None
 
     return SectionNumConvention(
