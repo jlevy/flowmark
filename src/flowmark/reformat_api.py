@@ -17,6 +17,7 @@ def reformat_text(
     cleanups: bool = True,
     smartquotes: bool = False,
     ellipses: bool = False,
+    renumber_sections: bool = False,
     list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> str:
     """
@@ -40,6 +41,7 @@ def reformat_text(
             cleanups=cleanups,
             smartquotes=smartquotes,
             ellipses=ellipses,
+            renumber_sections=renumber_sections,
             list_spacing=list_spacing,
         )
 
@@ -57,6 +59,7 @@ def reformat_file(
     cleanups: bool = True,
     smartquotes: bool = False,
     ellipses: bool = False,
+    renumber_sections: bool = False,
     make_parents: bool = True,
     list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> None:
@@ -94,7 +97,15 @@ def reformat_file(
         text = Path(path).read_text()
 
     result = reformat_text(
-        text, width, plaintext, semantic, cleanups, smartquotes, ellipses, list_spacing
+        text,
+        width,
+        plaintext,
+        semantic,
+        cleanups,
+        smartquotes,
+        ellipses,
+        renumber_sections,
+        list_spacing,
     )
 
     if inplace:
@@ -122,6 +133,7 @@ def reformat_files(
     cleanups: bool = True,
     smartquotes: bool = False,
     ellipses: bool = False,
+    renumber_sections: bool = False,
     make_parents: bool = True,
     list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> None:
@@ -155,6 +167,7 @@ def reformat_files(
             cleanups=cleanups,
             smartquotes=smartquotes,
             ellipses=ellipses,
+            renumber_sections=renumber_sections,
             make_parents=make_parents,
             list_spacing=list_spacing,
         )
@@ -184,6 +197,7 @@ def reformat_files(
             cleanups=cleanups,
             smartquotes=smartquotes,
             ellipses=ellipses,
+            renumber_sections=renumber_sections,
             make_parents=make_parents,
             list_spacing=list_spacing,
         )
