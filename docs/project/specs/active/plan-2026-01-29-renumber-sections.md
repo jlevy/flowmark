@@ -120,6 +120,32 @@ Example:
 - After hierarchical check: H1=`{h1:arabic}.`, H2=`none`, H3=`none`
   (H3 disabled because H2 is `none`)
 
+#### Single-H1 Exception
+
+**Exception**: When a document has only **one H1 heading**, the H1 is excluded from
+the hierarchical check. This allows H2+ to be numbered independently.
+
+This handles the common case where a document has a single title heading:
+
+```markdown
+# My Document Title
+
+## 1. Introduction
+## 2. Background
+## 3. Conclusion
+```
+
+In this case:
+- There's only 1 H1 → H1 is excluded from hierarchy check
+- H2s qualify independently (first-two + two-thirds rules)
+- H2s are renumbered; the single H1 passes through unchanged
+
+Valid configurations with single-H1 exception:
+
+- ✓ 1 H1 (unnumbered) + numbered H2s
+- ✓ 1 H1 (unnumbered) + numbered H2s + numbered H3s
+- ✗ 1 H1 (unnumbered) + numbered H3s only (still need H2 for contiguity from H2)
+
 ### Recognized Patterns (General Approach)
 
 We use a **single general regex** that recognizes all standard numbering styles in any

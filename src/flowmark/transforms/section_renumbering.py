@@ -108,14 +108,19 @@ def apply_section_renumbering(doc: Document) -> None:
     # Step 2: Infer convention
     heading_tuples = [(level, text) for level, text, _ in headings]
     convention = infer_section_convention(heading_tuples)
-    convention = apply_hierarchical_constraint(convention)
+    # Pass heading_tuples for single-H1 exception check
+    convention = apply_hierarchical_constraint(convention, heading_tuples)
     convention = normalize_convention(convention)
 
     if not convention.is_active:
         return
 
+    # Check for single-H1 situation
+    h1_count = sum(1 for level, _, _ in headings if level == 1)
+    single_h1 = h1_count == 1
+
     # Step 3: Renumber headings
-    renumberer = SectionRenumberer(convention)
+    renumberer = SectionRenumberer(convention, single_h1=single_h1)
 
     for level, text, heading_elem in headings:
         fmt = convention.levels[level - 1]

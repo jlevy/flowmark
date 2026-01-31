@@ -466,11 +466,16 @@ def infer_format_for_level(headings: list[tuple[int, str]], level: int) -> Secti
         return None
 
     # Build FormatComponents from the prefix structure
+    # Component levels are calculated based on the heading level and number of components
+    # For H2 with "1.1" (2 components): levels are 1, 2
+    # For H2 with "1." (1 component): level is 2 (matches heading level)
+    # For H3 with "1.1.1" (3 components): levels are 1, 2, 3
+    num_components = len(first_prefix.styles)
+    start_level = level - num_components + 1
+
     components: list[FormatComponent] = []
     for i, style in enumerate(first_prefix.styles):
-        # Component level is i+1 for the i-th component
-        # e.g., "1.2" has components [h1, h2] for levels 1 and 2
-        component_level = i + 1
+        component_level = start_level + i
         components.append(FormatComponent(level=component_level, style=style))
 
     # Determine trailing character (use first prefix's trailing, normalized later)
@@ -524,8 +529,8 @@ def renumber_headings(
     # Infer convention from headings
     convention = infer_section_convention(headings)
 
-    # Apply hierarchical constraint
-    convention = apply_hierarchical_constraint(convention)
+    # Apply hierarchical constraint (pass headings for single-H1 exception)
+    convention = apply_hierarchical_constraint(convention, headings)
 
     # Normalize trailing characters
     convention = normalize_convention(convention)
@@ -534,8 +539,12 @@ def renumber_headings(
     if not convention.is_active:
         return headings
 
+    # Check for single-H1 situation
+    h1_count = sum(1 for level, _ in headings if level == 1)
+    single_h1 = h1_count == 1
+
     # Create renumberer and process headings
-    renumberer = SectionRenumberer(convention)
+    renumberer = SectionRenumberer(convention, single_h1=single_h1)
     result: list[tuple[int, str]] = []
 
     for level, text in headings:
@@ -574,16 +583,32 @@ class SectionRenumberer:
     convention: SectionNumConvention
     counters: list[int]
 
-    def __init__(self, convention: SectionNumConvention) -> None:
+    def __init__(self, convention: SectionNumConvention, *, single_h1: bool = False) -> None:
         """
         Initialize the renumberer with a convention.
 
         Args:
             convention: The section numbering convention to use.
+            single_h1: If True, indicates the document has a single H1 heading.
+                When H1 is not numbered but deeper levels reference H1 counter,
+                the H1 counter is pre-initialized to 1.
         """
         self.convention = convention
         # Counters for each level (H1-H6), initialized to 0
         self.counters = [0] * MAX_HEADING_LEVELS
+
+        # Handle single-H1 exception: if H1 is not numbered but deeper levels
+        # reference H1 counter (e.g., H2 format is {h1}.{h2}), pre-initialize
+        # the H1 counter to 1 so that H2s render as "1.1", "1.2", not "0.1", "0.2"
+        if single_h1 and convention.levels[0] is None:
+            # Check if any deeper level references H1 counter
+            for fmt in convention.levels[1:]:
+                if fmt is not None:
+                    for comp in fmt.components:
+                        if comp.level == 1:
+                            self.counters[0] = 1
+                            break
+                    break
 
     def next_number(self, level: int) -> str:
         """
@@ -681,6 +706,7 @@ def normalize_convention(
 
 def apply_hierarchical_constraint(
     convention: SectionNumConvention,
+    headings: list[tuple[int, str]] | None = None,
 ) -> SectionNumConvention:
     """
     Apply the hierarchical constraint to a convention.
@@ -692,18 +718,32 @@ def apply_hierarchical_constraint(
     - H2 only (no H1): invalid, all become None
     - H1 + H3 (gap at H2): invalid, H3+ become None
 
+    Exception: When there is only one H1 in the document, H1 is excluded from
+    the hierarchy check, allowing H2+ to be numbered independently. This handles
+    the common case of a single title heading with numbered subsections.
+
     Args:
         convention: The raw convention from inference.
+        headings: Optional list of (level, text) tuples to check for single-H1.
 
     Returns:
         A new convention with gaps filled (levels after first gap set to None).
     """
     levels = list(convention.levels)
 
-    # Find the first gap in the contiguous chain from H1
-    # If H1 is None, all levels become None
-    first_gap = 0
-    for i in range(MAX_HEADING_LEVELS):
+    # Check for single-H1 exception
+    start_level = 0  # Start checking from H1 by default
+    if headings is not None:
+        h1_count = sum(1 for level, _ in headings if level == 1)
+        if h1_count == 1:
+            # Single H1 exception: skip H1 from hierarchy check
+            # H1 stays as-is (None if not qualified, format if qualified)
+            # Start the contiguity check from H2
+            start_level = 1
+
+    # Find the first gap in the contiguous chain
+    first_gap = start_level
+    for i in range(start_level, MAX_HEADING_LEVELS):
         if levels[i] is None:
             first_gap = i
             break

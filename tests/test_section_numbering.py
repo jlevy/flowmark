@@ -1660,3 +1660,96 @@ class TestEndToEndFromSpec:
         assert "# A. Introduction" in result
         assert "# B. Middle" in result  # Was C
         assert "# C. Conclusion" in result  # Was B
+
+
+class TestSingleH1Exception:
+    """Tests for single-H1 exception to hierarchical constraint."""
+
+    def test_single_h1_allows_h2_numbering(self) -> None:
+        """Single H1 title allows H2s to be numbered independently."""
+        from flowmark.linewrapping.markdown_filling import fill_markdown
+
+        input_text = """\
+# My Document Title
+
+## 1. Introduction
+
+## 3. Background
+
+## 2. Conclusion
+"""
+        result = fill_markdown(input_text, renumber_sections=True)
+        # Single H1 is excluded from hierarchy check
+        # H2s qualify independently and get renumbered
+        assert "# My Document Title" in result
+        assert "## 1. Introduction" in result
+        assert "## 2. Background" in result  # Was 3
+        assert "## 3. Conclusion" in result  # Was 2
+
+    def test_single_h1_with_h2_h3_numbering(self) -> None:
+        """Single H1 allows H2+H3 to be numbered."""
+        from flowmark.linewrapping.markdown_filling import fill_markdown
+
+        input_text = """\
+# Document Title
+
+## 1. First Section
+
+### 1.1 Details
+
+### 1.3 More Details
+
+## 3. Second Section
+
+### 3.1 Info
+"""
+        result = fill_markdown(input_text, renumber_sections=True)
+        # Single H1 excluded, H2 and H3 qualify and get renumbered
+        assert "# Document Title" in result
+        assert "## 1. First Section" in result
+        assert "### 1.1 Details" in result
+        assert "### 1.2 More Details" in result  # Was 1.3
+        assert "## 2. Second Section" in result  # Was 3
+        assert "### 2.1 Info" in result  # Was 3.1
+
+    def test_two_h1s_require_h1_numbering(self) -> None:
+        """Two or more H1s require H1 to be numbered for H2s to qualify."""
+        from flowmark.linewrapping.markdown_filling import fill_markdown
+
+        input_text = """\
+# Title One
+
+## 1.1 Sub A
+
+## 1.2 Sub B
+
+# Title Two
+
+## 2.1 Sub C
+"""
+        result = fill_markdown(input_text, renumber_sections=True)
+        # Two H1s but neither numbered → H2s don't qualify (hierarchical constraint)
+        # Document left unchanged
+        assert "# Title One" in result
+        assert "## 1.1 Sub A" in result
+        assert "## 1.2 Sub B" in result
+        assert "# Title Two" in result
+        assert "## 2.1 Sub C" in result
+
+    def test_single_h1_numbered_still_renumbers(self) -> None:
+        """Single H1 that is numbered still gets processed normally."""
+        from flowmark.linewrapping.markdown_filling import fill_markdown
+
+        input_text = """\
+# 1. Introduction
+
+## 1.1 Background
+
+## 1.3 Details
+"""
+        result = fill_markdown(input_text, renumber_sections=True)
+        # Single H1 is numbered, so it gets renumbered (trivially stays 1)
+        # H2s also qualify and get renumbered
+        assert "# 1. Introduction" in result
+        assert "## 1.1 Background" in result
+        assert "## 1.2 Details" in result  # Was 1.3
