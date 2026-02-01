@@ -11,6 +11,9 @@ from flowmark.transforms.section_references import (
     heading_to_slug,
     rename_section_references,
 )
+from flowmark.transforms.section_renumbering import (
+    apply_section_renumbering,
+)
 
 
 class TestHeadingToSlug:
@@ -370,3 +373,113 @@ class TestRenameSectionReferences:
         assert isinstance(result.links_modified, int)
         assert isinstance(result.warnings, list)
         assert all(isinstance(w, str) for w in result.warnings)
+
+
+class TestIntegrationWithRenumbering:
+    """Tests for integration between section renumbering and reference renaming."""
+
+    def _parse(self, text: str) -> Document:
+        """Helper to parse markdown text."""
+        md = Markdown()
+        doc = md.parse(text)
+        assert isinstance(doc, Document)
+        return doc
+
+    def test_renumbering_updates_references(self) -> None:
+        """Section renumbering updates internal references."""
+        doc = self._parse("""# 1. Introduction
+
+See [Design](#3-design) for details.
+
+# 3. Design
+
+Back to [Intro](#1-introduction).
+""")
+        result = apply_section_renumbering(doc)
+
+        # The link to #3-design should now point to #2-design
+        refs = find_section_references(doc)
+        slugs = {ref.slug for ref in refs}
+        assert "2-design" in slugs
+        assert "1-introduction" in slugs
+        assert result is not None
+        assert result.links_modified == 1  # Only #3-design changed
+
+    def test_renumbering_multiple_references_same_section(self) -> None:
+        """Multiple references to same section are all updated."""
+        doc = self._parse("""# 1. Intro
+
+See [Design](#3-design) and [here](#3-design).
+
+# 3. Design
+""")
+        result = apply_section_renumbering(doc)
+
+        refs = find_section_references(doc)
+        assert all(ref.slug == "2-design" for ref in refs)
+        assert result is not None
+        assert result.links_modified == 2
+
+    def test_renumbering_no_change_no_ref_updates(self) -> None:
+        """When numbers don't change, refs aren't modified."""
+        doc = self._parse("""# 1. Intro
+
+See [Design](#2-design).
+
+# 2. Design
+""")
+        result = apply_section_renumbering(doc)
+
+        refs = find_section_references(doc)
+        assert refs[0].slug == "2-design"
+        # No warnings because ref matches the final slug
+        assert result is not None
+        assert result.links_modified == 0
+
+    def test_renumbering_external_links_unchanged(self) -> None:
+        """External links are never modified during renumbering."""
+        doc = self._parse("""# 1. Intro
+
+See [external](https://example.com#3-design).
+
+# 3. Design
+""")
+        result = apply_section_renumbering(doc)
+
+        # External link should be unchanged
+        # (we can't easily check external links, but no crash is good)
+        assert result is not None
+
+    def test_renumbering_returns_result_with_warnings(self) -> None:
+        """Renumbering returns result with warnings for unknown refs."""
+        doc = self._parse("""# 1. Intro
+
+See [unknown](#nonexistent-section).
+
+# 3. Design
+""")
+        result = apply_section_renumbering(doc)
+
+        assert result is not None
+        assert isinstance(result, RenameResult)
+        assert len(result.warnings) == 1
+        assert "nonexistent-section" in result.warnings[0]
+
+    def test_renumbering_non_numbered_doc_no_changes(self) -> None:
+        """Non-numbered document doesn't trigger reference renaming."""
+        doc = self._parse("""# Introduction
+
+See [Design](#design).
+
+# Design
+""")
+        result = apply_section_renumbering(doc)
+
+        # No convention detected, so no renaming happens
+        assert result is None
+
+    def test_renumbering_result_is_none_when_inactive(self) -> None:
+        """Result is None when convention is not active."""
+        doc = self._parse("# Just One Heading")
+        result = apply_section_renumbering(doc)
+        assert result is None

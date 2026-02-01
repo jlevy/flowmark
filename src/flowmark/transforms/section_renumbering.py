@@ -2,7 +2,7 @@
 Section renumbering transform for Marko document trees.
 
 This module provides the bridge between the section_numbering logic
-and the Marko document tree.
+and the Marko document tree, including automatic section reference renaming.
 """
 
 from __future__ import annotations
@@ -16,6 +16,12 @@ from flowmark.transforms.section_numbering import (
     extract_section_prefix,
     infer_section_convention,
     normalize_convention,
+)
+from flowmark.transforms.section_references import (
+    RenameResult,
+    SectionRename,
+    heading_to_slug,
+    rename_section_references,
 )
 
 
@@ -73,7 +79,7 @@ def _set_heading_text(heading: block.Heading, new_text: str) -> None:
         heading.children = [raw_text]
 
 
-def apply_section_renumbering(doc: Document) -> None:
+def apply_section_renumbering(doc: Document) -> RenameResult | None:
     """
     Apply section renumbering to a Marko document tree.
 
@@ -81,11 +87,16 @@ def apply_section_renumbering(doc: Document) -> None:
     1. Collects all headings from the document
     2. Infers the numbering convention
     3. Renumbers headings according to the convention
+    4. Updates internal section references to match new slugs
 
     Modifies the document in place.
 
     Args:
         doc: The Marko Document to process.
+
+    Returns:
+        RenameResult with count of modified links and warnings,
+        or None if the document doesn't qualify for renumbering.
     """
     # Step 1: Collect all headings
     headings: list[tuple[int, str, block.Heading]] = []
@@ -103,7 +114,7 @@ def apply_section_renumbering(doc: Document) -> None:
     collect_headings(doc)
 
     if not headings:
-        return
+        return None
 
     # Step 2: Infer convention
     heading_tuples = [(level, text) for level, text, _ in headings]
@@ -113,14 +124,15 @@ def apply_section_renumbering(doc: Document) -> None:
     convention = normalize_convention(convention)
 
     if not convention.is_active:
-        return
+        return None
 
     # Check for single-H1 situation
     h1_count = sum(1 for level, _, _ in headings if level == 1)
     single_h1 = h1_count == 1
 
-    # Step 3: Renumber headings
+    # Step 3: Renumber headings and collect renames
     renumberer = SectionRenumberer(convention, single_h1=single_h1)
+    renames: list[SectionRename] = []
 
     for level, text, heading_elem in headings:
         fmt = convention.levels[level - 1]
@@ -135,6 +147,18 @@ def apply_section_renumbering(doc: Document) -> None:
             # Heading doesn't have a prefix, leave unchanged
             continue
 
+        # Calculate old and new slugs before renumbering
+        old_slug = heading_to_slug(text)
+
         # Renumber the heading
         new_text = renumberer.format_heading(level, prefix.title)
+        new_slug = heading_to_slug(new_text)
+
+        # Only add rename if slug actually changed
+        if old_slug != new_slug:
+            renames.append(SectionRename(old_slug=old_slug, new_slug=new_slug))
+
         _set_heading_text(heading_elem, new_text)
+
+    # Step 4: Rename section references
+    return rename_section_references(doc, renames)
