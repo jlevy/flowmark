@@ -501,6 +501,208 @@ The only normalization we currently perform is the trailing character:
 styles. If a document uses Roman numerals (`I.`, `II.`) or alphabetic (`A.`, `B.`),
 the style is preserved during renumbering—only the sequence is corrected.
 
+## Section Reference Renaming
+
+When section headings are renumbered, any internal links referencing those sections
+by their anchor ID (slug) will become broken. This phase automatically updates
+section references to match the new heading text.
+
+### GitHub Slugging Algorithm
+
+GitHub (and most Markdown renderers) convert heading text to URL-safe anchor IDs
+using a specific algorithm. We implement this to map headings to their slugs.
+
+**Algorithm steps:**
+1. Convert to lowercase
+2. Remove all characters except alphanumerics, spaces, hyphens, and Unicode letters
+3. Replace spaces with hyphens
+4. Remove leading/trailing hyphens
+5. For duplicate slugs, append `-1`, `-2`, etc.
+
+**Examples:**
+
+| Heading Text | Generated Slug |
+|--------------|----------------|
+| `1. Introduction` | `1-introduction` |
+| `2. Design Overview` | `2-design-overview` |
+| `I.A Background` | `ia-background` |
+| `What's New?` | `whats-new` |
+| `Привет World` | `привет-world` |
+| `😄 Emoji Test` | `-emoji-test` or `emoji-test` |
+
+**Implementation:**
+
+```python
+def heading_to_slug(text: str) -> str:
+    """
+    Convert heading text to GitHub-compatible anchor slug.
+
+    Implements the GitHub slugging algorithm:
+    1. Lowercase
+    2. Remove non-alphanumeric except hyphens/spaces
+    3. Replace spaces with hyphens
+    4. Remove leading/trailing hyphens
+
+    Args:
+        text: The heading text (without # prefix).
+
+    Returns:
+        URL-safe anchor slug.
+    """
+    # Implementation matches github-slugger behavior
+    ...
+```
+
+**Note:** We may use the existing `github_slugger` Python package or implement
+our own to ensure exact compatibility with GitHub's behavior.
+
+### Section Reference Detection
+
+A section reference is a Markdown link where the URL is a fragment identifier
+(starts with `#`). We only modify links that:
+
+1. Have a URL starting with `#` (internal anchor)
+2. Match one of the "before" slugs in our rename list
+
+**What we modify:**
+- `[Introduction](#1-introduction)` → internal section link
+- `[See Design](#2-design-overview)` → internal section link
+
+**What we preserve (do not modify):**
+- `[External](https://example.com#section)` → external URL with fragment
+- `[File](./other.md#section)` → cross-file reference
+- `[Code](#L42)` → line number reference (not a heading)
+
+### Rename Section References Primitive
+
+The core primitive for updating section references:
+
+```python
+@dataclass
+class SectionRename:
+    """A single section rename operation."""
+    old_slug: str  # e.g., "3-design"
+    new_slug: str  # e.g., "2-design"
+
+
+def rename_section_references(
+    document: Document,
+    renames: list[SectionRename],
+    *,
+    strict: bool = False,
+) -> RenameResult:
+    """
+    Atomically rename all section references in a document.
+
+    Processes all renames in a single pass, allowing for swaps
+    (e.g., section A → B and B → A simultaneously).
+
+    Args:
+        document: The Marko document tree.
+        renames: List of (old_slug, new_slug) pairs to apply.
+        strict: If True, raise error on invalid/unmatched references.
+                If False (default), skip invalid references with warnings.
+
+    Returns:
+        RenameResult with count of modified links and any warnings.
+    """
+    ...
+
+
+@dataclass
+class RenameResult:
+    """Result of a section reference rename operation."""
+    links_modified: int
+    warnings: list[str]  # e.g., "Link #old-section not found in rename list"
+```
+
+**Atomic replacement:** The function builds a complete mapping of old→new slugs
+before making any changes. This ensures that swapping headings (A→B, B→A) works
+correctly without intermediate conflicts.
+
+**Strict mode:**
+- `strict=False` (default): Best-effort. Invalid references logged as warnings
+  but don't stop processing. Unknown section IDs are left unchanged.
+- `strict=True`: Raises an error if any link references a section ID that doesn't
+  exist in the document (neither in old nor new heading slugs).
+
+### Integration with Renumbering
+
+When section renumbering occurs, we automatically update references:
+
+```python
+def apply_section_renumbering(document: Document) -> None:
+    """
+    Apply section renumbering to a document, including reference updates.
+
+    Steps:
+    1. Collect all headings and infer convention
+    2. For each heading that will be renumbered:
+       a. Calculate old_slug = heading_to_slug(old_text)
+       b. Calculate new_slug = heading_to_slug(new_text)
+       c. If old_slug != new_slug, add to rename list
+    3. Apply heading renumbering
+    4. Apply section reference renaming (atomic)
+    """
+    ...
+```
+
+**Example transformation:**
+
+Before:
+```markdown
+# 1. Introduction
+
+See [Design](#3-design) for architecture details.
+
+# 3. Design
+
+Back to [Intro](#1-introduction).
+```
+
+After renumbering (3→2):
+```markdown
+# 1. Introduction
+
+See [Design](#2-design) for architecture details.
+
+# 2. Design
+
+Back to [Intro](#1-introduction).
+```
+
+### Edge Cases and Considerations
+
+**1. Duplicate heading text:**
+If two headings have the same text after renumbering, GitHub appends `-1`, `-2`:
+- `# 1. Overview` → `#1-overview`
+- `# 2. Overview` → `#1-overview-1`
+
+We must track duplicate slugs within the document to generate correct mappings.
+
+**2. Case sensitivity:**
+Slugs are lowercase, but link references might use mixed case. We normalize
+both sides for comparison but preserve the original case in non-matching links.
+
+**3. Partial matches:**
+We only rename exact slug matches. `#1-intro-summary` is not renamed when
+`#1-intro` changes, as they're different sections.
+
+**4. Cross-file references:**
+References like `[See Other](./other.md#section)` are NOT modified, as they
+point to different files. A separate tool could handle cross-file references.
+
+**5. HTML anchor tags:**
+Raw HTML like `<a href="#section">` is detected but may require different
+handling than Markdown links. Initial implementation focuses on Markdown links.
+
+**6. Reference-style links:**
+```markdown
+[link text][ref-id]
+[ref-id]: #section-slug
+```
+Both inline and reference-style links are handled.
+
 ## Architecture
 
 ### Self-Contained Module
@@ -549,6 +751,33 @@ class SectionRenumberer:
 
 # === Top-Level API ===
 def renumber_headings(headings: list[tuple[int, str]]) -> list[tuple[int, str]]: ...
+```
+
+```python
+# src/flowmark/transforms/section_references.py
+
+# === Slugging ===
+def heading_to_slug(text: str) -> str: ...
+    # Convert heading text to GitHub-compatible anchor slug
+
+class GithubSlugger:
+    """Stateful slugger that tracks duplicates."""
+    def slug(self, text: str) -> str: ...   # Returns unique slug
+    def reset(self) -> None: ...            # Clear duplicate tracking
+
+# === Reference Detection ===
+@dataclass class SectionRef: ...            # Link element + slug
+def find_section_references(document: Document) -> list[SectionRef]: ...
+
+# === Reference Renaming ===
+@dataclass class SectionRename: ...         # old_slug, new_slug pair
+@dataclass class RenameResult: ...          # links_modified, warnings
+def rename_section_references(
+    document: Document,
+    renames: list[SectionRename],
+    *,
+    strict: bool = False,
+) -> RenameResult: ...
 ```
 
 ### Processing Flow
@@ -603,6 +832,11 @@ CLI: --renumber-sections
 | `normalize_convention()` | Convention | Convention with `.` trailing | Normalization |
 | `SectionRenumberer.next_number()` | level=1 | `"1."`, `"2."`, ... | Counter state |
 | `SectionRenumberer.format_heading()` | level=2, title="Foo" | `"1.1 Foo"` | Full heading |
+| `heading_to_slug()` | `"1. Introduction"` | `"1-introduction"` | Slug generation |
+| `heading_to_slug()` | `"What's New?"` | `"whats-new"` | Special chars |
+| `GithubSlugger.slug()` | `"Foo"`, `"Foo"` | `"foo"`, `"foo-1"` | Duplicate handling |
+| `find_section_references()` | Document | List of SectionRef | Link detection |
+| `rename_section_references()` | Document + renames | RenameResult | Atomic rename |
 
 ### Section Renumbering State
 
@@ -782,6 +1016,76 @@ All code goes in `src/flowmark/transforms/section_numbering.py` with tests in
 - [ ] Test separator normalization
 - [ ] Update documentation
 
+### Phase 10: Section Reference Renaming
+
+This phase updates internal links when section headings are renumbered.
+
+#### 10.1: GitHub Slugging Algorithm
+
+- [ ] Implement `heading_to_slug(text: str) -> str` function
+  - Lowercase conversion
+  - Remove non-alphanumeric (except hyphens, spaces, Unicode letters)
+  - Replace spaces with hyphens
+  - Remove leading/trailing hyphens
+- [ ] Implement `GithubSlugger` class for tracking duplicate slugs
+  - `slug(text: str) -> str` - returns unique slug, appending `-1`, `-2` for duplicates
+  - `reset()` - clear duplicate tracking
+- [ ] Unit tests for slugging:
+  - Basic: `"Introduction"` → `"introduction"`
+  - With numbers: `"1. Design"` → `"1-design"`
+  - Special chars: `"What's New?"` → `"whats-new"`
+  - Unicode: `"Привет World"` → `"привет-world"`
+  - Duplicates: `"Foo"`, `"Foo"` → `"foo"`, `"foo-1"`
+
+#### 10.2: Section Reference Detection
+
+- [ ] Implement `find_section_references(document: Document) -> list[SectionRef]`
+  - Find all links with `#` fragment URLs
+  - Return link element and slug for each
+- [ ] Implement `SectionRef` dataclass:
+  - `element`: The Marko link element
+  - `slug`: The fragment identifier (without `#`)
+  - `is_internal`: True if `#`-only URL (no file path)
+- [ ] Unit tests for detection:
+  - Inline links: `[text](#slug)`
+  - Reference links: `[text][ref]` with `[ref]: #slug`
+  - Skip external: `[text](https://example.com#slug)`
+  - Skip cross-file: `[text](./other.md#slug)`
+
+#### 10.3: Rename Section References Primitive
+
+- [ ] Implement `SectionRename` dataclass (old_slug, new_slug)
+- [ ] Implement `RenameResult` dataclass (links_modified, warnings)
+- [ ] Implement `rename_section_references(document, renames, strict=False)`
+  - Build atomic old→new mapping
+  - Find all section references
+  - Replace matching slugs
+  - Track warnings for unmatched references
+- [ ] Unit tests for renaming:
+  - Single rename: `#old` → `#new`
+  - Multiple renames: batch processing
+  - Swap handling: `#a` → `#b` and `#b` → `#a` simultaneously
+  - Strict mode: error on unknown references
+  - Non-strict mode: warning only, continue processing
+  - No false positives: `#old-extended` not renamed when `#old` changes
+
+#### 10.4: Integration with Renumbering
+
+- [ ] Update `apply_section_renumbering()` to collect rename pairs
+- [ ] Calculate before/after slugs for each renumbered heading
+- [ ] Call `rename_section_references()` after heading updates
+- [ ] Add `rename_references: bool = True` parameter to control behavior
+- [ ] Integration tests:
+  - Renumber with reference updates
+  - Verify links point to correct new slugs
+  - Test with duplicate heading text (slug disambiguation)
+
+#### 10.5: CLI and API Integration
+
+- [ ] Add `--no-rename-references` flag to disable reference renaming
+- [ ] Update `renumber_sections` API to include reference renaming by default
+- [ ] Update documentation with reference renaming behavior
+
 ## Acceptance Criteria
 
 ### Functional
@@ -795,16 +1099,27 @@ All code goes in `src/flowmark/transforms/section_numbering.py` with tests in
 7. Unnumbered headings at qualified levels pass through unchanged
 8. Trailing separators normalized to period
 
+### Section Reference Renaming
+9. Internal section references (`#slug`) are automatically updated when headings change
+10. External URLs with fragments are NOT modified
+11. Cross-file references (`./other.md#slug`) are NOT modified
+12. Swapping headings (A→B, B→A) correctly updates all references atomically
+13. Duplicate heading slugs are handled with `-1`, `-2` suffixes
+14. `--no-rename-references` flag disables reference renaming
+15. Non-strict mode (default) logs warnings but continues processing
+16. Strict mode raises errors on invalid/unmatched references
+
 ### Quality
-9. `make lint` passes (ruff, pyright, etc.)
-10. `make test` passes with comprehensive coverage
-11. All public functions have docstrings
-12. Module has comprehensive docstring with usage example
+17. `make lint` passes (ruff, pyright, etc.)
+18. `make test` passes with comprehensive coverage
+19. All public functions have docstrings
+20. Module has comprehensive docstring with usage example
 
 ### Documentation
-13. README.md updated with section renumbering documentation
-14. CLI help text includes `--renumber-sections` flag
-15. `--auto` description updated to include section renumbering
+21. README.md updated with section renumbering documentation
+22. CLI help text includes `--renumber-sections` flag
+23. `--auto` description updated to include section renumbering
+24. Reference renaming behavior documented
 
 ## Test Cases
 
@@ -1045,6 +1360,122 @@ def test_alpha_beyond_z():
 # AA. Wrong double"""
     # AA should be renumbered (Z=26, next is AA=27)
     assert reformat(input, renumber_sections=True) == expected
+
+# === Section Reference Renaming Tests ===
+
+# Basic reference update
+def test_reference_update_on_renumber():
+    input = """# 1. Introduction
+
+See [Design](#3-design) for details.
+
+# 3. Design
+
+Back to [Intro](#1-introduction)."""
+    expected = """# 1. Introduction
+
+See [Design](#2-design) for details.
+
+# 2. Design
+
+Back to [Intro](#1-introduction)."""
+    # Section 3 renumbered to 2, reference updated
+    assert reformat(input, renumber_sections=True) == expected
+
+# Multiple references to same section
+def test_multiple_references_same_section():
+    input = """# 1. Intro
+
+See [Design](#3-design) and also [here](#3-design).
+
+# 3. Design"""
+    expected = """# 1. Intro
+
+See [Design](#2-design) and also [here](#2-design).
+
+# 2. Design"""
+    # Both references updated
+    assert reformat(input, renumber_sections=True) == expected
+
+# Swapping sections - atomic rename required
+def test_swap_sections_references():
+    input = """# 1. Alpha
+
+See [Beta](#2-beta).
+
+# 2. Beta
+
+See [Alpha](#1-alpha).
+
+# 3. Gamma"""
+    # After swap: Alpha stays 1, Gamma becomes 2, Beta becomes 3
+    # (This tests that swapping references works atomically)
+    expected = """# 1. Alpha
+
+See [Beta](#3-beta).
+
+# 2. Gamma
+
+# 3. Beta
+
+See [Alpha](#1-alpha)."""
+    # Note: Actual expected output depends on renumber logic
+    # The key is that references don't break during swap
+
+# External URLs not modified
+def test_external_url_not_modified():
+    input = """# 1. Intro
+
+See [external](https://example.com#3-design).
+
+# 3. Design"""
+    expected = """# 1. Intro
+
+See [external](https://example.com#3-design).
+
+# 2. Design"""
+    # External URL fragment NOT changed, only heading
+    assert reformat(input, renumber_sections=True) == expected
+
+# Cross-file references not modified
+def test_crossfile_reference_not_modified():
+    input = """# 1. Intro
+
+See [other file](./other.md#3-design).
+
+# 3. Design"""
+    expected = """# 1. Intro
+
+See [other file](./other.md#3-design).
+
+# 2. Design"""
+    # Cross-file reference NOT changed
+    assert reformat(input, renumber_sections=True) == expected
+
+# Reference to non-existent section (warning, not error)
+def test_reference_to_nonexistent_section():
+    input = """# 1. Intro
+
+See [missing](#nonexistent-section).
+
+# 3. Design"""
+    expected = """# 1. Intro
+
+See [missing](#nonexistent-section).
+
+# 2. Design"""
+    # Unknown reference left unchanged (with warning logged)
+    assert reformat(input, renumber_sections=True) == expected
+
+# Slug generation edge cases
+def test_slug_generation():
+    # These test the heading_to_slug function directly
+    assert heading_to_slug("1. Introduction") == "1-introduction"
+    assert heading_to_slug("What's New?") == "whats-new"
+    assert heading_to_slug("  Spaces  Around  ") == "spaces-around"
+    assert heading_to_slug("UPPERCASE") == "uppercase"
+    assert heading_to_slug("Mixed-Case") == "mixed-case"
+    assert heading_to_slug("Numbers 123 Here") == "numbers-123-here"
 ```
 
 ## Resolved Questions
@@ -1079,9 +1510,36 @@ def test_alpha_beyond_z():
    - **Decision**: Not supported. Hierarchical constraint requires contiguous levels.
    - H2 numbering without H1 → all levels are `none` (no renumbering).
 
+6. **Should section references be updated when renumbering?**
+   - **Decision**: Yes, by default. Internal links (`#slug`) are automatically updated.
+   - **Rationale**: Broken links are a common pain point after renumbering. Automatic
+     updates provide the expected behavior—when a heading changes, links to it should
+     follow.
+   - **Opt-out**: `--no-rename-references` flag for users who want to manually control
+     link updates.
+   - **Scope**: Only internal fragment references (`#slug`) are modified. External URLs
+     and cross-file references are left unchanged.
+
+7. **Should reference renaming be strict or best-effort?**
+   - **Decision**: Best-effort by default (`strict=False`).
+   - **Rationale**: Documents may have references to sections that don't exist (e.g.,
+     planned sections, typos, or references to anchors in code blocks). Failing on
+     these would be frustrating.
+   - **Behavior**: Unknown references are logged as warnings but don't stop processing.
+   - **Strict mode**: Available via API for tools that want validation.
+
 ## Open Questions
 
-None at this time.
+1. **Should we validate that all section references are valid?**
+   - This is a separate concern from renumbering. A future `--check-references` flag
+     could validate that all `#slug` links point to existing headings.
+   - For now, renumbering only updates references that match old slugs.
+
+2. **How should we handle HTML anchor tags?**
+   - Raw HTML like `<a href="#section">` uses the same fragment syntax but requires
+     different parsing than Markdown links.
+   - Initial implementation focuses on Markdown links. HTML anchors could be added
+     later.
 
 ## Documentation Plan
 
@@ -1198,10 +1656,12 @@ Usage:
 - [ ] README.md: Update `--auto` flag description in usage examples
 - [ ] CLI help: Add `--renumber-sections` flag with clear description
 - [ ] CLI help: Update `--auto` to include `--renumber-sections`
+- [ ] CLI help: Add `--no-rename-references` flag
 - [ ] Module docstring: Comprehensive explanation with usage example
 - [ ] Function docstrings: All public functions documented
 - [ ] Type hints: All parameters and return types annotated
 - [ ] Inline comments: Complex regex patterns explained
+- [ ] Document section reference renaming behavior in README
 
 ## Future Extensions
 
@@ -1209,9 +1669,15 @@ Usage:
 - Option to remove numbers from numbered documents
 - Option to convert between number styles (e.g., Roman → Arabic)
 - Support for nested list-style numbering (e.g., "1.1.1.1" beyond H3)
+- Cross-file reference renaming (update references in other files)
+- Section reference validation (`--check-references` flag)
+- HTML anchor tag support for reference renaming
 
 ## References
 
 - Existing list spacing implementation: `docs/project/specs/active/plan-2026-01-14-list-spacing-control.md`
 - Marko heading parsing: `src/flowmark/formats/flowmark_markdown.py:384-403`
 - CLI option pattern: `src/flowmark/cli.py:141-149`
+- GitHub slugger (JavaScript): https://github.com/Flet/github-slugger
+- GitHub slugger (Python port): https://github.com/martinheidegger/github_slugger
+- GitHub anchor linking: https://gist.github.com/asabaylus/3071099
