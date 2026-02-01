@@ -611,18 +611,31 @@ def rename_section_references(
 
 @dataclass
 class RenameResult:
-    """Result of a section reference rename operation."""
+    """
+    Result of a section reference rename operation.
+
+    This is a clean data structure that collects all results and warnings.
+    Logging (if desired) happens separately after processing is complete,
+    NOT embedded in the rename logic. This separation of concerns keeps
+    the core logic pure and testable.
+    """
     links_modified: int
     warnings: list[str]  # e.g., "Link #old-section not found in rename list"
 ```
 
+**Design principle:** The `RenameResult` collects all warnings and statistics in a
+clean data structure. No logging is embedded in the rename logic itself. Callers
+can choose to log warnings, display them, or ignore them—the core function returns
+data, not side effects.
+
 **Atomic replacement:** The function builds a complete mapping of old→new slugs
-before making any changes. This ensures that swapping headings (A→B, B→A) works
-correctly without intermediate conflicts.
+before making any changes. This holistic approach ensures that swapping headings
+(A→B, B→A) works correctly without intermediate conflicts. All titles are mapped
+to their slugs, and all renames are applied in a single atomic pass.
 
 **Strict mode:**
-- `strict=False` (default): Best-effort. Invalid references logged as warnings
-  but don't stop processing. Unknown section IDs are left unchanged.
+- `strict=False` (default): Best-effort. Invalid references collected as warnings
+  in the result but don't stop processing. Unknown section IDs are left unchanged.
 - `strict=True`: Raises an error if any link references a section ID that doesn't
   exist in the document (neither in old nor new heading slugs).
 
@@ -676,9 +689,15 @@ Back to [Intro](#1-introduction).
 **1. Duplicate heading text:**
 If two headings have the same text after renumbering, GitHub appends `-1`, `-2`:
 - `# 1. Overview` → `#1-overview`
-- `# 2. Overview` → `#1-overview-1`
+- `# 2. Overview` → `#2-overview`
 
-We must track duplicate slugs within the document to generate correct mappings.
+**Note:** For numbered sections, duplicates are rare because the section numbers
+themselves make slugs unique (e.g., `#1-overview` vs `#2-overview`). Duplicates
+would only occur if the numbering convention itself produces duplicates, which
+is an edge case. The slugger with duplicate tracking handles this correctly, but
+in practice it rarely applies to renumbered documents.
+
+We track duplicate slugs within the document to generate correct mappings.
 
 **2. Case sensitivity:**
 Slugs are lowercase, but link references might use mixed case. We normalize
@@ -692,9 +711,10 @@ We only rename exact slug matches. `#1-intro-summary` is not renamed when
 References like `[See Other](./other.md#section)` are NOT modified, as they
 point to different files. A separate tool could handle cross-file references.
 
-**5. HTML anchor tags:**
-Raw HTML like `<a href="#section">` is detected but may require different
-handling than Markdown links. Initial implementation focuses on Markdown links.
+**5. HTML anchor tags (OUT OF SCOPE):**
+Raw HTML like `<a href="#section">` is explicitly out of scope. HTML anchors use
+different syntax and semantics than Markdown links, and handling them would add
+significant complexity. This feature focuses exclusively on Markdown links.
 
 **6. Reference-style links:**
 ```markdown
@@ -1085,6 +1105,17 @@ This phase updates internal links when section headings are renumbered.
 - [ ] Add `--no-rename-references` flag to disable reference renaming
 - [ ] Update `renumber_sections` API to include reference renaming by default
 - [ ] Update documentation with reference renaming behavior
+
+#### 10.6: End-to-End Document Testing
+
+- [ ] Create a dedicated test document for section numbering (`tests/docs/section_numbering_test.md`)
+  - Include variety of numbering styles (Arabic, Roman, alphabetic, mixed)
+  - Include internal section references that need updating
+  - Include edge cases (single H1, gaps, unnumbered headings)
+  - Include external/cross-file links that should NOT be modified
+- [ ] Create golden output file for the test document
+- [ ] Add test that verifies RenameResult contains expected warnings
+- [ ] Test that warnings are collected (not logged) during processing
 
 ## Acceptance Criteria
 
@@ -1531,15 +1562,11 @@ def test_slug_generation():
 ## Open Questions
 
 1. **Should we validate that all section references are valid?**
-   - This is a separate concern from renumbering. A future `--check-references` flag
+   - This is a separate linting concern, not the purpose of Flowmark. Flowmark is a
+     formatter, not a linter. A future tool or separate `--check-references` flag
      could validate that all `#slug` links point to existing headings.
-   - For now, renumbering only updates references that match old slugs.
-
-2. **How should we handle HTML anchor tags?**
-   - Raw HTML like `<a href="#section">` uses the same fragment syntax but requires
-     different parsing than Markdown links.
-   - Initial implementation focuses on Markdown links. HTML anchors could be added
-     later.
+   - For now, renumbering only updates references that match old slugs. Unknown
+     references are collected in the result structure (not logged dynamically).
 
 ## Documentation Plan
 
@@ -1670,8 +1697,10 @@ Usage:
 - Option to convert between number styles (e.g., Roman → Arabic)
 - Support for nested list-style numbering (e.g., "1.1.1.1" beyond H3)
 - Cross-file reference renaming (update references in other files)
-- Section reference validation (`--check-references` flag)
-- HTML anchor tag support for reference renaming
+
+**Explicitly out of scope:**
+- HTML anchor tag support (`<a href="#section">`) - different syntax and semantics
+- Section reference validation/linting - Flowmark is a formatter, not a linter
 
 ## References
 
