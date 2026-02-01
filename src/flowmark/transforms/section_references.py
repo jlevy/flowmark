@@ -1,0 +1,101 @@
+"""
+Section reference detection and renaming for Markdown documents.
+
+This module provides:
+- GitHub-compatible heading slug generation
+- Section reference (internal link) detection
+- Atomic section reference renaming
+
+Key concepts:
+- Slugs are generated using the GitHub slugging algorithm
+- Duplicate heading text results in -1, -2, etc. suffixes
+- Only internal fragment references (#slug) are modified
+- External URLs and cross-file references are preserved
+"""
+
+from __future__ import annotations
+
+import re
+import unicodedata
+from dataclasses import dataclass, field
+
+
+def heading_to_slug(text: str) -> str:
+    """
+    Convert heading text to GitHub-compatible anchor slug.
+
+    Implements the GitHub slugging algorithm:
+    1. Lowercase
+    2. Remove non-alphanumeric except hyphens/spaces
+    3. Replace spaces with hyphens
+    4. Collapse multiple hyphens
+    5. Remove leading/trailing hyphens
+
+    Args:
+        text: The heading text (without # prefix).
+
+    Returns:
+        URL-safe anchor slug.
+    """
+    # Lowercase
+    result = text.lower()
+
+    # Remove characters that aren't alphanumeric, space, hyphen, or unicode letters
+    # Keep: letters (including unicode), digits, spaces, hyphens
+    cleaned = []
+    for char in result:
+        if char.isalnum() or char == " " or char == "-":
+            cleaned.append(char)
+        elif unicodedata.category(char).startswith("L"):
+            # Unicode letter category
+            cleaned.append(char)
+    result = "".join(cleaned)
+
+    # Replace spaces with hyphens
+    result = result.replace(" ", "-")
+
+    # Collapse multiple hyphens into one
+    result = re.sub(r"-+", "-", result)
+
+    # Remove leading/trailing hyphens
+    result = result.strip("-")
+
+    return result
+
+
+@dataclass
+class GithubSlugger:
+    """
+    Stateful slugger that tracks duplicates within a document.
+
+    GitHub appends -1, -2, etc. when the same slug appears multiple times.
+    This class tracks occurrences to generate correct unique slugs.
+    """
+
+    _seen: dict[str, int] = field(default_factory=dict)
+
+    def slug(self, text: str) -> str:
+        """
+        Generate a unique slug for the given heading text.
+
+        Tracks duplicates and appends -1, -2, etc. as needed.
+
+        Args:
+            text: The heading text.
+
+        Returns:
+            Unique slug for this heading within the document.
+        """
+        base_slug = heading_to_slug(text)
+
+        if base_slug not in self._seen:
+            self._seen[base_slug] = 0
+            return base_slug
+
+        # Increment count and return with suffix
+        self._seen[base_slug] += 1
+        return f"{base_slug}-{self._seen[base_slug]}"
+
+    def reset(self) -> None:
+        """Clear duplicate tracking for a new document."""
+        self._seen.clear()
