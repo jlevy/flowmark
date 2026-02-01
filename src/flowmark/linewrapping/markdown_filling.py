@@ -43,6 +43,7 @@ def fill_markdown(
     smartquotes: bool = False,
     ellipses: bool = False,
     renumber_sections: bool = False,
+    rename_references: bool = True,
     line_wrapper: LineWrapper | None = None,
     list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> str:
@@ -101,7 +102,7 @@ def fill_markdown(
     if ellipses:
         rewrite_text_content(document, apply_ellipses, coalesce_lines=True)
     if renumber_sections:
-        apply_section_renumbering(document)
+        apply_section_renumbering(document, rename_references=rename_references)
     result = marko.render(document)
 
     # Reattach frontmatter if it was present

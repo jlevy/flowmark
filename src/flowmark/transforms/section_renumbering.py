@@ -79,7 +79,11 @@ def _set_heading_text(heading: block.Heading, new_text: str) -> None:
         heading.children = [raw_text]
 
 
-def apply_section_renumbering(doc: Document) -> RenameResult | None:
+def apply_section_renumbering(
+    doc: Document,
+    *,
+    rename_references: bool = True,
+) -> RenameResult | None:
     """
     Apply section renumbering to a Marko document tree.
 
@@ -87,12 +91,15 @@ def apply_section_renumbering(doc: Document) -> RenameResult | None:
     1. Collects all headings from the document
     2. Infers the numbering convention
     3. Renumbers headings according to the convention
-    4. Updates internal section references to match new slugs
+    4. Optionally updates internal section references to match new slugs
 
     Modifies the document in place.
 
     Args:
         doc: The Marko Document to process.
+        rename_references: If True (default), automatically update internal
+            section references (#slug links) to match the new heading slugs.
+            Set to False to disable reference renaming.
 
     Returns:
         RenameResult with count of modified links and warnings,
@@ -160,5 +167,9 @@ def apply_section_renumbering(doc: Document) -> RenameResult | None:
 
         _set_heading_text(heading_elem, new_text)
 
-    # Step 4: Rename section references
-    return rename_section_references(doc, renames)
+    # Step 4: Rename section references (if enabled)
+    if rename_references:
+        return rename_section_references(doc, renames)
+    else:
+        # Return empty result when reference renaming is disabled
+        return RenameResult(links_modified=0, warnings=[])

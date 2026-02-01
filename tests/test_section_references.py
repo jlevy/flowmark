@@ -483,3 +483,19 @@ See [Design](#design).
         doc = self._parse("# Just One Heading")
         result = apply_section_renumbering(doc)
         assert result is None
+
+    def test_no_rename_references_flag(self) -> None:
+        """When rename_references=False, links are not updated."""
+        doc = self._parse("""# 1. Introduction
+
+See [Design](#3-design) for details.
+
+# 3. Design
+""")
+        result = apply_section_renumbering(doc, rename_references=False)
+
+        # Link should NOT be updated
+        refs = find_section_references(doc)
+        assert refs[0].slug == "3-design"  # Still old slug
+        assert result is not None
+        assert result.links_modified == 0
