@@ -176,3 +176,81 @@ def find_section_references(doc: Document) -> list[SectionRef]:
 
     visit(doc)
     return refs
+
+
+@dataclass
+class SectionRename:
+    """A single section rename operation."""
+
+    old_slug: str
+    """The original slug to find."""
+
+    new_slug: str
+    """The new slug to replace with."""
+
+
+@dataclass
+class RenameResult:
+    """
+    Result of a section reference rename operation.
+
+    This is a clean data structure that collects all results and warnings.
+    Logging (if desired) happens separately after processing is complete,
+    NOT embedded in the rename logic. This separation of concerns keeps
+    the core logic pure and testable.
+    """
+
+    links_modified: int
+    """Number of links that were updated."""
+
+    warnings: list[str]
+    """Warnings for unmatched references or other issues."""
+
+
+def rename_section_references(
+    doc: Document,
+    renames: list[SectionRename],
+    *,
+    strict: bool = False,  # noqa: ARG001 - reserved for future use
+) -> RenameResult:
+    """
+    Atomically rename all section references in a document.
+
+    Processes all renames in a single pass, allowing for swaps
+    (e.g., section A → B and B → A simultaneously).
+
+    This function modifies the document in place.
+
+    Args:
+        doc: The Marko document tree.
+        renames: List of (old_slug, new_slug) pairs to apply.
+        strict: If True, raise error on invalid/unmatched references.
+                If False (default), skip invalid references with warnings.
+
+    Returns:
+        RenameResult with count of modified links and any warnings.
+    """
+    # Build atomic old→new mapping (lowercase for case-insensitive matching)
+    rename_map: dict[str, str] = {}
+    for rename in renames:
+        rename_map[rename.old_slug.lower()] = rename.new_slug
+
+    # Find all internal section references
+    refs = find_section_references(doc)
+
+    links_modified = 0
+    warnings: list[str] = []
+
+    for ref in refs:
+        slug_lower = ref.slug.lower()
+
+        if slug_lower in rename_map:
+            # Apply the rename
+            new_slug = rename_map[slug_lower]
+            ref.element.dest = f"#{new_slug}"
+            links_modified += 1
+        else:
+            # Unknown reference - add warning
+            warnings.append(f"Link #{ref.slug} not found in rename list")
+
+    return RenameResult(links_modified=links_modified, warnings=warnings)

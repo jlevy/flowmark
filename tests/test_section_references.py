@@ -5,8 +5,11 @@ from marko.block import Document
 
 from flowmark.transforms.section_references import (
     GithubSlugger,
+    RenameResult,
+    SectionRename,
     find_section_references,
     heading_to_slug,
+    rename_section_references,
 )
 
 
@@ -232,3 +235,138 @@ and [other file](./docs.md#section).
         assert len(refs) == 2
         slugs = {ref.slug for ref in refs}
         assert slugs == {"section", "other"}
+
+
+class TestRenameSectionReferences:
+    """Tests for rename_section_references function."""
+
+    def _parse(self, text: str) -> Document:
+        """Helper to parse markdown text."""
+        md = Markdown()
+        doc = md.parse(text)
+        assert isinstance(doc, Document)
+        return doc
+
+    def test_single_rename(self) -> None:
+        """Single rename updates link destination."""
+        doc = self._parse("See [intro](#old-slug).")
+        renames = [SectionRename(old_slug="old-slug", new_slug="new-slug")]
+        result = rename_section_references(doc, renames)
+
+        assert result.links_modified == 1
+        assert len(result.warnings) == 0
+
+        # Verify the link was updated
+        refs = find_section_references(doc)
+        assert len(refs) == 1
+        assert refs[0].slug == "new-slug"
+
+    def test_multiple_renames(self) -> None:
+        """Multiple renames update all matching links."""
+        doc = self._parse("See [a](#first) and [b](#second).")
+        renames = [
+            SectionRename(old_slug="first", new_slug="one"),
+            SectionRename(old_slug="second", new_slug="two"),
+        ]
+        result = rename_section_references(doc, renames)
+
+        assert result.links_modified == 2
+        refs = find_section_references(doc)
+        slugs = {ref.slug for ref in refs}
+        assert slugs == {"one", "two"}
+
+    def test_same_slug_multiple_links(self) -> None:
+        """Multiple links to same slug are all updated."""
+        doc = self._parse("See [a](#target) and [b](#target).")
+        renames = [SectionRename(old_slug="target", new_slug="new-target")]
+        result = rename_section_references(doc, renames)
+
+        assert result.links_modified == 2
+        refs = find_section_references(doc)
+        assert all(ref.slug == "new-target" for ref in refs)
+
+    def test_atomic_swap(self) -> None:
+        """Swapping A→B and B→A works atomically."""
+        doc = self._parse("See [a](#first) and [b](#second).")
+        renames = [
+            SectionRename(old_slug="first", new_slug="second"),
+            SectionRename(old_slug="second", new_slug="first"),
+        ]
+        result = rename_section_references(doc, renames)
+
+        assert result.links_modified == 2
+        refs = find_section_references(doc)
+        # After swap, the links should be reversed
+        # Original: #first, #second → After: #second, #first
+        slugs = [ref.slug for ref in refs]
+        assert slugs == ["second", "first"]
+
+    def test_unmatched_link_warning(self) -> None:
+        """Links not in rename list generate warnings (non-strict mode)."""
+        doc = self._parse("See [unknown](#not-in-list).")
+        renames = [SectionRename(old_slug="something", new_slug="else")]
+        result = rename_section_references(doc, renames)
+
+        assert result.links_modified == 0
+        assert len(result.warnings) == 1
+        assert "not-in-list" in result.warnings[0]
+
+    def test_no_warning_for_matched_refs(self) -> None:
+        """Matched refs don't generate warnings."""
+        doc = self._parse("See [matched](#target).")
+        renames = [SectionRename(old_slug="target", new_slug="new-target")]
+        result = rename_section_references(doc, renames)
+
+        assert result.links_modified == 1
+        assert len(result.warnings) == 0
+
+    def test_no_false_positives_partial_match(self) -> None:
+        """Partial slug matches are not renamed."""
+        doc = self._parse("See [extended](#old-slug-extended).")
+        renames = [SectionRename(old_slug="old-slug", new_slug="new-slug")]
+        result = rename_section_references(doc, renames)
+
+        # Should not rename because old-slug-extended != old-slug
+        assert result.links_modified == 0
+        refs = find_section_references(doc)
+        assert refs[0].slug == "old-slug-extended"
+
+    def test_case_insensitive_matching(self) -> None:
+        """Slug matching is case-insensitive."""
+        doc = self._parse("See [link](#OLD-SLUG).")
+        renames = [SectionRename(old_slug="old-slug", new_slug="new-slug")]
+        result = rename_section_references(doc, renames)
+
+        assert result.links_modified == 1
+        refs = find_section_references(doc)
+        assert refs[0].slug == "new-slug"
+
+    def test_empty_renames_list(self) -> None:
+        """Empty renames list warns about all internal links."""
+        doc = self._parse("See [link](#section).")
+        result = rename_section_references(doc, [])
+
+        assert result.links_modified == 0
+        assert len(result.warnings) == 1
+
+    def test_external_links_unchanged(self) -> None:
+        """External links are never modified."""
+        doc = self._parse("See [ext](https://example.com#old-slug).")
+        renames = [SectionRename(old_slug="old-slug", new_slug="new-slug")]
+        result = rename_section_references(doc, renames)
+
+        # External links not counted
+        assert result.links_modified == 0
+        assert len(result.warnings) == 0
+
+    def test_result_is_clean_data_structure(self) -> None:
+        """RenameResult is a clean data structure, no logging embedded."""
+        doc = self._parse("See [a](#known) and [b](#unknown).")
+        renames = [SectionRename(old_slug="known", new_slug="new-known")]
+        result = rename_section_references(doc, renames)
+
+        # Result is a simple dataclass with counts and warnings
+        assert isinstance(result, RenameResult)
+        assert isinstance(result.links_modified, int)
+        assert isinstance(result.warnings, list)
+        assert all(isinstance(w, str) for w in result.warnings)
