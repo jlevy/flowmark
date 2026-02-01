@@ -1,7 +1,11 @@
 """Tests for section reference detection and renaming."""
 
+from marko import Markdown
+from marko.block import Document
+
 from flowmark.transforms.section_references import (
     GithubSlugger,
+    find_section_references,
     heading_to_slug,
 )
 
@@ -130,3 +134,101 @@ class TestGithubSlugger:
         slugger = GithubSlugger()
         assert slugger.slug("1. Overview") == "1-overview"
         assert slugger.slug("2. Overview") == "2-overview"
+
+
+class TestFindSectionReferences:
+    """Tests for find_section_references function."""
+
+    def _parse(self, text: str) -> Document:
+        """Helper to parse markdown text."""
+        md = Markdown()
+        doc = md.parse(text)
+        assert isinstance(doc, Document)
+        return doc
+
+    def test_find_inline_internal_link(self) -> None:
+        """Find inline internal links with # prefix."""
+        doc = self._parse("See [intro](#introduction).")
+        refs = find_section_references(doc)
+        assert len(refs) == 1
+        assert refs[0].slug == "introduction"
+        assert refs[0].is_internal is True
+
+    def test_find_multiple_internal_links(self) -> None:
+        """Find multiple internal links."""
+        doc = self._parse("See [intro](#intro) and [design](#design).")
+        refs = find_section_references(doc)
+        assert len(refs) == 2
+        slugs = {ref.slug for ref in refs}
+        assert slugs == {"intro", "design"}
+
+    def test_skip_external_url(self) -> None:
+        """External URLs are not section references."""
+        doc = self._parse("See [example](https://example.com#section).")
+        refs = find_section_references(doc)
+        assert len(refs) == 0
+
+    def test_skip_cross_file_reference(self) -> None:
+        """Cross-file references are not internal."""
+        doc = self._parse("See [other](./other.md#section).")
+        refs = find_section_references(doc)
+        assert len(refs) == 0
+
+    def test_reference_style_link(self) -> None:
+        """Reference-style links are resolved."""
+        doc = self._parse("""See [intro][ref].
+
+[ref]: #introduction
+""")
+        refs = find_section_references(doc)
+        assert len(refs) == 1
+        assert refs[0].slug == "introduction"
+
+    def test_mixed_links(self) -> None:
+        """Mix of internal and external links."""
+        doc = self._parse("""
+See [intro](#introduction), [external](https://example.com),
+and [other file](./docs.md#section).
+""")
+        refs = find_section_references(doc)
+        assert len(refs) == 1
+        assert refs[0].slug == "introduction"
+
+    def test_empty_document(self) -> None:
+        """Empty document has no references."""
+        doc = self._parse("")
+        refs = find_section_references(doc)
+        assert len(refs) == 0
+
+    def test_document_with_no_links(self) -> None:
+        """Document without links has no references."""
+        doc = self._parse("# Heading\n\nJust some text.")
+        refs = find_section_references(doc)
+        assert len(refs) == 0
+
+    def test_preserves_element_reference(self) -> None:
+        """SectionRef contains the actual link element."""
+        doc = self._parse("See [intro](#introduction).")
+        refs = find_section_references(doc)
+        assert len(refs) == 1
+        assert refs[0].element is not None
+        assert refs[0].element.dest == "#introduction"
+
+    def test_link_in_list(self) -> None:
+        """Find links inside list items."""
+        doc = self._parse("- See [intro](#introduction)")
+        refs = find_section_references(doc)
+        assert len(refs) == 1
+        assert refs[0].slug == "introduction"
+
+    def test_link_in_nested_structure(self) -> None:
+        """Find links in nested block structures."""
+        doc = self._parse("""
+> Quote with [link](#section)
+
+- List with [another](#other)
+""")
+        refs = find_section_references(doc)
+        assert len(refs) == 2
+        slugs = {ref.slug for ref in refs}
+        assert slugs == {"section", "other"}

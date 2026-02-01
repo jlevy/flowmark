@@ -18,6 +18,12 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+from marko import inline
+
+if TYPE_CHECKING:
+    from marko.block import Document
 
 
 def heading_to_slug(text: str) -> str:
@@ -99,3 +105,74 @@ class GithubSlugger:
     def reset(self) -> None:
         """Clear duplicate tracking for a new document."""
         self._seen.clear()
+
+
+@dataclass
+class SectionRef:
+    """
+    A reference to a section within the document.
+
+    Represents a Markdown link that points to an internal anchor (#slug).
+    """
+
+    element: inline.Link
+    """The Marko link element."""
+
+    slug: str
+    """The fragment identifier (without the # prefix)."""
+
+    is_internal: bool
+    """True if this is a pure internal reference (#slug only)."""
+
+
+def _is_internal_reference(dest: str) -> bool:
+    """
+    Check if a link destination is an internal section reference.
+
+    Internal references start with # and have no path component.
+
+    Args:
+        dest: The link destination URL.
+
+    Returns:
+        True if this is an internal #slug reference.
+    """
+    if not dest.startswith("#"):
+        return False
+    # Pure internal references have no path (just #slug)
+    # Cross-file references like ./other.md#slug don't start with #
+    return True
+
+
+def find_section_references(doc: Document) -> list[SectionRef]:
+    """
+    Find all internal section references in a document.
+
+    Traverses the document tree to find all links with destinations
+    starting with # (internal anchors). External URLs and cross-file
+    references are excluded.
+
+    Args:
+        doc: The Marko Document to search.
+
+    Returns:
+        List of SectionRef objects for each internal link found.
+    """
+    refs: list[SectionRef] = []
+
+    def visit(element: object) -> None:
+        if isinstance(element, inline.Link):
+            dest = element.dest
+            if _is_internal_reference(dest):
+                # Extract slug (remove the # prefix)
+                slug = dest[1:]
+                refs.append(SectionRef(element=element, slug=slug, is_internal=True))
+
+        # Recurse into children
+        children = getattr(element, "children", None)
+        if isinstance(children, list):
+            for child in children:  # pyright: ignore[reportUnknownVariableType]
+                visit(child)  # pyright: ignore[reportUnknownArgumentType]
+
+    visit(doc)
+    return refs
