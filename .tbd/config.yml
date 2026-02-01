@@ -7,8 +7,8 @@ display:
 #   - Full URL for external docs (e.g., "https://raw.githubusercontent.com/org/repo/main/file.md")
 # lookup_path: Search paths for doc lookup (like shell $PATH). Earlier paths take precedence.
 #
-# To sync docs: tbd docs --refresh
-# To check status: tbd docs --status
+# To sync docs: tbd sync --docs
+# To check status: tbd sync --status
 #
 # Auto-sync: Docs are automatically synced when stale (default: every 24 hours).
 # Configure with settings.doc_auto_sync_hours (0 = disabled).
@@ -30,15 +30,20 @@ docs_cache:
     guidelines/python-cli-patterns.md: internal:guidelines/python-cli-patterns.md
     guidelines/python-modern-guidelines.md: internal:guidelines/python-modern-guidelines.md
     guidelines/python-rules.md: internal:guidelines/python-rules.md
+    guidelines/sync-troubleshooting.md: internal:guidelines/sync-troubleshooting.md
     guidelines/typescript-cli-tool-rules.md: internal:guidelines/typescript-cli-tool-rules.md
     guidelines/typescript-code-coverage.md: internal:guidelines/typescript-code-coverage.md
     guidelines/typescript-monorepo-patterns.md: internal:guidelines/typescript-monorepo-patterns.md
     guidelines/typescript-rules.md: internal:guidelines/typescript-rules.md
     shortcuts/standard/agent-handoff.md: internal:shortcuts/standard/agent-handoff.md
+    shortcuts/standard/cleanup-all.md: internal:shortcuts/standard/cleanup-all.md
+    shortcuts/standard/cleanup-remove-trivial-tests.md: internal:shortcuts/standard/cleanup-remove-trivial-tests.md
+    shortcuts/standard/cleanup-update-docstrings.md: internal:shortcuts/standard/cleanup-update-docstrings.md
     shortcuts/standard/commit-code.md: internal:shortcuts/standard/commit-code.md
     shortcuts/standard/create-or-update-pr-simple.md: internal:shortcuts/standard/create-or-update-pr-simple.md
     shortcuts/standard/create-or-update-pr-with-validation-plan.md: internal:shortcuts/standard/create-or-update-pr-with-validation-plan.md
     shortcuts/standard/implement-beads.md: internal:shortcuts/standard/implement-beads.md
+    shortcuts/standard/merge-upstream.md: internal:shortcuts/standard/merge-upstream.md
     shortcuts/standard/new-architecture-doc.md: internal:shortcuts/standard/new-architecture-doc.md
     shortcuts/standard/new-guideline.md: internal:shortcuts/standard/new-guideline.md
     shortcuts/standard/new-plan-spec.md: internal:shortcuts/standard/new-plan-spec.md
@@ -49,6 +54,13 @@ docs_cache:
     shortcuts/standard/precommit-process.md: internal:shortcuts/standard/precommit-process.md
     shortcuts/standard/review-code-python.md: internal:shortcuts/standard/review-code-python.md
     shortcuts/standard/review-code-typescript.md: internal:shortcuts/standard/review-code-typescript.md
+    shortcuts/standard/review-code.md: internal:shortcuts/standard/review-code.md
+    shortcuts/standard/review-github-pr.md: internal:shortcuts/standard/review-github-pr.md
+    shortcuts/standard/revise-all-architecture-docs.md: internal:shortcuts/standard/revise-all-architecture-docs.md
+    shortcuts/standard/revise-architecture-doc.md: internal:shortcuts/standard/revise-architecture-doc.md
+    shortcuts/standard/setup-github-cli.md: internal:shortcuts/standard/setup-github-cli.md
+    shortcuts/standard/sync-failure-recovery.md: internal:shortcuts/standard/sync-failure-recovery.md
+    shortcuts/standard/update-specs-status.md: internal:shortcuts/standard/update-specs-status.md
     shortcuts/standard/welcome-user.md: internal:shortcuts/standard/welcome-user.md
     shortcuts/system/shortcut-explanation.md: internal:shortcuts/system/shortcut-explanation.md
     shortcuts/system/skill-brief.md: internal:shortcuts/system/skill-brief.md

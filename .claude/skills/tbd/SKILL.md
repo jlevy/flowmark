@@ -147,23 +147,62 @@ or want help → run `tbd shortcut welcome-user`
 
 Run `tbd shortcut <name>` to use any of these shortcuts:
 
-| Name | Title | Description |
-| --- | --- | --- |
-| agent-handoff | Agent Handoff | Generate a concise handoff prompt for another coding agent to continue work |
-| commit-code | Commit Code | Run pre-commit checks, review changes, and commit code |
-| create-or-update-pr-simple | Create or Update PR (Simple) | Create or update a pull request with a concise summary |
-| create-or-update-pr-with-validation-plan | Create or Update PR with Validation Plan | Create or update a pull request with a detailed test/validation plan |
-| implement-beads | Implement Beads | Implement beads from a spec, following TDD and project rules |
-| new-architecture-doc | New Architecture Doc | Create an architecture document for a system or component design |
-| new-guideline | New Guideline | Create a new coding guideline document for tbd |
-| new-plan-spec | New Plan Spec | Create a new feature planning specification document |
-| new-research-brief | New Research Doc | Create a research document for investigating a topic or technology |
-| new-shortcut | New Shortcut | Create a new shortcut (reusable instruction template) for tbd |
-| new-validation-plan | New Validation Plan | Create a validation/test plan for a feature or change |
-| plan-implementation-with-beads | Plan Implementation with Beads | Create implementation beads from a feature planning spec |
-| precommit-process | Pre-Commit Process | Full pre-commit checklist including spec sync, code review, and testing |
-| review-code-python | Review Code (Python) | Perform a code review for Python code following best practices |
-| review-code-typescript | Review Code (TypeScript) | Perform a code review for TypeScript code following best practices |
-| welcome-user | Welcome User | Welcome message for users after tbd installation or setup |
+| Name | Description |
+| --- | --- |
+| agent-handoff | Generate a concise handoff prompt for another coding agent to continue work |
+| cleanup-all | Full cleanup cycle including duplicate removal, dead code, and code quality improvements |
+| cleanup-remove-trivial-tests | Review and remove tests that do not add meaningful coverage |
+| cleanup-update-docstrings | Review and add concise docstrings to major functions and types |
+| commit-code | Run pre-commit checks, review changes, and commit code |
+| create-or-update-pr-simple | Create or update a pull request with a concise summary |
+| create-or-update-pr-with-validation-plan | Create or update a pull request with a detailed test/validation plan |
+| implement-beads | Implement beads from a spec, following TDD and project rules |
+| merge-upstream | Merge origin/main into current branch with conflict resolution |
+| new-architecture-doc | Create an architecture document for a system or component design |
+| new-guideline | Create a new coding guideline document for tbd |
+| new-plan-spec | Create a new feature planning specification document |
+| new-research-brief | Create a research document for investigating a topic or technology |
+| new-shortcut | Create a new shortcut (reusable instruction template) for tbd |
+| new-validation-plan | Create a validation/test plan showing what's tested and what remains |
+| plan-implementation-with-beads | Create implementation beads from a feature planning spec |
+| precommit-process | Full pre-commit checklist including spec sync, code review, and testing |
+| review-code | Comprehensive code review for uncommitted changes, branch work, or GitHub PRs |
+| review-code-python | Python-focused code review (language-specific rules only) |
+| review-code-typescript | TypeScript-focused code review (language-specific rules only) |
+| review-github-pr | Review a GitHub pull request with follow-up actions (comment, fix, CI check) |
+| revise-all-architecture-docs | Comprehensive revision of all current architecture documents |
+| revise-architecture-doc | Update an architecture document to reflect current codebase state |
+| setup-github-cli | Ensure GitHub CLI (gh) is installed and working |
+| sync-failure-recovery | Handle tbd sync failures by saving to workspace and recovering later |
+| update-specs-status | Review active specs and sync their status with tbd issues |
+| welcome-user | Welcome message for users after tbd installation or setup |
+
+## Available Guidelines
+
+Run `tbd guidelines <name>` to apply any of these guidelines:
+
+| Name | Description |
+| --- | --- |
+| backward-compatibility-rules | Guidelines for maintaining backward compatibility across code, APIs, file formats, and database schemas |
+| cli-agent-skill-patterns | Best practices for building TypeScript CLIs that function as agent skills in Claude Code and other AI coding agents |
+| commit-conventions | Conventional Commits format with extensions for agentic workflows |
+| convex-limits-best-practices | Comprehensive reference for Convex platform limits, workarounds, and performance best practices |
+| convex-rules | Guidelines and best practices for building Convex projects, including database schema design, queries, mutations, and real-world examples |
+| error-handling-rules | Rules for handling errors, failures, and exceptional conditions |
+| general-coding-rules | Rules for constants, magic numbers, and general coding practices |
+| general-comment-rules | Language-agnostic rules for writing clean, maintainable comments |
+| general-eng-assistant-rules | Rules for AI assistants acting as senior engineers, including objectivity and communication guidelines |
+| general-style-rules | Style guidelines for auto-formatting, emoji usage, and output formatting |
+| general-tdd-guidelines | Test-Driven Development methodology and best practices |
+| general-testing-rules | Rules for writing minimal, effective tests with maximum coverage |
+| golden-testing-guidelines | Guidelines for implementing golden/snapshot testing for complex systems |
+| python-cli-patterns | Modern patterns for Python CLI application architecture |
+| python-modern-guidelines | Guidelines for modern Python projects using uv, with a few more opinionated practices |
+| python-rules | General Python coding rules and best practices |
+| sync-troubleshooting | Common issues and solutions for tbd sync and workspace operations |
+| typescript-cli-tool-rules | Rules for building CLI tools with Commander.js, picocolors, and TypeScript |
+| typescript-code-coverage | Best practices for code coverage in TypeScript with Vitest and v8 provider |
+| typescript-monorepo-patterns | Modern patterns for TypeScript monorepo architecture |
+| typescript-rules | TypeScript coding rules and best practices |
 
 <!-- END SHORTCUT DIRECTORY -->
