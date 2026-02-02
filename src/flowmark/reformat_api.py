@@ -18,16 +18,11 @@ def reformat_text(
     smartquotes: bool = False,
     ellipses: bool = False,
     renumber_sections: bool = False,
-    rename_references: bool = True,
     list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> str:
     """
     Reformat text or markdown and wrap lines. Simply a convenient wrapper
     around `fill_text()` and `fill_markdown()` with reasonable defaults.
-
-    Args:
-        rename_references: When renumber_sections is True, also update internal
-            section references (#slug links) to match new heading slugs. Default True.
     """
     if plaintext:
         # Plaintext mode
@@ -47,7 +42,6 @@ def reformat_text(
             smartquotes=smartquotes,
             ellipses=ellipses,
             renumber_sections=renumber_sections,
-            rename_references=rename_references,
             list_spacing=list_spacing,
         )
 
@@ -66,7 +60,6 @@ def reformat_file(
     smartquotes: bool = False,
     ellipses: bool = False,
     renumber_sections: bool = False,
-    rename_references: bool = True,
     make_parents: bool = True,
     list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> None:
@@ -90,8 +83,6 @@ def reformat_file(
         ellipses: Convert three dots (...) to ellipsis character (…) with normalized spacing
             (only applies to Markdown mode).
         renumber_sections: Automatically renumber section headings (only applies to Markdown mode).
-        rename_references: When renumber_sections is True, also update internal section
-            references (#slug links) to match new heading slugs. Default True.
         make_parents: Whether to make parent directories if they don't exist.
         list_spacing: Control list spacing: "preserve" (default), "loose", or "tight".
     """
@@ -115,7 +106,6 @@ def reformat_file(
         smartquotes,
         ellipses,
         renumber_sections,
-        rename_references,
         list_spacing,
     )
 
@@ -145,7 +135,6 @@ def reformat_files(
     smartquotes: bool = False,
     ellipses: bool = False,
     renumber_sections: bool = False,
-    rename_references: bool = True,
     make_parents: bool = True,
     list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> None:
@@ -164,8 +153,6 @@ def reformat_files(
         smartquotes: Convert straight quotes to typographic quotes.
         ellipses: Convert three dots to ellipsis character.
         renumber_sections: Automatically renumber section headings.
-        rename_references: When renumber_sections is True, also update internal section
-            references (#slug links) to match new heading slugs. Default True.
         make_parents: Whether to make parent directories if they don't exist.
         list_spacing: Control list spacing: "preserve" (default), "loose", or "tight".
     """
@@ -183,7 +170,6 @@ def reformat_files(
             smartquotes=smartquotes,
             ellipses=ellipses,
             renumber_sections=renumber_sections,
-            rename_references=rename_references,
             make_parents=make_parents,
             list_spacing=list_spacing,
         )
@@ -214,7 +200,6 @@ def reformat_files(
             smartquotes=smartquotes,
             ellipses=ellipses,
             renumber_sections=renumber_sections,
-            rename_references=rename_references,
             make_parents=make_parents,
             list_spacing=list_spacing,
         )

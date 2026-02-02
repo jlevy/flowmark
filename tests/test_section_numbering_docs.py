@@ -31,8 +31,8 @@ def test_section_numbering_document():
     orig_content = orig_path.read_text()
     expected_content = expected_path.read_text()
 
-    # Test with renumber_sections=True (includes reference renaming by default)
-    actual = fill_markdown(orig_content, renumber_sections=True, rename_references=True)
+    # Test with renumber_sections=True (includes reference renaming)
+    actual = fill_markdown(orig_content, renumber_sections=True)
 
     if actual != expected_content:
         actual_path = testdoc_dir / "section_numbering.actual.md"
@@ -41,28 +41,6 @@ def test_section_numbering_document():
         actual_path.write_text(actual)
 
     assert actual == expected_content
-
-
-def test_section_numbering_without_reference_renaming():
-    """
-    Test that --no-rename-references disables reference updates.
-
-    Headings should still be renumbered, but links should NOT be updated.
-    """
-    orig_path = testdoc_dir / "section_numbering.orig.md"
-    orig_content = orig_path.read_text()
-
-    # Test with rename_references=False
-    actual = fill_markdown(orig_content, renumber_sections=True, rename_references=False)
-
-    # Headings should be renumbered
-    assert "# 2. Design" in actual
-    assert "# 3. Implementation" in actual
-    assert "# 4. Conclusion" in actual
-
-    # But links should NOT be updated (still point to old slugs)
-    assert "#3-design" in actual  # Old slug preserved
-    assert "#5-implementation" in actual  # Old slug preserved
 
 
 def test_rename_result_warnings_collected():
@@ -80,7 +58,7 @@ See [missing](#nonexistent-section).
 # 3. Design
 """)
 
-    result = apply_section_renumbering(doc, rename_references=True)
+    result = apply_section_renumbering(doc)
 
     # Result should be a clean data structure
     assert isinstance(result, RenameResult)
@@ -108,7 +86,7 @@ See [Design](#3-design) and [unknown](#missing).
 # 3. Design
 """)
 
-    result = apply_section_renumbering(doc, rename_references=True)
+    result = apply_section_renumbering(doc)
 
     # Verify it's a RenameResult
     assert isinstance(result, RenameResult)
