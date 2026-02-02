@@ -1,8 +1,74 @@
 """
-Section renumbering transform for Marko document trees.
+Section renumbering transform for Markdown documents.
 
-This module provides the bridge between the section_numbering logic
-and the Marko document tree, including automatic section reference renaming.
+This transform automatically renumbers section headings to maintain sequential order
+and updates internal section references (#slug links) to match the new heading slugs.
+
+ACTIVATION
+----------
+The transform activates when a heading level "qualifies" for renumbering:
+- At least 2/3 of headings at that level must have recognized numeric prefixes
+- Minimum 2 headings with prefixes required at that level
+- Each level is evaluated independently
+
+RECOGNIZED PREFIX STYLES
+------------------------
+- Decimal: 1, 2, 3 or 1., 2., 3.
+- Roman lowercase: i, ii, iii, iv, v...
+- Roman uppercase: I, II, III, IV, V...
+- Alphabetic lowercase: a, b, c... z, aa, ab...
+- Alphabetic uppercase: A, B, C... Z, AA, AB...
+- Hierarchical: 1.1, 1.2, 2.1 or 1.a, 1.b, 2.a (parent number + child style)
+
+Separators (., ), :, or space) are normalized to periods in output.
+
+HIERARCHICAL CONSTRAINT
+-----------------------
+Numbered levels must be contiguous—no gaps allowed:
+- H1 + H2: valid
+- H1 + H2 + H3: valid
+- H2 + H4 (gap at H3): H4 will NOT be renumbered
+- H3 alone (no H2): will NOT be renumbered
+
+SINGLE-H1 EXCEPTION
+-------------------
+When there is exactly one H1 heading (acting as document title), that H1 is excluded
+from the hierarchical constraint. This allows H2+ to be numbered independently:
+- "# My Title" + "## 1. Intro" + "## 3. Details" → H2s renumbered to 1, 2
+- The single H1 passes through unchanged (whether numbered or not)
+
+REFERENCE RENAMING
+------------------
+Internal section references are automatically updated to match new slugs:
+- "#3-design" → "#2-design" (when "## 3. Design" becomes "## 2. Design")
+- Uses GitHub-compatible slug algorithm (lowercase, spaces→hyphens, special chars removed)
+- Cross-file references ("./other.md#section") are NOT modified
+- External URLs are NOT modified
+- Unknown references generate warnings in RenameResult but are not modified
+
+PASS-THROUGH BEHAVIOR
+---------------------
+The following pass through unchanged:
+- Headings without recognized numeric prefixes
+- Headings at levels that don't qualify (below 2/3 threshold)
+- Headings at levels with gaps in the hierarchy
+- The single H1 when acting as document title
+
+EXAMPLE
+-------
+Input:
+    # My Document
+    ## 1. Introduction
+    ## 3. Design
+    See [Design](#3-design) for details.
+    ## 5. Conclusion
+
+Output:
+    # My Document
+    ## 1. Introduction
+    ## 2. Design
+    See [Design](#2-design) for details.
+    ## 3. Conclusion
 """
 
 from __future__ import annotations
