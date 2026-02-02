@@ -48,7 +48,7 @@ def heading_to_slug(text: str) -> str:
 
     # Remove characters that aren't alphanumeric, space, hyphen, or unicode letters
     # Keep: letters (including unicode), digits, spaces, hyphens
-    cleaned = []
+    cleaned: list[str] = []
     for char in result:
         if char.isalnum() or char == " " or char == "-":
             cleaned.append(char)
@@ -211,7 +211,7 @@ def rename_section_references(
     doc: Document,
     renames: list[SectionRename],
     *,
-    strict: bool = False,  # noqa: ARG001 - reserved for future use
+    strict: bool = False,
 ) -> RenameResult:
     """
     Atomically rename all section references in a document.
@@ -250,7 +250,10 @@ def rename_section_references(
             ref.element.dest = f"#{new_slug}"
             links_modified += 1
         else:
-            # Unknown reference - add warning
-            warnings.append(f"Link #{ref.slug} not found in rename list")
+            # Unknown reference - add warning or raise error
+            msg = f"Link #{ref.slug} not found in rename list"
+            if strict:
+                raise ValueError(msg)
+            warnings.append(msg)
 
     return RenameResult(links_modified=links_modified, warnings=warnings)
