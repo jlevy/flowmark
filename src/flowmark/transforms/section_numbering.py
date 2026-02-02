@@ -9,7 +9,9 @@ This module provides:
 Key concepts:
 - A heading level qualifies for renumbering if 2/3+ of headings at that level
   have matching numeric prefixes (minimum 2 headings with prefixes)
-- Conventions must be contiguous from H1 (H1, H1+H2, H1+H2+H3, etc.)
+- Numbered levels must be contiguous (H2+H3 is valid, H2+H4 gap is not)
+- Single-H1 exception: when there's only one H1 (title), H2+ can be numbered
+  independently without requiring H1 to be numbered
 - Trailing separators are normalized to periods (e.g., "1)" -> "1.")
 - Unnumbered headings pass through unchanged
 
@@ -711,16 +713,15 @@ def apply_hierarchical_constraint(
     """
     Apply the hierarchical constraint to a convention.
 
-    Conventions must be contiguous starting from H1:
-    - H1 only: valid
+    Numbered levels must be contiguous:
     - H1 + H2: valid
     - H1 + H2 + H3: valid
-    - H2 only (no H1): invalid, all become None
     - H1 + H3 (gap at H2): invalid, H3+ become None
+    - H3 only (no H2): invalid, all become None
 
-    Exception: When there is only one H1 in the document, H1 is excluded from
-    the hierarchy check, allowing H2+ to be numbered independently. This handles
-    the common case of a single title heading with numbered subsections.
+    Single-H1 exception: When there is only one H1 in the document (acting as title),
+    H1 is excluded from the hierarchy check. This allows H2+ to be numbered
+    independently without requiring H1 to be numbered.
 
     Args:
         convention: The raw convention from inference.
