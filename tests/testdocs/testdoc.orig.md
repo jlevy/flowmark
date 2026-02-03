@@ -1317,6 +1317,20 @@ Short tags that fit on one line should remain together:
 
 <!-- f:field id="email" --><!-- /f:field -->
 
+### Issue 8: Continuation Lines with Tags
+
+List items with tags on continuation lines should NOT have extra blank lines inserted.
+The indented tag is part of the list item content, not a separate tag block.
+
+**Phase 0 - Repository Setup:**
+
+- [ ] 0.1-0.2: Verify reference repos and initialize Bun monorepo with workspaces <!-- #kg-11h2 -->
+
+- [ ] 0.3: Configure TypeScript with strict settings (tsconfig.base.json)
+  <!-- #kg-32zz -->
+
+- [ ] 0.4: Configure Biome for formatting and linting <!-- #kg-ibof -->
+
 ### Mixed Content Test
 
 A form with various content types:

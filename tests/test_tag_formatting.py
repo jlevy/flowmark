@@ -641,3 +641,48 @@ def test_fill_markdown_with_list_in_tags():
 
     assert closing_idx is not None
     assert lines[closing_idx - 1] == "", "Expected blank line before closing tag"
+
+
+def test_list_item_with_tag_on_continuation_line():
+    """
+    Test that HTML comment tags on continuation lines don't get extra newlines.
+
+    This is a regression test for a bug where tags on continuation lines of list
+    items (indented to continue the previous item) incorrectly received an extra
+    blank line before them.
+
+    Example input:
+        - [ ] 0.3: Configure TypeScript with strict settings (tsconfig.base.json)
+          <!-- #kg-32zz -->
+
+    Should NOT become:
+        - [ ] 0.3: Configure TypeScript with strict settings (tsconfig.base.json)
+
+          <!-- #kg-32zz -->
+    """
+    text = dedent("""
+        **Phase 0 - Repository Setup:**
+
+        - [ ] 0.1-0.2: Verify reference repos and initialize Bun monorepo with workspaces <!-- #kg-11h2 -->
+
+        - [ ] 0.3: Configure TypeScript with strict settings (tsconfig.base.json)
+          <!-- #kg-32zz -->
+
+        - [ ] 0.4: Configure Biome for formatting and linting <!-- #kg-ibof -->
+        """).strip()
+
+    result = fill_markdown(text, semantic=True)
+
+    # The tag should NOT have an extra blank line before it
+    # The continuation line with the tag should be preserved as-is
+    assert "\n\n  <!-- #kg-32zz -->" not in result, (
+        f"Extra blank line incorrectly added before tag on continuation line.\n"
+        f"Result:\n{result}"
+    )
+
+    # The proper indented continuation should be preserved
+    assert "tsconfig.base.json)\n  <!-- #kg-32zz -->" in result or \
+           "(tsconfig.base.json)\n<!-- #kg-32zz -->" in result, (
+        f"Tag continuation line not preserved correctly.\n"
+        f"Result:\n{result}"
+    )

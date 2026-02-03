@@ -113,7 +113,15 @@ def _is_tag_only_line(line: str) -> bool:
     with no substantial non-tag content. This distinguishes:
     - `{% field %}` (tag-only line)
     - `- [ ] Item {% #id %}` (content with inline tag - NOT tag-only)
+    - `  <!-- #kg-32zz -->` (indented continuation - NOT tag-only)
+
+    Indented lines are never considered "tag-only" because they are continuations
+    of previous content (like list items), not standalone tag blocks.
     """
+    # Indented lines are continuations, not standalone tag blocks
+    if line and line[0].isspace():
+        return False
+
     stripped = line.strip()
     if not stripped:
         return False
@@ -227,6 +235,26 @@ def line_starts_with_tag(line: str) -> bool:
     return False
 
 
+def _is_unindented_tag_line(line: str) -> bool:
+    """
+    Check if a line is an unindented line that starts with a tag.
+
+    This distinguishes between:
+    - `{% field %}` at the start of a line (returns True)
+    - `  <!-- #tag -->` which is indented continuation (returns False)
+
+    Indented tag lines are typically continuations of previous content
+    (like list items) and should not trigger segment breaks or blank line
+    insertion in tag handling.
+    """
+    if not line:
+        return False
+    # Check if the line has leading whitespace
+    if line[0].isspace():
+        return False
+    return line_starts_with_tag(line)
+
+
 def add_tag_newline_handling(
     base_wrapper: LineWrapper,
 ) -> LineWrapper:
@@ -300,7 +328,9 @@ def add_tag_newline_handling(
         for i, line in enumerate(lines):
             is_first_line = i == 0
             prev_ends_with_tag = not is_first_line and line_ends_with_tag(lines[i - 1])
-            curr_starts_with_tag = line_starts_with_tag(line)
+            # Only treat unindented tag lines as segment boundaries.
+            # Indented tag lines are continuations (e.g., list item continuations).
+            curr_starts_with_tag = _is_unindented_tag_line(line)
 
             # Block content heuristics only apply when tags are present
             curr_is_block = has_tags and line_is_block_content(line)
@@ -350,8 +380,10 @@ def add_tag_newline_handling(
             prev_is_tag = (
                 line_ends_with_tag(prev_segment.split("\n")[-1]) if prev_segment else False
             )
+            # Only treat unindented tag lines as "tag" for blank line insertion.
+            # Indented tag lines are continuations and shouldn't trigger blank lines.
             curr_is_tag = (
-                line_starts_with_tag(curr_segment.split("\n")[0]) if curr_segment else False
+                _is_unindented_tag_line(curr_segment.split("\n")[0]) if curr_segment else False
             )
 
             # Ensure exactly one blank line between tag and block content
