@@ -676,13 +676,11 @@ def test_list_item_with_tag_on_continuation_line():
     # The tag should NOT have an extra blank line before it
     # The continuation line with the tag should be preserved as-is
     assert "\n\n  <!-- #kg-32zz -->" not in result, (
-        f"Extra blank line incorrectly added before tag on continuation line.\n"
-        f"Result:\n{result}"
+        f"Extra blank line incorrectly added before tag on continuation line.\nResult:\n{result}"
     )
 
     # The proper indented continuation should be preserved
-    assert "tsconfig.base.json)\n  <!-- #kg-32zz -->" in result or \
-           "(tsconfig.base.json)\n<!-- #kg-32zz -->" in result, (
-        f"Tag continuation line not preserved correctly.\n"
-        f"Result:\n{result}"
-    )
+    assert (
+        "tsconfig.base.json)\n  <!-- #kg-32zz -->" in result
+        or "(tsconfig.base.json)\n<!-- #kg-32zz -->" in result
+    ), f"Tag continuation line not preserved correctly.\nResult:\n{result}"
