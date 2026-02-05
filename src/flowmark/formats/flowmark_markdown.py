@@ -92,6 +92,34 @@ class ExtendedParseInfo(NamedTuple):
     fence_len: int
 
 
+class CustomStrikethrough(gfm_elements.Strikethrough):
+    """
+    Fixed Strikethrough that implements GFM flanking delimiter rules.
+
+    Marko's default pattern `(?<!~)(~|~~)([^~]+)\\1(?!~)` does not enforce
+    that the closing tilde must be right-flanking (not preceded by whitespace)
+    or that the opening tilde must be left-flanking (not followed by whitespace).
+    This causes `~60 seconds, ~130 words` to be incorrectly parsed as
+    strikethrough, since the space before the second `~` makes it left-flanking
+    only, not right-flanking, so it cannot close the span.
+
+    The fixed pattern adds:
+    - `(?!\\s)` after the opening delimiter (left-flanking: not followed by whitespace)
+    - `(?<!\\s)` before the closing delimiter (right-flanking: not preceded by whitespace)
+    - Non-greedy `+?` for correct minimal matching
+    """
+
+    pattern = re.compile(r"(?<!~)(~{1,2})(?!\s)([^~]+?)(?<!\s)\1(?!~)")
+    priority = 5
+    parse_children = True
+    parse_group = 2
+
+    @classmethod
+    def get_type(cls, snake_case: bool = False) -> str:
+        # Ensure renderer dispatch uses "strikethrough" not "custom_strikethrough".
+        return "strikethrough" if snake_case else "Strikethrough"
+
+
 class CustomFencedCode(block.FencedCode):
     """
     Extended FencedCode that preserves the fence character and length.
@@ -668,8 +696,10 @@ def flowmark_markdown(
             # Using Marko's full extension system is tricky with our customizations so simpler
             # to do this manually.
             custom_parser = CustomParser()
-            # Add GFM support.
+            # Add GFM support, using our fixed Strikethrough with proper flanking rules.
             for e in GFM.elements:
+                if e is gfm_elements.Strikethrough:
+                    e = CustomStrikethrough
                 assert (
                     e not in custom_parser.block_elements and e not in custom_parser.inline_elements
                 )
