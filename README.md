@@ -266,6 +266,48 @@ Then add to your `settings.json`:
 The `--auto` option is just the same as
 `--inplace --nobackup --semantic --cleanups --smartquotes`.
 
+## Agent Use (Claude Code and Other AI Coding Agents)
+
+Flowmark can be installed as a skill for Claude Code and other AI coding agents,
+enabling automatic Markdown formatting in agent workflows.
+
+### Install the Skill
+
+```bash
+# Install globally (available to all projects)
+uvx flowmark@latest --install-skill
+
+# Or install to current project only
+uvx flowmark@latest --install-skill --agent-base ./.claude
+```
+
+After installation, Claude Code will automatically recognize when to use Flowmark for
+Markdown formatting tasks.
+
+### Agent Skill Options
+
+| Flag | Description |
+|------|-------------|
+| `--skill` | Print skill instructions (SKILL.md content) |
+| `--install-skill` | Install Claude Code skill for flowmark |
+| `--agent-base DIR` | Agent config directory (default: ~/.claude) |
+| `--docs` | Print full documentation |
+
+### Manual Usage in Agents
+
+If you prefer to use Flowmark manually within agent sessions:
+
+```bash
+# Format with all auto-formatting options
+uvx flowmark@latest --auto README.md
+
+# Preview formatted output
+uvx flowmark@latest README.md
+
+# Format LLM output
+echo "$llm_output" | uvx flowmark@latest --semantic
+```
+
 ## Why Another Markdown Formatter?
 
 There are several other Markdown auto-formatters:

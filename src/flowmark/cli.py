@@ -70,6 +70,11 @@ class Options:
     nobackup: bool
     version: bool
     list_spacing: ListSpacing
+    # Agent skill options
+    skill_instructions: bool
+    install_skill: bool
+    agent_base: str | None
+    docs: bool
 
 
 def _parse_args(args: list[str] | None = None) -> Options:
@@ -166,6 +171,31 @@ def _parse_args(args: list[str] | None = None) -> Options:
         action="store_true",
         help="Show version information and exit",
     )
+    # Agent skill options
+    parser.add_argument(
+        "--skill",
+        action="store_true",
+        dest="skill_instructions",
+        help="Print skill instructions (SKILL.md content) for Claude Code",
+    )
+    parser.add_argument(
+        "--install-skill",
+        action="store_true",
+        dest="install_skill",
+        help="Install Claude Code skill for flowmark",
+    )
+    parser.add_argument(
+        "--agent-base",
+        type=str,
+        dest="agent_base",
+        metavar="DIR",
+        help="Agent config directory for skill installation (default: ~/.claude)",
+    )
+    parser.add_argument(
+        "--docs",
+        action="store_true",
+        help="Print full documentation",
+    )
     opts = parser.parse_args(args)
 
     if opts.auto:
@@ -189,6 +219,10 @@ def _parse_args(args: list[str] | None = None) -> Options:
         nobackup=opts.nobackup,
         version=opts.version,
         list_spacing=ListSpacing(opts.list_spacing),
+        skill_instructions=opts.skill_instructions,
+        install_skill=opts.install_skill,
+        agent_base=opts.agent_base,
+        docs=opts.docs,
     )
 
 
@@ -211,6 +245,25 @@ def main(args: list[str] | None = None) -> int:
             print(f"v{version}")
         except importlib.metadata.PackageNotFoundError:
             print("unknown (package not installed)")
+        return 0
+
+    # Handle skill-related options (early exit)
+    if options.install_skill:
+        from flowmark.skill import install_skill
+
+        install_skill(agent_base=options.agent_base)
+        return 0
+
+    if options.skill_instructions:
+        from flowmark.skill import get_skill_content
+
+        print(get_skill_content())
+        return 0
+
+    if options.docs:
+        from flowmark.skill import get_docs_content
+
+        print(get_docs_content())
         return 0
 
     try:
