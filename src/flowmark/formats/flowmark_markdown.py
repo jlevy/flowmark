@@ -382,7 +382,12 @@ class MarkdownNormalizer(Renderer):
         fence = fence_char * fence_len
 
         lines = [f"{self._prefix}{fence}{lang_text}"]
-        lines.extend(f"{self._second_prefix}{line}" for line in code_content.splitlines())
+        # Don't add prefix to empty lines to avoid trailing whitespace
+        for line in code_content.splitlines():
+            if line:
+                lines.append(f"{self._second_prefix}{line}")
+            else:
+                lines.append("")
         lines.append(f"{self._second_prefix}{fence}")
         self._prefix = self._second_prefix
         # After rendering a code block, don't suppress the next item break
