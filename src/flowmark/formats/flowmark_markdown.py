@@ -109,11 +109,12 @@ class CustomStrikethrough(gfm_elements.Strikethrough):
     - Non-greedy `+?` for correct minimal matching
     """
 
-    pattern = re.compile(r"(?<!~)(~{1,2})(?!\s)([^~]+?)(?<!\s)\1(?!~)")
-    priority = 5
-    parse_children = True
-    parse_group = 2
+    pattern: re.Pattern[str] = re.compile(r"(?<!~)(~{1,2})(?!\s)([^~]+?)(?<!\s)\1(?!~)")
+    priority: int = 5
+    parse_children: bool = True
+    parse_group: int = 2
 
+    @override
     @classmethod
     def get_type(cls, snake_case: bool = False) -> str:
         # Ensure renderer dispatch uses "strikethrough" not "custom_strikethrough".
