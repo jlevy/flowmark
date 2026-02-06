@@ -1616,6 +1616,43 @@ us.
 
 {% /form %}
 
+## Strikethrough and Tildes
+
+Standard double-tilde ~~strikethrough~~ is the most common form and should always be
+preserved. Single-tilde ~~strikethrough~~ is also valid GFM and should be normalized to
+double tildes.
+
+Here are some ~~deleted words~~ in a sentence. And ~~more deleted words~~ in another
+sentence.
+
+Multiple ~~first~~ and ~~second~~ strikethroughs on one line work fine.
+
+### Tildes as "approximately" (not strikethrough)
+
+Tildes before numbers are commonly used to mean "approximately" and must not be treated
+as strikethrough:
+
+Target: ~60 seconds, ~130 words total
+
+The meeting lasted ~45 minutes. We had ~20 attendees. The cost was ~$500.
+
+Performance improved from ~200ms to ~50ms, a ~4x improvement.
+
+There were ~1,000 users and ~500 active sessions.
+
+### Escaped tildes
+
+Escaped tildes should be preserved: \~not strikethrough\~
+
+### Edge cases
+
+A lone tilde ~ in text is fine.
+
+Tildes at the end: the value is ~~100~~.
+
+A ~~long strikethrough that spans many words in a single paragraph and may get wrapped
+across lines during formatting~~ should be handled.
+
 ## Summary
 
 All these corner cases should format consistently and predictably.
