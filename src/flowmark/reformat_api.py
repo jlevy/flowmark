@@ -17,6 +17,7 @@ def reformat_text(
     cleanups: bool = True,
     smartquotes: bool = False,
     ellipses: bool = False,
+    renumber_sections: bool = False,
     list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> str:
     """
@@ -40,6 +41,7 @@ def reformat_text(
             cleanups=cleanups,
             smartquotes=smartquotes,
             ellipses=ellipses,
+            renumber_sections=renumber_sections,
             list_spacing=list_spacing,
         )
 
@@ -57,6 +59,7 @@ def reformat_file(
     cleanups: bool = True,
     smartquotes: bool = False,
     ellipses: bool = False,
+    renumber_sections: bool = False,
     make_parents: bool = True,
     list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> None:
@@ -79,6 +82,7 @@ def reformat_file(
             (only applies to Markdown mode).
         ellipses: Convert three dots (...) to ellipsis character (…) with normalized spacing
             (only applies to Markdown mode).
+        renumber_sections: Automatically renumber section headings (only applies to Markdown mode).
         make_parents: Whether to make parent directories if they don't exist.
         list_spacing: Control list spacing: "preserve" (default), "loose", or "tight".
     """
@@ -94,7 +98,15 @@ def reformat_file(
         text = Path(path).read_text()
 
     result = reformat_text(
-        text, width, plaintext, semantic, cleanups, smartquotes, ellipses, list_spacing
+        text,
+        width,
+        plaintext,
+        semantic,
+        cleanups,
+        smartquotes,
+        ellipses,
+        renumber_sections,
+        list_spacing,
     )
 
     if inplace:
@@ -122,6 +134,7 @@ def reformat_files(
     cleanups: bool = True,
     smartquotes: bool = False,
     ellipses: bool = False,
+    renumber_sections: bool = False,
     make_parents: bool = True,
     list_spacing: ListSpacing = ListSpacing.preserve,
 ) -> None:
@@ -139,6 +152,7 @@ def reformat_files(
         cleanups: Enable (safe) cleanups for common issues.
         smartquotes: Convert straight quotes to typographic quotes.
         ellipses: Convert three dots to ellipsis character.
+        renumber_sections: Automatically renumber section headings.
         make_parents: Whether to make parent directories if they don't exist.
         list_spacing: Control list spacing: "preserve" (default), "loose", or "tight".
     """
@@ -155,6 +169,7 @@ def reformat_files(
             cleanups=cleanups,
             smartquotes=smartquotes,
             ellipses=ellipses,
+            renumber_sections=renumber_sections,
             make_parents=make_parents,
             list_spacing=list_spacing,
         )
@@ -184,6 +199,7 @@ def reformat_files(
             cleanups=cleanups,
             smartquotes=smartquotes,
             ellipses=ellipses,
+            renumber_sections=renumber_sections,
             make_parents=make_parents,
             list_spacing=list_spacing,
         )
