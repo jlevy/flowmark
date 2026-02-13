@@ -382,12 +382,14 @@ class MarkdownNormalizer(Renderer):
         fence = fence_char * fence_len
 
         lines = [f"{self._prefix}{fence}{lang_text}"]
-        # Don't add prefix to empty lines to avoid trailing whitespace
+        # Don't add prefix to empty lines to avoid trailing whitespace.
+        # Use rstrip() to preserve structural prefixes like ">" for blockquotes.
+        empty_line_prefix = self._second_prefix.rstrip()
         for line in code_content.splitlines():
             if line:
                 lines.append(f"{self._second_prefix}{line}")
             else:
-                lines.append("")
+                lines.append(empty_line_prefix)
         lines.append(f"{self._second_prefix}{fence}")
         self._prefix = self._second_prefix
         # After rendering a code block, don't suppress the next item break
