@@ -484,6 +484,7 @@ More line spacing challenges with multi-paragraph items:
   ```shell
   # Use z in place of cd: switch directories (first time):
   z ~/some/long/path/to/foo
+
   # Thereafter it's faster:
   z foo
   ```

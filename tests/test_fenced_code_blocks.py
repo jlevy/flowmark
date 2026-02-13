@@ -231,3 +231,133 @@ def test_minimum_backticks_computed_from_content():
     # Note: This is technically invalid markdown input (the parser may mishandle it)
     # but we test the code rendering logic's ability to compute minimum needed backticks
     pass  # This is tested indirectly by other tests
+
+
+def test_empty_lines_in_code_block_no_trailing_whitespace():
+    """Test that empty lines in code blocks remain truly empty (no trailing whitespace)."""
+    input_doc = dedent(
+        """
+        ```python
+        line1
+
+        line2
+        ```
+        """
+    ).strip()
+
+    expected_doc = (
+        dedent(
+            """
+            ```python
+            line1
+
+            line2
+            ```
+            """
+        ).strip()
+        + "\n"
+    )
+
+    result = fill_markdown(input_doc, semantic=True)
+    assert result == expected_doc
+    # Verify the empty line has no trailing whitespace
+    assert result.split("\n")[2] == ""
+
+
+def test_empty_lines_in_nested_code_block_no_trailing_whitespace():
+    """Test that empty lines in code blocks inside list items have no trailing whitespace.
+
+    This is the key case: when a code block is nested inside a list item,
+    _second_prefix is non-empty (e.g. "  "), and empty lines must not get that prefix.
+    """
+    input_doc = dedent(
+        """
+        - Example:
+
+          ```python
+          def foo():
+              pass
+
+          def bar():
+              pass
+          ```
+        """
+    ).strip()
+
+    expected_doc = (
+        dedent(
+            """
+            - Example:
+
+              ```python
+              def foo():
+                  pass
+
+              def bar():
+                  pass
+              ```
+            """
+        ).strip()
+        + "\n"
+    )
+
+    result = fill_markdown(input_doc, semantic=True)
+    assert result == expected_doc
+    # Verify the empty line between functions has no trailing whitespace
+    lines = result.split("\n")
+    empty_line_idx = next(
+        i
+        for i in range(len(lines))
+        if lines[i - 1].endswith("pass") and lines[i + 1].strip().startswith("def bar")
+    )
+    assert lines[empty_line_idx] == ""
+
+
+def test_empty_lines_in_quoted_code_block_no_trailing_whitespace():
+    """Test that empty lines in code blocks inside blockquotes preserve > but strip trailing space."""
+    input_doc = dedent(
+        """
+        > ```python
+        > line1
+        >
+        > line2
+        > ```
+        """
+    ).strip()
+
+    # The empty line should have ">" (blockquote marker) but no trailing space.
+    expected_doc = "> ```python\n> line1\n>\n> line2\n> ```\n"
+
+    result = fill_markdown(input_doc, semantic=True)
+    assert result == expected_doc
+
+
+def test_multiple_empty_lines_in_code_block():
+    """Test code blocks with multiple consecutive empty lines stay clean."""
+    input_doc = dedent(
+        """
+        ```python
+        line1
+
+
+        line2
+        ```
+        """
+    ).strip()
+
+    expected_doc = (
+        dedent(
+            """
+            ```python
+            line1
+
+
+            line2
+            ```
+            """
+        ).strip()
+        + "\n"
+    )
+
+    result = fill_markdown(input_doc, semantic=True)
+    assert result == expected_doc
