@@ -253,10 +253,10 @@ advantages:
     Google to find it. It will also help with our search and web page snippet features,
     since the mouseovers on the links will be better quality than for those on marketing
     pages or poorly organized or out-of-date official websites.
-    - Example: "The [Bay Area](https://en.wikipedia.org/wiki/San_Francisco_Bay_Area) in
+    - Example: “The [Bay Area](https://en.wikipedia.org/wiki/San_Francisco_Bay_Area) in
       [California](https://en.wikipedia.org/wiki/California) is home to both
       [Apple](https://en.wikipedia.org/wiki/Apple_Inc.) and
-      [Google](https://en.wikipedia.org/wiki/Google)."
+      [Google](https://en.wikipedia.org/wiki/Google).”
 
 A lot has changed in the last decade.
 We’re currently in a
@@ -838,14 +838,14 @@ on …
 *blah blah*
 
 The same is true for links.
-"The [Bay Area](https://en.wikipedia.org/wiki/San_Francisco_Bay_Area) in
+“The [Bay Area](https://en.wikipedia.org/wiki/San_Francisco_Bay_Area) in
 [California](https://en.wikipedia.org/wiki/California) is home to both
 [Apple](https://en.wikipedia.org/wiki/Apple_Inc.) and
-[Google](https://en.wikipedia.org/wiki/Google)." "The
+[Google](https://en.wikipedia.org/wiki/Google).” “The
 [Bay Area](https://en.wikipedia.org/wiki/San_Francisco_Bay_Area) in
 [California](https://en.wikipedia.org/wiki/California) is home to both
 [Apple](https://en.wikipedia.org/wiki/Apple_Inc.) and
-[Google](https://en.wikipedia.org/wiki/Google)." (The
+[Google](https://en.wikipedia.org/wiki/Google).” (The
 [Bay Area](https://en.wikipedia.org/wiki/San_Francisco_Bay_Area) in
 [California](https://en.wikipedia.org/wiki/California) is home to both
 [Apple](https://en.wikipedia.org/wiki/Apple_Inc.) and
@@ -1704,6 +1704,30 @@ Tildes at the end: the value is ~~100~~.
 
 A ~~long strikethrough that spans many words in a single paragraph and may get wrapped
 across lines during formatting~~ should be handled.
+
+## Smart Quoting in Containers
+
+This section tests smart quoting in various container types.
+
+### Table Cells with Quotes
+
+| Description | Command |
+| --- | --- |
+| “There’s a bug where …” | `tbd create "..." --type=bug` |
+| “Create a task” | `tbd create "..." --type=task` or `--type=feature` |
+
+### Blockquote with Quotes Spanning Code Spans
+
+> **Tell the user:** “First, I’ll make sure the `markform` command is installed.”
+
+### Strikethrough with Quotes
+
+Here is ~~“deleted” and don’t~~ some text.
+
+### Quotes Spanning Emphasis and Links
+
+He said “this is *really* important.”
+She read “the [documentation](https://example.com) first.”
 
 ## Summary
 

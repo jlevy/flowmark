@@ -6,6 +6,7 @@ from marko import block, inline
 from marko.block import Document
 from marko.element import Element
 from marko.ext import footnote
+from marko.ext.gfm import elements as gfm_elements
 
 ContainerElement = (
     block.Document,
@@ -18,6 +19,18 @@ ContainerElement = (
     inline.StrongEmphasis,
     inline.Link,
     footnote.FootnoteDef,  # Footnote definitions contain paragraphs and other elements
+    gfm_elements.Table,  # GFM tables contain rows
+    gfm_elements.TableRow,  # Table rows contain cells
+    gfm_elements.TableCell,  # Table cells contain inline elements
+    gfm_elements.Strikethrough,  # Strikethrough contains inline elements
+)
+
+# Inline scopes are elements whose children are inline elements (RawText, CodeSpan,
+# Emphasis, etc.) that should be processed together for cross-inline-element rewrites.
+InlineScope = (
+    block.Paragraph,
+    block.Heading,
+    gfm_elements.TableCell,
 )
 
 
@@ -121,5 +134,112 @@ def rewrite_text_content(
         if isinstance(element, inline.RawText):
             assert isinstance(element.children, str)
             element.children = rewrite_func(element.children)
+
+    transform_tree(doc, transformer)
+
+
+def _collect_inline_segments(
+    element: Element,
+) -> list[tuple[str, inline.RawText | None]]:
+    """
+    Collect text segments from inline elements within an inline scope.
+
+    Returns a list of (text, node_or_None) tuples. RawText nodes have their
+    node reference stored (mutable segments). All other inline element text
+    is included for context but marked as None (immutable segments).
+    """
+    segments: list[tuple[str, inline.RawText | None]] = []
+
+    if isinstance(element, inline.RawText):
+        assert isinstance(element.children, str)
+        segments.append((element.children, element))
+    elif isinstance(element, inline.CodeSpan):
+        # Include code span content for context (helps regex see surrounding text)
+        # but mark as immutable — code content is never modified.
+        assert isinstance(element.children, str)
+        segments.append((element.children, None))
+    elif isinstance(element, inline.LineBreak):
+        segments.append(("\n", None))
+    elif isinstance(element, inline.Literal):
+        # Escaped characters — include for context but don't modify.
+        assert isinstance(element.children, str)
+        segments.append((element.children, None))
+    elif isinstance(element, inline.InlineHTML):
+        assert isinstance(element.children, str)
+        segments.append((element.children, None))
+    elif hasattr(element, "children") and isinstance(element.children, list):
+        # Recursive container (Emphasis, StrongEmphasis, Link, Strikethrough, etc.)
+        for child in element.children:
+            segments.extend(_collect_inline_segments(child))
+    elif hasattr(element, "children") and isinstance(element.children, str):
+        # Any other element with string content — include for context.
+        segments.append((element.children, None))
+
+    return segments
+
+
+def rewrite_text_across_inlines(
+    doc: Document, rewrite_func: Callable[[str], str]
+) -> None:
+    """
+    Apply a length-preserving rewrite function across all inline elements within
+    each inline scope (Paragraph, Heading, TableCell).
+
+    Unlike `rewrite_text_content` which processes each RawText node independently,
+    this function concatenates all text within an inline scope and applies the
+    rewrite function to the composite text. This allows the rewrite function to
+    handle patterns (like quote pairs) that span across inline elements such as
+    code spans, emphasis, or links.
+
+    Changes are mapped back only to RawText nodes; text from CodeSpan, InlineHTML,
+    Literal, etc. is used for context but never modified.
+
+    The rewrite function must be length-preserving (each input character maps to
+    exactly one output character). This is true for smart_quotes which replaces
+    ASCII quotes (1 char) with Unicode typographic quotes (1 char).
+
+    Line coalescing (merging adjacent RawText nodes separated by soft LineBreaks)
+    is performed automatically before processing.
+    """
+    # Coalesce adjacent RawText nodes across soft line breaks so the rewrite
+    # function can see text spanning line breaks as a single unit.
+    coalesce_raw_text_nodes(doc)
+
+    def transformer(element: Element) -> None:
+        if not isinstance(element, InlineScope):
+            return
+
+        if not hasattr(element, "children") or not isinstance(element.children, list):
+            return
+
+        # Collect all inline segments from this scope
+        segments: list[tuple[str, inline.RawText | None]] = []
+        for child in element.children:
+            segments.extend(_collect_inline_segments(child))
+
+        if not segments:
+            return
+
+        # Build composite text from all segments
+        composite = "".join(text for text, _ in segments)
+
+        if not composite:
+            return
+
+        # Apply rewrite to the full composite text
+        converted = rewrite_func(composite)
+
+        assert len(converted) == len(composite), (
+            f"Rewrite function must be length-preserving: "
+            f"input length {len(composite)} != output length {len(converted)}"
+        )
+
+        # Map changes back only to mutable (RawText) segments
+        pos = 0
+        for text, node in segments:
+            segment_len = len(text)
+            if node is not None:
+                node.children = converted[pos : pos + segment_len]
+            pos += segment_len
 
     transform_tree(doc, transformer)

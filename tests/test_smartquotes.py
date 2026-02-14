@@ -1,3 +1,4 @@
+from flowmark.linewrapping.markdown_filling import fill_markdown
 from flowmark.typography.smartquotes import smart_quotes
 
 
@@ -195,3 +196,137 @@ def test_quotes_with_newlines():
     text = 'She said "Hello world" and he said "Para 1.\n\nPara 2." today.'
     expected = 'She said \u201cHello world\u201d and he said "Para 1.\n\nPara 2." today.'
     assert smart_quotes(text) == expected
+
+
+# ---- Integration tests: smart quoting in container types ----
+
+
+def test_smart_quotes_in_table_cells():
+    """Test that smart quotes are applied inside GFM table cells."""
+    text = '| User Says | Response |\n| --- | --- |\n| "Hello there" | "Goodbye" |\n'
+    result = fill_markdown(text, smartquotes=True)
+    assert "\u201cHello there\u201d" in result
+    assert "\u201cGoodbye\u201d" in result
+
+
+def test_smart_quotes_apostrophes_in_table_cells():
+    """Test that apostrophes are converted inside table cells."""
+    text = "| User Says |\n| --- |\n| There's a bug |\n"
+    result = fill_markdown(text, smartquotes=True)
+    assert "There\u2019s" in result
+
+
+def test_smart_quotes_in_table_preserve_code_spans():
+    """Test that code spans inside table cells are not modified."""
+    text = '| Description | Command |\n| --- | --- |\n| "Fix a bug" | `tbd create "..." --type=bug` |\n'
+    result = fill_markdown(text, smartquotes=True)
+    # The prose quotes should be converted
+    assert "\u201cFix a bug\u201d" in result
+    # The code span should be unchanged
+    assert '`tbd create "..." --type=bug`' in result
+
+
+def test_smart_quotes_in_strikethrough():
+    """Test that smart quotes are applied inside strikethrough text."""
+    text = '~~"Hello" and don\'t~~ rest of text\n'
+    result = fill_markdown(text, smartquotes=True)
+    assert "\u201cHello\u201d" in result
+    assert "don\u2019t" in result
+
+
+def test_smart_quotes_spanning_code_span():
+    """Test quotes that span across a code span within a paragraph."""
+    text = '**Tell the user:** "First, install the `markform` command."\n'
+    result = fill_markdown(text, smartquotes=True)
+    assert "\u201cFirst," in result
+    assert "command.\u201d" in result
+
+
+def test_smart_quotes_spanning_code_span_in_blockquote():
+    """Test quotes spanning a code span inside a blockquote."""
+    text = '> **Tell the user:** "First, install the `markform` command."\n'
+    result = fill_markdown(text, smartquotes=True)
+    assert "\u201cFirst," in result
+    assert "command.\u201d" in result
+
+
+def test_smart_quotes_spanning_emphasis():
+    """Test quotes that span across emphasis within a paragraph."""
+    text = 'He said "this is *really* important."\n'
+    result = fill_markdown(text, smartquotes=True)
+    assert "\u201cthis" in result
+    assert "important.\u201d" in result
+
+
+def test_smart_quotes_spanning_strong_emphasis():
+    """Test quotes that span across strong emphasis."""
+    text = 'She said "this is **very** important."\n'
+    result = fill_markdown(text, smartquotes=True)
+    assert "\u201cthis" in result
+    assert "important.\u201d" in result
+
+
+def test_smart_quotes_spanning_link():
+    """Test quotes that span across a link."""
+    text = 'Read "the [documentation](https://example.com) first."\n'
+    result = fill_markdown(text, smartquotes=True)
+    assert "\u201cthe" in result
+    assert "first.\u201d" in result
+
+
+def test_smart_quotes_not_modifying_code_content():
+    """Ensure code spans are never modified even when between smart-quoted text."""
+    text = 'Use "the `x="value"` syntax" for this.\n'
+    result = fill_markdown(text, smartquotes=True)
+    # Code span content must be preserved exactly
+    assert '`x="value"`' in result
+
+
+def test_smart_quotes_apostrophe_spanning_code_span():
+    """Test apostrophes in text around code spans."""
+    text = "I'll use the `markform` tool and it'll work.\n"
+    result = fill_markdown(text, smartquotes=True)
+    assert "I\u2019ll" in result
+    assert "it\u2019ll" in result
+
+
+def test_smart_quotes_in_table_with_bold():
+    """Test smart quotes in table cells containing bold text."""
+    text = '| Column |\n| --- |\n| **Issues/Beads** |\n| "There\'s a bug" |\n'
+    result = fill_markdown(text, smartquotes=True)
+    assert "\u201cThere\u2019s a bug\u201d" in result
+
+
+def test_smart_quotes_complex_table():
+    """Test the specific table from the bug report."""
+    text = (
+        "| User Says | You (the Agent) Run |\n"
+        "| --- | --- |\n"
+        "| **Issues/Beads** |  |\n"
+        '| "There\'s a bug where ..." | `tbd create "..." --type=bug` |\n'
+        '| "Create a task/feature for ..." | `tbd create "..." --type=task` or `--type=feature` |\n'
+    )
+    result = fill_markdown(text, smartquotes=True)
+    # Prose quotes should be converted
+    assert "\u201cThere\u2019s a bug where \u2026\u201d" in result or "\u201cThere\u2019s a bug where ...\u201d" in result
+    assert "\u201cCreate a task/feature for \u2026\u201d" in result or "\u201cCreate a task/feature for ...\u201d" in result
+    # Code spans should be unchanged
+    assert '`tbd create "..." --type=bug`' in result
+    assert '`tbd create "..." --type=task`' in result
+
+
+def test_smart_quotes_blockquote_multiline_with_code_span():
+    """Test the specific blockquote from the bug report."""
+    text = (
+        '> **Tell the user:** "First, I\'ll make sure Markform is installed.\n'
+        "> Markform is a CLI tool for creating structured forms that agents can fill via tool\n"
+        "> calls. I'll install it globally so we can use the `markform` command.\"\n"
+    )
+    result = fill_markdown(text, semantic=True, smartquotes=True)
+    # The outer quotes should be converted to smart quotes
+    assert "\u201cFirst," in result
+    assert "command.\u201d" in result
+    # Apostrophes should also be converted
+    assert "I\u2019ll" in result
+    # Code span must be preserved
+    assert "`markform`" in result
