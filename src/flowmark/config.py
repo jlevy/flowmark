@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, TypeVar, cast
 
 if sys.version_info >= (3, 11):
-    import tomllib
+    import tomllib  # pyright: ignore[reportUnreachable]
 else:
     import tomli as tomllib  # type: ignore[no-redef]  # pyright: ignore[reportUnreachable]
 
