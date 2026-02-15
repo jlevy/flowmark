@@ -309,12 +309,97 @@ These are operational flags that don't belong in a project config:
 | `-o` / `--output` | Per-invocation output target |
 | `-i` / `--inplace` | Per-invocation mode |
 | `--nobackup` | Per-invocation mode |
-| `--auto` | Convenience shortcut (sets multiple flags) |
+| `--auto` | Fixed formatting preset (see below) |
 | `--list-files` | Diagnostic command |
 | `--version` | Informational |
 | `--skill` / `--install-skill` | Agent integration |
 | `--docs` | Informational |
 | `-p` / `--plaintext` | Rarely used, per-invocation mode |
+
+### `--auto` vs Config: Settings Resolution
+
+This is the most important semantic to get right.
+`--auto` and config files serve different purposes and interact in a specific way.
+
+**`--auto` is a fixed, complete formatting preset.**
+It always means the same thing: `semantic + cleanups + smartquotes + ellipses +
+inplace + nobackup`.
+It does NOT read formatting settings from the config file and it does NOT change
+behavior based on what's in `flowmark.toml`.
+This makes `--auto` predictable and portable — `flowmark --auto .` produces the same
+formatting result regardless of project config.
+
+**Without `--auto`, the config file provides formatting settings.**
+Running `flowmark .` (or `flowmark README.md`) reads formatting preferences from
+the config file.
+This lets projects configure their preferred formatting style once and have it apply
+to all team members and CI runs.
+
+**File discovery settings always apply**, regardless of `--auto`.
+Exclude patterns, `files-max-size`, `.gitignore` integration, and include patterns
+are read from the config file even when `--auto` is used.
+`--auto` only overrides *formatting behavior*, not *which files to process*.
+
+**Resolution order by invocation style:**
+
+| Invocation | Formatting settings | File discovery settings |
+| --- | --- | --- |
+| `flowmark --auto .` | Fixed preset (ignores config) | Config file, then defaults |
+| `flowmark .` | Config file, then built-in defaults | Config file, then defaults |
+| `flowmark --semantic .` | CLI flag overrides config; rest from config/defaults | Config file, then defaults |
+| `flowmark README.md` | Config file, then built-in defaults | N/A (explicit file) |
+| `flowmark --auto README.md` | Fixed preset (ignores config) | N/A (explicit file) |
+
+**Detailed precedence for `flowmark .` (no `--auto`):**
+
+1. Explicit CLI flags (`--semantic`, `--width=80`, etc.) — highest priority
+2. Config file (`flowmark.toml` / `pyproject.toml [tool.flowmark]`)
+3. Built-in defaults (`width=88`, `semantic=false`, etc.) — lowest priority
+
+**Detailed precedence for `flowmark --auto .`:**
+
+1. `--auto` forces: `semantic=true`, `cleanups=true`, `smartquotes=true`,
+   `ellipses=true`, `inplace=true`, `nobackup=true`
+2. Non-formatting settings (file discovery): config file, then defaults
+3. `width` is NOT set by `--auto` — uses config file value if present,
+   otherwise built-in default (88)
+
+**Why this design:**
+
+- `--auto` is the "just format everything nicely" command.
+  It should always do the same thing so users and agents can rely on it.
+- Config files are for projects that want a specific, possibly different, formatting
+  style (e.g., `width = 72`, `smartquotes = false` for a project that uses ASCII-only).
+- Keeping `--auto` independent of config prevents surprising interactions where
+  `--auto` behaves differently in different repos.
+- File discovery config (excludes, max-size, etc.) always applies because that's
+  about *which files exist in this project*, not *how to format them*.
+
+**Example: a project that uses config WITHOUT `--auto`:**
+
+```toml
+# flowmark.toml
+width = 72
+semantic = true
+cleanups = true
+smartquotes = false   # ASCII-only project
+ellipses = false
+extend-exclude = ["vendor/"]
+files-max-size = 2097152
+```
+
+```bash
+# Team members / CI run:
+flowmark --inplace .
+# Uses: width=72, semantic=true, cleanups=true, smartquotes=false, ellipses=false
+# Skips: vendor/, files > 2 MiB
+
+# Quick one-off with full formatting:
+flowmark --auto .
+# Uses: width=72 (from config, --auto doesn't set width),
+#   semantic=true, cleanups=true, smartquotes=true, ellipses=true (from --auto)
+# Skips: vendor/, files > 2 MiB (file discovery from config)
+```
 
 ### `pyproject.toml` Example
 
@@ -494,32 +579,32 @@ to have both a proper config file system and file size limits.
 
 * * *
 
-## Open Questions
+## Resolved Questions
 
 1. **Should `--auto` be representable in config?**
-   `--auto` is a convenience that sets `inplace + nobackup + semantic + cleanups +
-   smartquotes + ellipses`.
-   In a config file, users would set the individual flags.
-   But should there be an `auto = true` shorthand in config too?
-   Probably not — it conflates operational flags (`inplace`, `nobackup`) with formatting
-   preferences.
-   The config should only contain the formatting preferences.
+   **No.** `--auto` is a fixed formatting preset that ignores config formatting
+   settings.
+   Projects that want specific formatting configure individual settings in the config
+   file and run `flowmark --inplace .` (or just `flowmark .` to stdout).
+   See "Settings Resolution" section above for full details.
 
-2. **Nested config files for monorepos?**
+2. **Should `files-max-size = 0` mean "no limit" or "skip all files"?**
+   **0 = no limit** (disable the check).
+   This matches developer intuition (0 = off/disabled).
+   Biome's interpretation (0 = skip all) is technically valid but surprising.
+
+## Open Questions
+
+1. **Nested config files for monorepos?**
    Ruff supports hierarchical configs.
    For a Markdown formatter this is less critical — most monorepos want the same
    Markdown formatting everywhere.
    Defer to a later version.
 
-3. **`extend` field for config inheritance?**
+2. **`extend` field for config inheritance?**
    Ruff supports `extend = "../base-ruff.toml"`.
    Useful for monorepos and shared configs.
    Nice to have but not essential for v1.
-
-4. **Should `files-max-size = 0` mean "no limit" or "skip all files"?**
-   Biome treats 0 as "skip all" (since no file is 0 bytes in practice).
-   More intuitive: 0 means "no limit" (disable the check).
-   Recommend: 0 = no limit, matching developer intuition.
 
 * * *
 

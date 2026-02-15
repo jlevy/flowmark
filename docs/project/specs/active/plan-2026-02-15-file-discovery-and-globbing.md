@@ -101,19 +101,24 @@ default values and making them configurable.
 10. **`--extend-include` flag**: Add file patterns beyond `*.md`
     (e.g., `*.markdown`, `*.mdx`).
 
+#### Promoted from Deferred to Planned
+
+These were originally deferred but are now planned based on config system design work.
+See [research-configuration-format-and-settings.md](../research/research-configuration-format-and-settings.md).
+
+- **Max file size limit** (`--files-max-size`): Default 1 MiB, CLI flag + config.
+- **Config file support**: TOML-based config (`flowmark.toml` / `.flowmark.toml` /
+  `pyproject.toml [tool.flowmark]`) for all formatting AND file discovery settings.
+
 #### Nice to Have (Deferred)
 
 - `--staged` flag for git-staged files only
 - Nested/hierarchical configuration files
-- Max file size limit
 - Parallel file processing
-- Config file support for include/exclude (`.flowmark.toml` or `pyproject.toml`
-  `[tool.flowmark]`)
+- Config inheritance (`extend` field, like Ruff)
 
 #### Explicitly Out of Scope
 
-- Changing Flowmark's formatting behavior (this is purely about file discovery)
-- Config file support for formatting options (separate feature)
 - Watch mode / file system monitoring
 
 ### Acceptance Criteria
@@ -492,7 +497,25 @@ The README currently has these relevant sections that need updating:
   Should `flowmark --auto` (no file args) default to `.`?
   Probably yes, but this is a UX decision.
 
-- [ ] **Config file support**: Should include/exclude settings be configurable via
-  `pyproject.toml` `[tool.flowmark]` or `.flowmark.toml`?
-  Deferred to a future spec, but the `FileResolverConfig` dataclass is designed to
-  accept these values from any source.
+### Resolved Questions
+
+- [x] **Config file support**: Include/exclude settings and all formatting options
+  will be configurable via `flowmark.toml`, `.flowmark.toml`, or
+  `pyproject.toml [tool.flowmark]` using TOML format.
+  See [research-configuration-format-and-settings.md](../research/research-configuration-format-and-settings.md)
+  for the full analysis.
+  The `FileResolverConfig` dataclass will be absorbed into a broader `FlowmarkConfig`
+  that covers all settings.
+
+- [x] **`--auto` vs config interaction**: `--auto` is a fixed formatting preset that
+  ignores config formatting settings (always enables semantic, cleanups, smartquotes,
+  ellipses).
+  Without `--auto`, formatting settings come from the config file.
+  File discovery settings (exclude, max-size, etc.) always apply regardless of
+  `--auto`.
+  See the "Settings Resolution" section in the config research doc.
+
+- [x] **Max file size limit**: Will be implemented as `files-max-size` with a default
+  of 1 MiB (1,048,576 bytes), matching Biome's approach.
+  Available as both a CLI flag and config setting.
+  `0` disables the limit.
