@@ -167,14 +167,14 @@ def _collect_inline_segments(
     elif isinstance(element, inline.InlineHTML):
         assert isinstance(element.children, str)
         segments.append((element.children, None))
-    elif hasattr(element, "children") and isinstance(element.children, list):  # pyright: ignore[reportAttributeAccessIssue]
+    elif hasattr(element, "children") and isinstance(element.children, list):  # pyright: ignore
         # Recursive container (Emphasis, StrongEmphasis, Link, Strikethrough, etc.)
-        children: list[Element] = element.children  # pyright: ignore[reportAttributeAccessIssue]
+        children: list[Element] = element.children  # pyright: ignore
         for child in children:
             segments.extend(_collect_inline_segments(child))
-    elif hasattr(element, "children") and isinstance(element.children, str):  # pyright: ignore[reportAttributeAccessIssue]
+    elif hasattr(element, "children") and isinstance(element.children, str):  # pyright: ignore
         # Any other element with string content — include for context.
-        segments.append((element.children, None))  # pyright: ignore[reportAttributeAccessIssue]
+        segments.append((element.children, None))  # pyright: ignore
 
     return segments
 
