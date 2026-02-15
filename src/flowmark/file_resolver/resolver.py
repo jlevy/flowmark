@@ -8,7 +8,7 @@ sorted list of concrete file paths, applying all configured filters.
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 import pathspec
@@ -38,9 +38,9 @@ class FileResolver:
             "gitignore", config.effective_include
         )
         self._tool_ignore: pathspec.PathSpec | None = None
-        self._tool_ignore_loaded = False
+        self._tool_ignore_loaded: bool = False
 
-    def resolve(self, paths: list[str | Path]) -> list[Path]:
+    def resolve(self, paths: Sequence[str | Path]) -> list[Path]:
         """
         Resolve input paths into a sorted, deduplicated list of files.
 
@@ -122,7 +122,7 @@ class FileResolver:
         self,
         dirname: str,
         rel_path: Path,
-        walk_root: Path,
+        walk_root: Path,  # pyright: ignore[reportUnusedParameter]
         current_dir: Path,
         tool_ignore: pathspec.PathSpec | None,
     ) -> bool:

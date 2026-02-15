@@ -11,6 +11,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, fields
 from pathlib import Path
+from typing import TypeVar
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -124,15 +125,18 @@ def _parse_config_data(data: dict[str, object]) -> FlowmarkConfig:
         if snake_key in _VALID_FIELDS:
             mapped[snake_key] = value
 
-    return FlowmarkConfig(**mapped)  # type: ignore[arg-type]
+    return FlowmarkConfig(**mapped)  # pyright: ignore
+
+
+_T = TypeVar("_T")
 
 
 def merge_cli_with_config(
-    cli_opts: object,
+    cli_opts: _T,
     config: FlowmarkConfig | None,
     is_auto: bool,
     explicit_flags: set[str],
-) -> object:
+) -> _T:
     """
     Merge CLI options with config file settings.
 

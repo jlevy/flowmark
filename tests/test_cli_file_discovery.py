@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
+
 from flowmark.cli import main
 
 
@@ -24,7 +26,7 @@ def _make_tree(root: Path) -> None:
     (venv / "README.md").write_text("# Should be excluded\n")
 
 
-def test_list_files_directory(tmp_path: Path, capsys: object) -> None:
+def test_list_files_directory(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _make_tree(tmp_path)
     old_cwd = os.getcwd()
     os.chdir(tmp_path)
@@ -33,7 +35,7 @@ def test_list_files_directory(tmp_path: Path, capsys: object) -> None:
     finally:
         os.chdir(old_cwd)
     assert exit_code == 0
-    out = capsys.readouterr().out  # type: ignore[union-attr]
+    out = capsys.readouterr().out
     lines = sorted(line for line in out.strip().split("\n") if line)
     # Should find 3 .md files, not the ones in node_modules or .venv
     assert len(lines) == 3
@@ -41,7 +43,7 @@ def test_list_files_directory(tmp_path: Path, capsys: object) -> None:
     assert names == ["README.md", "api.md", "guide.md"]
 
 
-def test_list_files_skips_excluded_dirs(tmp_path: Path, capsys: object) -> None:
+def test_list_files_skips_excluded_dirs(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _make_tree(tmp_path)
     old_cwd = os.getcwd()
     os.chdir(tmp_path)
@@ -50,12 +52,12 @@ def test_list_files_skips_excluded_dirs(tmp_path: Path, capsys: object) -> None:
     finally:
         os.chdir(old_cwd)
     assert exit_code == 0
-    out = capsys.readouterr().out  # type: ignore[union-attr]
+    out = capsys.readouterr().out
     assert "node_modules" not in out
     assert ".venv" not in out
 
 
-def test_list_files_extend_include(tmp_path: Path, capsys: object) -> None:
+def test_list_files_extend_include(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _make_tree(tmp_path)
     (tmp_path / "page.mdx").write_text("# MDX page\n")
     old_cwd = os.getcwd()
@@ -65,11 +67,11 @@ def test_list_files_extend_include(tmp_path: Path, capsys: object) -> None:
     finally:
         os.chdir(old_cwd)
     assert exit_code == 0
-    out = capsys.readouterr().out  # type: ignore[union-attr]
+    out = capsys.readouterr().out
     assert "page.mdx" in out
 
 
-def test_list_files_extend_exclude(tmp_path: Path, capsys: object) -> None:
+def test_list_files_extend_exclude(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _make_tree(tmp_path)
     drafts = tmp_path / "drafts"
     drafts.mkdir()
@@ -81,12 +83,12 @@ def test_list_files_extend_exclude(tmp_path: Path, capsys: object) -> None:
     finally:
         os.chdir(old_cwd)
     assert exit_code == 0
-    out = capsys.readouterr().out  # type: ignore[union-attr]
+    out = capsys.readouterr().out
     assert "drafts" not in out
     assert "README.md" in out
 
 
-def test_list_files_no_respect_gitignore(tmp_path: Path, capsys: object) -> None:
+def test_list_files_no_respect_gitignore(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     (tmp_path / "keep.md").write_text("# Keep\n")
     (tmp_path / ".gitignore").write_text("ignored/\n")
     ignored = tmp_path / "ignored"
@@ -99,11 +101,11 @@ def test_list_files_no_respect_gitignore(tmp_path: Path, capsys: object) -> None
     finally:
         os.chdir(old_cwd)
     assert exit_code == 0
-    out = capsys.readouterr().out  # type: ignore[union-attr]
+    out = capsys.readouterr().out
     assert "found.md" in out
 
 
-def test_list_files_force_exclude(tmp_path: Path, capsys: object) -> None:
+def test_list_files_force_exclude(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     nm = tmp_path / "node_modules"
     nm.mkdir()
     (nm / "README.md").write_text("# Excluded\n")
@@ -114,11 +116,11 @@ def test_list_files_force_exclude(tmp_path: Path, capsys: object) -> None:
     finally:
         os.chdir(old_cwd)
     assert exit_code == 0
-    out = capsys.readouterr().out  # type: ignore[union-attr]
+    out = capsys.readouterr().out
     assert out.strip() == ""
 
 
-def test_list_files_max_size(tmp_path: Path, capsys: object) -> None:
+def test_list_files_max_size(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     (tmp_path / "small.md").write_text("# Small\n")
     (tmp_path / "large.md").write_text("x" * 2_000_000)
     old_cwd = os.getcwd()
@@ -128,7 +130,7 @@ def test_list_files_max_size(tmp_path: Path, capsys: object) -> None:
     finally:
         os.chdir(old_cwd)
     assert exit_code == 0
-    out = capsys.readouterr().out  # type: ignore[union-attr]
+    out = capsys.readouterr().out
     assert "small.md" in out
     assert "large.md" not in out
 
@@ -148,24 +150,26 @@ def test_auto_no_args_defaults_to_cwd(tmp_path: Path) -> None:
     assert "# Test" in content
 
 
-def test_explicit_file_still_works(tmp_path: Path, capsys: object) -> None:
+def test_explicit_file_still_works(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """Backward compat: explicit file argument works exactly like before."""
     f = tmp_path / "test.md"
     f.write_text("# Hello World\n")
     exit_code = main([str(f)])
     assert exit_code == 0
-    out = capsys.readouterr().out  # type: ignore[union-attr]
+    out = capsys.readouterr().out
     assert "# Hello World" in out
 
 
-def test_stdin_still_works(tmp_path: Path, capsys: object, monkeypatch: object) -> None:
+def test_stdin_still_works(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Backward compat: stdin piping still works."""
     import io
 
-    monkeypatch.setattr("sys.stdin", io.StringIO("# From stdin\n"))  # type: ignore[union-attr]
+    monkeypatch.setattr("sys.stdin", io.StringIO("# From stdin\n"))
     exit_code = main(["-"])
     assert exit_code == 0
-    out = capsys.readouterr().out  # type: ignore[union-attr]
+    out = capsys.readouterr().out
     assert "# From stdin" in out
 
 
@@ -179,7 +183,7 @@ def test_auto_with_explicit_file(tmp_path: Path) -> None:
     assert "# Test" in content
 
 
-def test_flowmarkignore(tmp_path: Path, capsys: object) -> None:
+def test_flowmarkignore(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     (tmp_path / "keep.md").write_text("# Keep\n")
     skip = tmp_path / "skip"
     skip.mkdir()
@@ -192,6 +196,6 @@ def test_flowmarkignore(tmp_path: Path, capsys: object) -> None:
     finally:
         os.chdir(old_cwd)
     assert exit_code == 0
-    out = capsys.readouterr().out  # type: ignore[union-attr]
+    out = capsys.readouterr().out
     assert "keep.md" in out
     assert "skip" not in out
