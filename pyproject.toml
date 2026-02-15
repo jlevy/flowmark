@@ -38,8 +38,10 @@ classifiers = [
 
 dependencies = [
     "marko>=2.2.0",  # 2.2.0 added GFM Alert support
+    "pathspec>=0.12.1",
     "regex>=2024.11.6",
     "strif>=3.0.1",
+    "tomli>=2.0.0; python_version < '3.11'",
     "typing-extensions>=4.12.2",
 ]
 
