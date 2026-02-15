@@ -24,7 +24,7 @@ from flowmark.linewrapping.sentence_split_regex import split_sentences_regex
 from flowmark.linewrapping.tag_handling import preprocess_tag_block_spacing
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 from flowmark.transforms.doc_cleanups import doc_cleanups
-from flowmark.transforms.doc_transforms import rewrite_text_content
+from flowmark.transforms.doc_transforms import rewrite_text_across_inlines, rewrite_text_content
 from flowmark.typography.ellipses import ellipses as apply_ellipses
 from flowmark.typography.smartquotes import smart_quotes
 
@@ -95,7 +95,7 @@ def fill_markdown(
     if cleanups:
         doc_cleanups(document)
     if smartquotes:
-        rewrite_text_content(document, smart_quotes, coalesce_lines=True)
+        rewrite_text_across_inlines(document, smart_quotes)
     if ellipses:
         rewrite_text_content(document, apply_ellipses, coalesce_lines=True)
     result = marko.render(document)

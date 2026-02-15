@@ -1705,6 +1705,30 @@ Tildes at the end: the value is ~~100~~.
 A ~~long strikethrough that spans many words in a single paragraph and may get wrapped
 across lines during formatting~~ should be handled.
 
+## Smart Quoting in Containers
+
+This section tests smart quoting in various container types.
+
+### Table Cells with Quotes
+
+| Description | Command |
+| --- | --- |
+| "There's a bug where ..." | `tbd create "..." --type=bug` |
+| "Create a task" | `tbd create "..." --type=task` or `--type=feature` |
+
+### Blockquote with Quotes Spanning Code Spans
+
+> **Tell the user:** "First, I'll make sure the `markform` command is installed."
+
+### Strikethrough with Quotes
+
+Here is ~~"deleted" and don't~~ some text.
+
+### Quotes Spanning Emphasis and Links
+
+He said "this is *really* important."
+She read "the [documentation](https://example.com) first."
+
 ## Summary
 
 All these corner cases should format consistently and predictably.
