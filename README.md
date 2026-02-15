@@ -43,6 +43,7 @@ General philosophy:
 
 - Be as small and simple as possible, with few dependencies:
   [`marko`](https://github.com/frostming/marko),
+  [`pathspec`](https://pypi.org/project/pathspec/),
   [`regex`](https://pypi.org/project/regex/), and
   [`strif`](https://github.com/jlevy/strif).
 
@@ -179,72 +180,156 @@ YAML is not normalized.
 
 Flowmark can be used as a library or as a CLI.
 
+### Quick Start
+
+```bash
+# Format all Markdown files in current directory recursively
+flowmark --auto .
+
+# Format a single file in-place with all auto-formatting options
+flowmark --auto README.md
+
+# List files that would be formatted (without formatting)
+flowmark --list-files .
+
+# Format to stdout
+flowmark README.md
 ```
-usage: flowmark [-h] [-o OUTPUT] [-w WIDTH] [-p] [-s] [-c] [--smartquotes] [--ellipses] [-i]
-                [--nobackup] [--auto] [--version]
-                [file]
 
-Flowmark: Better auto-formatting for Markdown and plaintext
+### Batch Formatting
 
-positional arguments:
-  file                 Input file (use '-' for stdin)
+The simplest way to format all Markdown in a project:
 
-options:
-  -h, --help           show this help message and exit
-  -o, --output OUTPUT  Output file (use '-' for stdout)
-  -w, --width WIDTH    Line width to wrap to, or 0 to disable line wrapping (default: 88)
-  -p, --plaintext      Process as plaintext (no Markdown parsing)
-  -s, --semantic       Enable semantic (sentence-based) line breaks (only applies to Markdown
-                       mode)
-  -c, --cleanups       Enable (safe) cleanups for common issues like accidentally boldfaced
-                       section headers (only applies to Markdown mode)
-  --smartquotes        Convert straight quotes to typographic (curly) quotes and apostrophes
-                       (only applies to Markdown mode)
-  --ellipses           Convert three dots (...) to ellipsis character (…) with normalized
-                       spacing (only applies to Markdown mode)
-  -i, --inplace        Edit the file in place (ignores --output)
-  --nobackup           Do not make a backup of the original file when using --inplace
-  --auto               Same as `--inplace --nobackup --semantic --cleanups --smartquotes
-                       --ellipses`, as a convenience for fully auto-formatting files
-  --version            Show version information and exit
-
-Flowmark provides enhanced text wrapping capabilities with special handling for
-Markdown content. It can:
-
-- Format Markdown with proper line wrapping while preserving structure
-  and normalizing Markdown formatting
-
-- Optionally break lines at sentence boundaries for better diff readability
-
-- Process plaintext with HTML-aware word splitting
-
-It is both a library and a command-line tool.
-
-Command-line usage examples:
-
-  # Format a Markdown file to stdout
-  flowmark README.md
-
-  # Format a Markdown file in-place without backups and all auto-formatting
-  # options enabled
-  flowmark --auto README.md
-
-  # Format a Markdown file and save to a new file
-  flowmark README.md -o README_formatted.md
-
-  # Edit a file in-place (with or without making a backup)
-  flowmark --inplace README.md
-  flowmark --inplace --nobackup README.md
-
-  # Process plaintext instead of Markdown
-  flowmark --plaintext text.txt
-
-  # Use semantic line breaks (based on sentences, which is helpful to reduce
-  # irrelevant line wrap diffs in git history)
-  flowmark --semantic README.md
-
-For more details, see: https://github.com/jlevy/flowmark
+```bash
+flowmark --auto .
 ```
+
+This recursively discovers all `.md` files, skips common non-content directories
+(`node_modules`, `.venv`, `build`, etc.), respects `.gitignore`, and formats everything
+in-place with semantic line breaks, smart quotes, ellipses, and cleanups.
+
+For a legacy alternative (pre-v1.0 behavior):
+
+```bash
+find . -name "*.md" -exec flowmark --auto {} \;
+```
+
+### CLI Reference
+
+The main flags:
+
+| Flag | Description |
+|------|-------------|
+| `-o, --output FILE` | Output file (use `-` for stdout) |
+| `-w, --width WIDTH` | Line width (default: 88, 0 = disable wrapping) |
+| `-p, --plaintext` | Process as plaintext (no Markdown parsing) |
+| `-s, --semantic` | Semantic (sentence-based) line breaks |
+| `-c, --cleanups` | Safe cleanups (unbold headings, etc.) |
+| `--smartquotes` | Convert straight quotes to typographic quotes |
+| `--ellipses` | Convert `...` to `…` |
+| `--list-spacing` | Control list spacing: `preserve`, `loose`, `tight` |
+| `-i, --inplace` | Edit in place |
+| `--nobackup` | Skip `.orig` backup with `--inplace` |
+| `--auto` | All auto-formatting: `--inplace --nobackup --semantic --cleanups --smartquotes --ellipses`. With no file args, defaults to `.` |
+
+File discovery flags:
+
+| Flag | Description |
+|------|-------------|
+| `--list-files` | Print resolved file paths, don't format |
+| `--extend-include PATTERN` | Additional file patterns (e.g., `*.mdx`) |
+| `--exclude PATTERN` | Replace all default exclusions |
+| `--extend-exclude PATTERN` | Add to default exclusions (e.g., `drafts/`) |
+| `--no-respect-gitignore` | Disable `.gitignore` integration |
+| `--force-exclude` | Apply exclusions to explicitly-named files |
+| `--files-max-size BYTES` | Skip files larger than this (default: 1 MiB) |
+
+## File Discovery
+
+When you pass a directory to Flowmark (e.g., `flowmark --auto .`), it recursively
+discovers files using a smart filter pipeline:
+
+1. **Default includes**: Only `*.md` files by default.
+   Use `--extend-include "*.mdx"` to add patterns.
+
+2. **Default exclusions**: ~45 directories are automatically skipped, including `.git`,
+   `node_modules`, `.venv`, `venv`, `__pycache__`, `build`, `dist`, `.tox`, `.nox`,
+   `.idea`, `.vscode`, `vendor`, `third_party`, and more.
+   These directories are pruned during traversal for performance.
+
+3. **`.gitignore` integration**: Enabled by default.
+   Reads `.gitignore` at every directory level during traversal.
+   Disable with `--no-respect-gitignore`.
+
+4. **`.flowmarkignore`**: A tool-specific ignore file using gitignore syntax.
+   Place it in your project root to exclude paths specific to Flowmark formatting.
+
+5. **Max file size**: Files over 1 MiB are skipped by default.
+   Change with `--files-max-size` (0 = no limit).
+
+### Customizing Includes and Excludes
+
+```bash
+# Also format .mdx files
+flowmark --auto --extend-include "*.mdx" .
+
+# Skip a specific directory
+flowmark --auto --extend-exclude "drafts/" .
+
+# Replace ALL default exclusions with your own
+flowmark --auto --exclude "my_custom_dir/" .
+
+# Debug: see exactly which files would be formatted
+flowmark --list-files .
+```
+
+## Configuration
+
+Flowmark supports TOML-based configuration files.
+It searches for config files in this order (first match wins, walking up directories):
+
+1. `.flowmark.toml`
+2. `flowmark.toml`
+3. `pyproject.toml` (only if it has a `[tool.flowmark]` section)
+
+### Example Config
+
+```toml
+# flowmark.toml (or .flowmark.toml)
+
+[formatting]
+width = 100
+semantic = true
+smartquotes = true
+ellipses = true
+list-spacing = "preserve"
+
+[file-discovery]
+extend-include = ["*.mdx", "*.markdown"]
+extend-exclude = ["drafts/", "archive/"]
+files-max-size = 2097152  # 2 MiB
+```
+
+Or in `pyproject.toml`:
+
+```toml
+[tool.flowmark]
+width = 100
+semantic = true
+extend-exclude = ["drafts/"]
+```
+
+### Config vs `--auto`
+
+The `--auto` flag is a fixed formatting preset that always enables `--semantic`,
+`--cleanups`, `--smartquotes`, and `--ellipses`.
+It ignores formatting settings from config files.
+
+However, `width` and file discovery settings (excludes, max size, etc.) are always
+read from config regardless of `--auto`.
+
+When not using `--auto`, all formatting settings can be configured via the config file
+and overridden by explicit CLI flags.
 
 ## Use in VSCode/Cursor
 
@@ -264,7 +349,9 @@ Then add to your `settings.json`:
 ```
 
 The `--auto` option is just the same as
-`--inplace --nobackup --semantic --cleanups --smartquotes`.
+`--inplace --nobackup --semantic --cleanups --smartquotes --ellipses`.
+
+For batch formatting an entire project, use `flowmark --auto .` from the terminal.
 
 ## Agent Use (Claude Code and Other AI Coding Agents)
 
