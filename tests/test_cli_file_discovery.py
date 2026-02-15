@@ -88,7 +88,9 @@ def test_list_files_extend_exclude(tmp_path: Path, capsys: pytest.CaptureFixture
     assert "README.md" in out
 
 
-def test_list_files_no_respect_gitignore(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_list_files_no_respect_gitignore(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     (tmp_path / "keep.md").write_text("# Keep\n")
     (tmp_path / ".gitignore").write_text("ignored/\n")
     ignored = tmp_path / "ignored"

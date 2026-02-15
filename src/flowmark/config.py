@@ -11,12 +11,12 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import TypeVar
+from typing import Any, TypeVar, cast
 
 if sys.version_info >= (3, 11):
     import tomllib
 else:
-    import tomli as tomllib  # type: ignore[no-redef]
+    import tomli as tomllib  # type: ignore[no-redef]  # pyright: ignore[reportUnreachable]
 
 
 @dataclass
@@ -107,25 +107,25 @@ def load_config(config_path: Path) -> FlowmarkConfig:
     return _parse_config_data(data)
 
 
-def _parse_config_data(data: dict[str, object]) -> FlowmarkConfig:
+def _parse_config_data(data: dict[str, Any]) -> FlowmarkConfig:
     """Parse a flat or sectioned TOML dict into FlowmarkConfig."""
     # Flatten sections: [formatting] and [file-discovery] merge into top level
-    flat: dict[str, object] = {}
+    flat: dict[str, Any] = {}
     for key, value in data.items():
         if isinstance(value, dict):
-            for sub_key, sub_value in value.items():
+            for sub_key, sub_value in cast(dict[str, Any], value).items():
                 flat[sub_key] = sub_value
         else:
             flat[key] = value
 
     # Map kebab-case to snake_case
-    mapped: dict[str, object] = {}
+    mapped: dict[str, Any] = {}
     for key, value in flat.items():
         snake_key = _KEBAB_TO_SNAKE.get(key, key.replace("-", "_"))
         if snake_key in _VALID_FIELDS:
             mapped[snake_key] = value
 
-    return FlowmarkConfig(**mapped)  # pyright: ignore
+    return FlowmarkConfig(**mapped)
 
 
 _T = TypeVar("_T")

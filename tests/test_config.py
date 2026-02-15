@@ -26,13 +26,13 @@ def test_find_config_dot_flowmark_toml_takes_precedence(tmp_path: Path) -> None:
 
 def test_find_config_pyproject_toml(tmp_path: Path) -> None:
     config_file = tmp_path / "pyproject.toml"
-    config_file.write_text('[tool.flowmark]\nwidth = 100\n')
+    config_file.write_text("[tool.flowmark]\nwidth = 100\n")
     result = find_config_file(tmp_path)
     assert result == config_file
 
 
 def test_find_config_pyproject_without_section_skipped(tmp_path: Path) -> None:
-    (tmp_path / "pyproject.toml").write_text('[tool.ruff]\nline-length = 100\n')
+    (tmp_path / "pyproject.toml").write_text("[tool.ruff]\nline-length = 100\n")
     result = find_config_file(tmp_path)
     assert result is None
 
@@ -53,12 +53,7 @@ def test_find_config_none_when_missing(tmp_path: Path) -> None:
 
 def test_load_config_flowmark_toml(tmp_path: Path) -> None:
     config_file = tmp_path / "flowmark.toml"
-    config_file.write_text(
-        "[formatting]\n"
-        "width = 100\n"
-        "semantic = true\n"
-        "smartquotes = true\n"
-    )
+    config_file.write_text("[formatting]\nwidth = 100\nsemantic = true\nsmartquotes = true\n")
     config = load_config(config_file)
     assert config.width == 100
     assert config.semantic is True
@@ -69,11 +64,7 @@ def test_load_config_flowmark_toml(tmp_path: Path) -> None:
 
 def test_load_config_pyproject_toml(tmp_path: Path) -> None:
     config_file = tmp_path / "pyproject.toml"
-    config_file.write_text(
-        '[tool.flowmark]\n'
-        'width = 80\n'
-        'ellipses = true\n'
-    )
+    config_file.write_text("[tool.flowmark]\nwidth = 80\nellipses = true\n")
     config = load_config(config_file)
     assert config.width == 80
     assert config.ellipses is True
@@ -83,10 +74,10 @@ def test_load_config_kebab_case(tmp_path: Path) -> None:
     config_file = tmp_path / "flowmark.toml"
     config_file.write_text(
         "[formatting]\n"
-        "list-spacing = \"loose\"\n"
+        'list-spacing = "loose"\n'
         "\n"
         "[file-discovery]\n"
-        "extend-exclude = [\"drafts/\"]\n"
+        'extend-exclude = ["drafts/"]\n'
         "files-max-size = 500000\n"
         "respect-gitignore = false\n"
         "force-exclude = true\n"
@@ -102,9 +93,7 @@ def test_load_config_kebab_case(tmp_path: Path) -> None:
 def test_load_config_file_discovery_section(tmp_path: Path) -> None:
     config_file = tmp_path / "flowmark.toml"
     config_file.write_text(
-        "[file-discovery]\n"
-        'extend-include = ["*.mdx", "*.markdown"]\n'
-        'exclude = ["my_custom/"]\n'
+        '[file-discovery]\nextend-include = ["*.mdx", "*.markdown"]\nexclude = ["my_custom/"]\n'
     )
     config = load_config(config_file)
     assert config.extend_include == ["*.mdx", "*.markdown"]
@@ -192,17 +181,19 @@ def test_merge_config_overrides_defaults() -> None:
 def test_merge_explicit_cli_overrides_config() -> None:
     opts = _make_options(width=120)
     config = FlowmarkConfig(width=100)
-    result = merge_cli_with_config(
-        opts, config=config, is_auto=False, explicit_flags={"width"}
-    )
+    result = merge_cli_with_config(opts, config=config, is_auto=False, explicit_flags={"width"})
     assert result.width == 120
 
 
 def test_merge_auto_mode_overrides_formatting() -> None:
     config = FlowmarkConfig(semantic=False, smartquotes=False)
     opts = _make_options(
-        semantic=True, cleanups=True, smartquotes=True, ellipses=True,
-        inplace=True, nobackup=True,
+        semantic=True,
+        cleanups=True,
+        smartquotes=True,
+        ellipses=True,
+        inplace=True,
+        nobackup=True,
     )
     result = merge_cli_with_config(opts, config=config, is_auto=True, explicit_flags=set())
     # --auto forces formatting settings on
@@ -215,8 +206,13 @@ def test_merge_auto_mode_overrides_formatting() -> None:
 def test_merge_auto_mode_width_from_config() -> None:
     config = FlowmarkConfig(width=100)
     opts = _make_options(
-        width=88, semantic=True, cleanups=True, smartquotes=True, ellipses=True,
-        inplace=True, nobackup=True,
+        width=88,
+        semantic=True,
+        cleanups=True,
+        smartquotes=True,
+        ellipses=True,
+        inplace=True,
+        nobackup=True,
     )
     result = merge_cli_with_config(opts, config=config, is_auto=True, explicit_flags=set())
     # Width should come from config even in auto mode

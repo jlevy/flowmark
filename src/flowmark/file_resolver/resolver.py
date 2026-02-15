@@ -30,11 +30,11 @@ class FileResolver:
     """
 
     def __init__(self, config: FileResolverConfig) -> None:
-        self._config = config
-        self._exclude_spec = pathspec.PathSpec.from_lines(
+        self._config: FileResolverConfig = config
+        self._exclude_spec: pathspec.PathSpec = pathspec.PathSpec.from_lines(
             "gitignore", config.effective_exclude
         )
-        self._include_spec = pathspec.PathSpec.from_lines(
+        self._include_spec: pathspec.PathSpec = pathspec.PathSpec.from_lines(
             "gitignore", config.effective_include
         )
         self._tool_ignore: pathspec.PathSpec | None = None
