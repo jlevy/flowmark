@@ -167,20 +167,19 @@ def _collect_inline_segments(
     elif isinstance(element, inline.InlineHTML):
         assert isinstance(element.children, str)
         segments.append((element.children, None))
-    elif hasattr(element, "children") and isinstance(element.children, list):
+    elif hasattr(element, "children") and isinstance(element.children, list):  # pyright: ignore[reportAttributeAccessIssue]
         # Recursive container (Emphasis, StrongEmphasis, Link, Strikethrough, etc.)
-        for child in element.children:
+        children: list[Element] = element.children  # pyright: ignore[reportAttributeAccessIssue]
+        for child in children:
             segments.extend(_collect_inline_segments(child))
-    elif hasattr(element, "children") and isinstance(element.children, str):
+    elif hasattr(element, "children") and isinstance(element.children, str):  # pyright: ignore[reportAttributeAccessIssue]
         # Any other element with string content — include for context.
-        segments.append((element.children, None))
+        segments.append((element.children, None))  # pyright: ignore[reportAttributeAccessIssue]
 
     return segments
 
 
-def rewrite_text_across_inlines(
-    doc: Document, rewrite_func: Callable[[str], str]
-) -> None:
+def rewrite_text_across_inlines(doc: Document, rewrite_func: Callable[[str], str]) -> None:
     """
     Apply a length-preserving rewrite function across all inline elements within
     each inline scope (Paragraph, Heading, TableCell).

@@ -308,8 +308,14 @@ def test_smart_quotes_complex_table():
     )
     result = fill_markdown(text, smartquotes=True)
     # Prose quotes should be converted
-    assert "\u201cThere\u2019s a bug where \u2026\u201d" in result or "\u201cThere\u2019s a bug where ...\u201d" in result
-    assert "\u201cCreate a task/feature for \u2026\u201d" in result or "\u201cCreate a task/feature for ...\u201d" in result
+    assert (
+        "\u201cThere\u2019s a bug where \u2026\u201d" in result
+        or "\u201cThere\u2019s a bug where ...\u201d" in result
+    )
+    assert (
+        "\u201cCreate a task/feature for \u2026\u201d" in result
+        or "\u201cCreate a task/feature for ...\u201d" in result
+    )
     # Code spans should be unchanged
     assert '`tbd create "..." --type=bug`' in result
     assert '`tbd create "..." --type=task`' in result
@@ -318,7 +324,7 @@ def test_smart_quotes_complex_table():
 def test_smart_quotes_blockquote_multiline_with_code_span():
     """Test the specific blockquote from the bug report."""
     text = (
-        '> **Tell the user:** "First, I\'ll make sure Markform is installed.\n'
+        "> **Tell the user:** \"First, I'll make sure Markform is installed.\n"
         "> Markform is a CLI tool for creating structured forms that agents can fill via tool\n"
         "> calls. I'll install it globally so we can use the `markform` command.\"\n"
     )
