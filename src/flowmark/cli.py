@@ -16,6 +16,12 @@ It is both a library and a command-line tool.
 
 Command-line usage examples:
 
+  # Format all Markdown files in current directory recursively
+  flowmark --auto .
+
+  # Format all Markdown files in a specific directory
+  flowmark --auto docs/
+
   # Format a Markdown file to stdout
   flowmark README.md
 
@@ -25,6 +31,15 @@ Command-line usage examples:
   # Format a Markdown file in-place without backups and all auto-formatting
   # options enabled
   flowmark --auto README.md
+
+  # List files that would be formatted (without formatting)
+  flowmark --list-files .
+
+  # Format with additional file patterns
+  flowmark --auto --extend-include "*.mdx" .
+
+  # Format but skip a specific directory
+  flowmark --auto --extend-exclude "drafts/" .
 
   # Format a Markdown file and save to a new file
   flowmark README.md -o README_formatted.md
@@ -70,6 +85,14 @@ class Options:
     nobackup: bool
     version: bool
     list_spacing: ListSpacing
+    # File discovery options
+    extend_include: list[str]
+    exclude: list[str] | None
+    extend_exclude: list[str]
+    respect_gitignore: bool
+    force_exclude: bool
+    list_files: bool
+    files_max_size: int
     # Agent skill options
     skill_instructions: bool
     install_skill: bool
@@ -95,7 +118,7 @@ def _parse_args(args: list[str] | None = None) -> Options:
         nargs="*",
         type=str,
         default=["-"],
-        help="Input files (use '-' for stdin, multiple files supported)",
+        help="Input files or directories (use '-' for stdin, '.' for current directory)",
     )
     parser.add_argument(
         "-o",
@@ -164,7 +187,55 @@ def _parse_args(args: list[str] | None = None) -> Options:
         "--auto",
         action="store_true",
         help="Same as `--inplace --nobackup --semantic --cleanups --smartquotes --ellipses`, as a convenience for "
-        "fully auto-formatting files",
+        "fully auto-formatting files. With no file arguments, defaults to '.' (current directory)",
+    )
+    # File discovery options
+    parser.add_argument(
+        "--extend-include",
+        action="append",
+        default=[],
+        metavar="PATTERN",
+        help="Additional file patterns to include (e.g., '*.mdx'). Can be repeated",
+    )
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        default=None,
+        metavar="PATTERN",
+        help="Replace all default exclusion patterns. Can be repeated",
+    )
+    parser.add_argument(
+        "--extend-exclude",
+        action="append",
+        default=[],
+        metavar="PATTERN",
+        help="Add to default exclusion patterns (e.g., 'drafts/'). Can be repeated",
+    )
+    parser.add_argument(
+        "--no-respect-gitignore",
+        action="store_true",
+        dest="no_respect_gitignore",
+        help="Disable .gitignore integration",
+    )
+    parser.add_argument(
+        "--force-exclude",
+        action="store_true",
+        dest="force_exclude",
+        help="Apply exclusion patterns even to files named explicitly on the command line",
+    )
+    parser.add_argument(
+        "--list-files",
+        action="store_true",
+        dest="list_files",
+        help="Print resolved file paths without formatting (useful for debugging)",
+    )
+    parser.add_argument(
+        "--files-max-size",
+        type=int,
+        default=1_048_576,
+        dest="files_max_size",
+        metavar="BYTES",
+        help="Skip files larger than this size in bytes (0 = no limit, default: %(default)s)",
     )
     parser.add_argument(
         "--version",
@@ -205,6 +276,9 @@ def _parse_args(args: list[str] | None = None) -> Options:
         opts.cleanups = True
         opts.smartquotes = True
         opts.ellipses = True
+        # When --auto is used with no file args, default to current directory
+        if opts.files == ["-"]:
+            opts.files = ["."]
 
     return Options(
         files=opts.files,
@@ -219,11 +293,55 @@ def _parse_args(args: list[str] | None = None) -> Options:
         nobackup=opts.nobackup,
         version=opts.version,
         list_spacing=ListSpacing(opts.list_spacing),
+        extend_include=opts.extend_include,
+        exclude=opts.exclude,
+        extend_exclude=opts.extend_exclude,
+        respect_gitignore=not opts.no_respect_gitignore,
+        force_exclude=opts.force_exclude,
+        list_files=opts.list_files,
+        files_max_size=opts.files_max_size,
         skill_instructions=opts.skill_instructions,
         install_skill=opts.install_skill,
         agent_base=opts.agent_base,
         docs=opts.docs,
     )
+
+
+def _needs_file_resolution(files: list[str]) -> bool:
+    """Check if any input paths need file resolution (directories or globs)."""
+    from pathlib import Path
+
+    for f in files:
+        if f == "-":
+            continue
+        if Path(f).is_dir():
+            return True
+        if any(c in f for c in "*?["):
+            return True
+    return False
+
+
+def _resolve_files(options: Options) -> list[str]:
+    """
+    If inputs include directories or globs, use FileResolver to expand them.
+    Otherwise, pass through unchanged for backward compatibility.
+    """
+    if not _needs_file_resolution(options.files) and not options.list_files:
+        return options.files
+
+    from flowmark.file_resolver import FileResolver, FileResolverConfig
+
+    config = FileResolverConfig(
+        extend_include=options.extend_include,
+        exclude=options.exclude,
+        extend_exclude=options.extend_exclude,
+        respect_gitignore=options.respect_gitignore,
+        force_exclude=options.force_exclude,
+        files_max_size=options.files_max_size,
+    )
+    resolver = FileResolver(config)
+    resolved = resolver.resolve(options.files)
+    return [str(p) for p in resolved]
 
 
 def main(args: list[str] | None = None) -> int:
@@ -266,9 +384,18 @@ def main(args: list[str] | None = None) -> int:
         print(get_docs_content())
         return 0
 
+    # Resolve files if any input is a directory, glob, or --list-files is used
+    resolved_files = _resolve_files(options)
+
+    # Handle --list-files mode (print and exit)
+    if options.list_files:
+        for f in resolved_files:
+            print(f)
+        return 0
+
     try:
         reformat_files(
-            files=options.files,
+            files=resolved_files,
             output=options.output,
             width=options.width,
             inplace=options.inplace,
