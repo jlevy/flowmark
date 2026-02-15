@@ -18,7 +18,9 @@ def test_default_includes():
 
 def test_default_excludes_contains_key_dirs():
     for name in [".git", "node_modules", ".venv", "venv", "__pycache__", "build", "dist"]:
-        assert any(name in pattern for pattern in DEFAULT_EXCLUDES), f"{name} not in DEFAULT_EXCLUDES"
+        assert any(name in pattern for pattern in DEFAULT_EXCLUDES), (
+            f"{name} not in DEFAULT_EXCLUDES"
+        )
 
 
 def test_default_excludes_count():

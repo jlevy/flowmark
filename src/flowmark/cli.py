@@ -314,31 +314,35 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
         if opts.files == ["-"]:
             opts.files = ["."]
 
-    return (Options(
-        files=opts.files,
-        output=opts.output,
-        width=opts.width,
-        plaintext=opts.plaintext,
-        semantic=opts.semantic,
-        cleanups=opts.cleanups,
-        smartquotes=opts.smartquotes,
-        ellipses=opts.ellipses,
-        inplace=opts.inplace,
-        nobackup=opts.nobackup,
-        version=opts.version,
-        list_spacing=ListSpacing(opts.list_spacing),
-        extend_include=opts.extend_include,
-        exclude=opts.exclude,
-        extend_exclude=opts.extend_exclude,
-        respect_gitignore=not opts.no_respect_gitignore,
-        force_exclude=opts.force_exclude,
-        list_files=opts.list_files,
-        files_max_size=opts.files_max_size,
-        skill_instructions=opts.skill_instructions,
-        install_skill=opts.install_skill,
-        agent_base=opts.agent_base,
-        docs=opts.docs,
-    ), explicit_flags, is_auto)
+    return (
+        Options(
+            files=opts.files,
+            output=opts.output,
+            width=opts.width,
+            plaintext=opts.plaintext,
+            semantic=opts.semantic,
+            cleanups=opts.cleanups,
+            smartquotes=opts.smartquotes,
+            ellipses=opts.ellipses,
+            inplace=opts.inplace,
+            nobackup=opts.nobackup,
+            version=opts.version,
+            list_spacing=ListSpacing(opts.list_spacing),
+            extend_include=opts.extend_include,
+            exclude=opts.exclude,
+            extend_exclude=opts.extend_exclude,
+            respect_gitignore=not opts.no_respect_gitignore,
+            force_exclude=opts.force_exclude,
+            list_files=opts.list_files,
+            files_max_size=opts.files_max_size,
+            skill_instructions=opts.skill_instructions,
+            install_skill=opts.install_skill,
+            agent_base=opts.agent_base,
+            docs=opts.docs,
+        ),
+        explicit_flags,
+        is_auto,
+    )
 
 
 def _needs_file_resolution(files: list[str]) -> bool:
