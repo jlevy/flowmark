@@ -357,135 +357,367 @@ This is entirely new functionality.
 ### Phase 1: Core File Resolver Module
 
 Build the self-contained `file_resolver/` module with all core functionality.
+This module has **no imports from `flowmark`** and depends only on stdlib + `pathspec`.
 
-**Tasks:**
+#### New files
 
-- [ ] Create `src/flowmark/file_resolver/` package structure
-- [ ] Implement `types.py` — `FileResolverConfig` dataclass
-- [ ] Implement `defaults.py` — `DEFAULT_EXCLUDES` list, `DEFAULT_INCLUDES`
-- [ ] Implement `gitignore.py` — gitignore file discovery and `pathspec`-based matching
-- [ ] Implement `resolver.py` — `FileResolver` class with `resolve()` method
-- [ ] Implement `__init__.py` — clean public API exports
-- [ ] Add `pathspec` to `pyproject.toml` dependencies
-- [ ] Write unit tests for `FileResolverConfig` construction
-- [ ] Write unit tests for default exclusion matching
-- [ ] Write unit tests for gitignore parsing and matching
-- [ ] Write unit tests for directory recursion with exclusion pruning
-- [ ] Write unit tests for glob pattern expansion
-- [ ] Write unit tests for mixed input (files + directories + globs)
-- [ ] Write unit tests for `force_exclude` behavior
-- [ ] Write integration test with a realistic directory tree fixture
+**`src/flowmark/file_resolver/__init__.py`** — Public API exports:
+- Exports: `FileResolver`, `FileResolverConfig`, `DEFAULT_EXCLUDES`,
+  `DEFAULT_INCLUDES`
+- Module-level docstring explaining purpose, API, and future extraction plan
+
+**`src/flowmark/file_resolver/types.py`** — Configuration dataclass:
+- `FileResolverConfig` dataclass with fields:
+  - `tool_name: str = "flowmark"` — determines ignore file name
+    (`.flowmarkignore`)
+  - `include: list[str] = ["*.md"]` — file patterns to include
+  - `extend_include: list[str] = []` — additional include patterns
+  - `exclude: list[str] | None = None` — `None` = use defaults; list = replace
+    defaults
+  - `extend_exclude: list[str] = []` — additional exclude patterns
+  - `respect_gitignore: bool = True` — whether to read `.gitignore`
+  - `force_exclude: bool = False` — whether exclusions apply to explicit paths
+  - `files_max_size: int = 1_048_576` — max file size in bytes (0 = no limit)
+- Property `effective_include` → combines `include + extend_include`
+- Property `effective_exclude` → combines defaults (or `exclude`) +
+  `extend_exclude`
+
+**`src/flowmark/file_resolver/defaults.py`** — Constants:
+- `DEFAULT_INCLUDES = ["*.md"]`
+- `DEFAULT_EXCLUDES` — ~35 directory/file patterns that should never be
+  formatted:
+  `.git`, `node_modules`, `.venv`, `venv`, `__pycache__`, `build`, `dist`,
+  `.tox`, `.nox`, `.mypy_cache`, `.ruff_cache`, `.pytest_cache`, `.eggs`,
+  `*.egg-info`, `.hg`, `.svn`, `.bzr`, `_darcs`, `.idea`, `.vscode`,
+  `.vs`, `.fleet`, `.next`, `.nuxt`, `.output`, `.cache`, `.parcel-cache`,
+  `.turbo`, `coverage`, `htmlcov`, `.coverage`, `vendor`, `third_party`,
+  `Pods`, `target`, `.terraform`
+- Each entry is a gitignore-syntax pattern (directories end with `/`)
+
+**`src/flowmark/file_resolver/gitignore.py`** — Ignore file handling:
+- `load_gitignore(directory: Path) -> pathspec.PathSpec | None` — reads
+  `.gitignore` in the given directory, returns compiled `PathSpec` or `None`
+- `load_tool_ignore(tool_name: str, start_dir: Path) -> pathspec.PathSpec | None`
+  — walks up from `start_dir` looking for `.{tool_name}ignore`, reads and
+  compiles first found
+- `collect_gitignore_specs(root: Path) -> dict[Path, pathspec.PathSpec]` —
+  during traversal, lazily loads `.gitignore` files per directory for
+  hierarchical matching
+- Internal: uses `pathspec.PathSpec.from_lines("gitwildmatch", lines)` for all
+  pattern compilation
+
+**`src/flowmark/file_resolver/resolver.py`** — Main resolver class:
+- `FileResolver` class:
+  - `__init__(self, config: FileResolverConfig)` — stores config, compiles
+    exclude patterns into a `pathspec.PathSpec`, loads tool-specific ignore file
+  - `resolve(self, paths: list[str | Path]) -> list[Path]` — main entry point:
+    - For each input path:
+      - If it's an existing file → include directly (unless `force_exclude`
+        filters it, or exceeds `files_max_size`)
+      - If it's an existing directory → `_walk_directory()`
+      - If it contains glob characters (`*`, `?`, `[`) → `_expand_glob()`
+      - Otherwise → raise `FileNotFoundError`
+    - Returns sorted, deduplicated list of `Path` objects
+  - `_walk_directory(self, root: Path) -> Iterable[Path]` — uses `os.walk()`
+    with in-place `dirs[:]` modification to prune excluded directories.
+    At each level:
+    1. Remove dirs matching hardcoded defaults
+    2. Remove dirs matching user exclude patterns
+    3. Remove dirs matching `.gitignore` patterns (loaded per-directory)
+    4. Remove dirs matching tool-specific ignore patterns
+    5. Yield files matching include patterns that don't exceed
+       `files_max_size`
+  - `_expand_glob(self, pattern: str) -> Iterable[Path]` — uses
+    `Path.glob()` or `pathlib.Path('.').glob(pattern)`, then applies
+    all filters
+  - `_is_excluded(self, path: Path, relative_to: Path) -> bool` — checks a
+    file/dir against all exclusion sources
+  - `_exceeds_max_size(self, path: Path) -> bool` — checks file size against
+    `files_max_size` (0 = no limit)
+
+#### Modified files
+
+**`pyproject.toml`** — Add dependency:
+- Add `"pathspec>=0.12.1"` to `[project] dependencies` (line 39-44)
+- Add `"tomli>=2.0.0; python_version < '3.11'"` for Python 3.10 TOML support
+  (needed in Phase 3 but best to add now)
+
+#### New test files
+
+**`tests/test_file_resolver.py`** — Unit and integration tests:
+- Uses `tmp_path` fixture to create realistic directory trees
+- `conftest.py` or local fixture: `sample_tree` fixture that creates:
+  ```
+  project/
+    README.md
+    docs/
+      guide.md
+      api.md
+    src/
+      code.py
+    node_modules/
+      pkg/
+        README.md (should be excluded)
+    .venv/
+      lib/
+        README.md (should be excluded)
+    .git/
+      HEAD
+    .gitignore (contains: "build/")
+    build/
+      output.md (should be excluded by .gitignore)
+    vendor/
+      dep.md (should be excluded by defaults)
+    large_file.md (> 1 MiB, should be excluded by max-size)
+  ```
+- Test groups:
+  - `FileResolverConfig` construction and defaults
+  - `DEFAULT_EXCLUDES` — verify all ~35 entries match expected dirs
+  - `load_gitignore` — parse valid/empty/missing `.gitignore`
+  - `load_tool_ignore` — find `.flowmarkignore` walking upward
+  - `resolve()` with single file → returns that file
+  - `resolve()` with directory → recursive discovery, correct exclusions
+  - `resolve()` with glob pattern → expansion + filtering
+  - `resolve()` with mixed inputs → dedup and sort
+  - `force_exclude=True` → explicit files also filtered
+  - `force_exclude=False` (default) → explicit files bypass exclusions
+  - `respect_gitignore=False` → `.gitignore` patterns ignored
+  - `files_max_size` → large files skipped, 0 means no limit
+  - `exclude` (non-None) → replaces defaults entirely
+  - `extend_exclude` → adds to defaults
+  - `extend_include` → additional patterns beyond `*.md`
+  - Integration: realistic project tree with all exclusion sources
 
 ### Phase 2: CLI Integration and `.flowmarkignore`
 
-Wire the resolver into Flowmark's CLI and add the ignore file.
+Wire the resolver into Flowmark's CLI. After this phase, `flowmark --auto .`
+works.
 
-**Tasks:**
+#### Modified files
 
-- [ ] Add CLI flags to `cli.py`: `--extend-include`, `--exclude`, `--extend-exclude`,
-      `--no-respect-gitignore`, `--force-exclude`, `--list-files`
-- [ ] Update `main()` to construct `FileResolverConfig` from CLI args
-- [ ] Update `main()` to call `FileResolver.resolve()` before `reformat_files()`
-- [ ] Implement `--list-files` mode (print and exit, no formatting)
-- [ ] Implement `.flowmarkignore` file discovery and loading in `gitignore.py`
-- [ ] Update `--auto` shortcut to work with directory arguments
-- [ ] Write CLI integration tests for directory formatting
-- [ ] Write CLI integration tests for `--list-files`
-- [ ] Write CLI integration tests for exclude/extend-exclude flags
-- [ ] Write CLI integration tests for `.flowmarkignore`
-- [ ] Verify all existing CLI tests still pass unchanged
-- [ ] Update CLI help text and docstring examples
+**`src/flowmark/cli.py`** — Major changes:
 
-### Phase 3: Documentation Updates
+1. **Expand `Options` dataclass** (line 57-77): Add fields:
+   - `extend_include: list[str]`
+   - `exclude: list[str] | None` (None = use defaults)
+   - `extend_exclude: list[str]`
+   - `respect_gitignore: bool`
+   - `force_exclude: bool`
+   - `list_files: bool`
+   - `files_max_size: int`
 
-All documentation changes needed to reflect the new file discovery features.
+2. **Add new argparse arguments** (after line 167, before `--version`):
+   - `--extend-include` — `action="append"`, `default=[]`
+   - `--exclude` — `action="append"`, `default=None`
+   - `--extend-exclude` — `action="append"`, `default=[]`
+   - `--no-respect-gitignore` — `action="store_true"`, sets
+     `respect_gitignore=False`
+   - `--force-exclude` — `action="store_true"`
+   - `--list-files` — `action="store_true"`
+   - `--files-max-size` — `type=int`, `default=1048576`
 
-#### README.md Updates
+3. **Update `main()` flow** (line 229-293): After early-exit options
+   (version/skill/docs) and before `reformat_files()`:
+   - Import `FileResolver`, `FileResolverConfig`
+   - Check if any input paths are directories or globs (vs. stdin/explicit
+     files)
+   - If so: construct `FileResolverConfig` from `Options`, create
+     `FileResolver`, call `resolve()` to get file list
+   - If `--list-files`: print resolved paths (one per line) and `return 0`
+   - Pass resolved file list to `reformat_files()`
+   - If all inputs are explicit files and no `--list-files`, skip resolver
+     (backward compat — behaves identically to today)
 
-The README currently has these relevant sections that need updating:
+4. **Update `--auto` behavior** (line 201-207): When `--auto` is set and
+   `files == ["-"]` (no file args given), change `files` to `["."]` so
+   `flowmark --auto` defaults to formatting the current directory.
 
-- [ ] **Update "Usage" section** (`README.md:178`): The usage block currently shows
-      single-file CLI syntax (`[file]`). Update to show `[files/dirs...]` and add the
-      new flags (`--extend-include`, `--exclude`, `--extend-exclude`,
-      `--no-respect-gitignore`, `--force-exclude`, `--list-files`) to the help output
-      block.
+5. **Update help text** for `files` positional arg (line 93-98): Change from
+   `"Input files (use '-' for stdin, multiple files supported)"` to
+   `"Input files or directories (use '-' for stdin, '.' for current directory)"`
 
-- [ ] **Update CLI docstring** (`cli.py:1-44`): Add directory and glob examples to the
-      module docstring, which is used as CLI epilog text. Add examples like:
-      ```
-      # Format all Markdown files in current directory recursively
-      flowmark --auto .
+6. **Update module docstring** (line 1-44): Add directory/glob examples:
+   ```
+   # Format all Markdown files in current directory recursively
+   flowmark --auto .
 
-      # Format all Markdown files in a specific directory
-      flowmark --auto docs/
+   # List files that would be formatted (without formatting)
+   flowmark --list-files .
 
-      # List files that would be formatted (without formatting)
-      flowmark --list-files .
+   # Format with additional file patterns
+   flowmark --auto --extend-include "*.mdx" .
 
-      # Format with additional file patterns
-      flowmark --auto --extend-include "*.mdx" .
+   # Format but skip a specific directory
+   flowmark --auto --extend-exclude "drafts/" .
+   ```
 
-      # Format but skip a specific directory
-      flowmark --auto --extend-exclude "drafts/" .
-      ```
+#### New test files
 
-- [ ] **Replace "Batch Format" section** (`README.md:66-69`): The current
-      recommendation is `find . -name "*.md" -exec uvx flowmark@latest --auto {} \;`
-      which is exactly the pain point this feature solves. Replace with the new
-      `flowmark --auto .` approach, keeping the `find` command as a legacy alternative.
+**`tests/test_cli_file_discovery.py`** — CLI integration tests:
+- Uses `tmp_path` to create directory trees, then calls `main()` with args
+- Test groups:
+  - `flowmark --auto .` on a directory with `.md` files → formats all
+  - `flowmark --auto .` skips `node_modules/`, `.venv/`, etc.
+  - `flowmark --list-files .` → prints file paths, no formatting
+  - `flowmark --list-files --extend-include "*.mdx" .` → includes `.mdx` files
+  - `flowmark --extend-exclude "drafts/" --list-files .` → skips `drafts/`
+  - `flowmark --exclude "custom/" --list-files .` → replaces all defaults
+  - `flowmark --no-respect-gitignore --list-files .` → ignores `.gitignore`
+  - `flowmark --force-exclude --list-files .` → filters explicit files too
+  - `flowmark --auto` (no file args) → defaults to `.` (current directory)
+  - `flowmark README.md` (explicit file) → works identically to today
+  - `flowmark --list-files .` with `.flowmarkignore` → respects ignore file
+  - `flowmark --files-max-size 100 --list-files .` → skips large files
+  - Backward compat: `flowmark --auto README.md` → still works
+  - Backward compat: `echo "text" | flowmark` → still works (stdin)
 
-- [ ] **Add "File Discovery" section** to README: New section (after "Usage", before
-      "Use in VSCode/Cursor") covering:
-      - How directory recursion works (`flowmark --auto .`)
-      - Default include patterns (`*.md`)
-      - Default exclusions (link to full list or summarize key ones)
-      - `.gitignore` integration (on by default)
-      - `.flowmarkignore` for tool-specific exclusions
-      - `--list-files` for debugging
-      - Customizing includes/excludes
+### Phase 3: Config File Loading
 
-- [ ] **Update "Use in VSCode/Cursor" section** (`README.md:249-264`): Consider noting
-      that the Run on Save extension is still needed for per-file formatting on save,
-      but `flowmark --auto .` can be used for batch formatting.
+Add TOML-based config file support. After this phase, `flowmark .` (without
+`--auto`) reads formatting settings from `flowmark.toml` or `pyproject.toml`.
 
-#### SKILL.md Updates
+See [research-configuration-format-and-settings.md](../research/research-configuration-format-and-settings.md)
+for the full config schema and settings resolution design.
 
-- [ ] **Update SKILL.md** (`src/flowmark/skills/SKILL.md:66-69`): The "Batch Format"
-      workflow currently shows `find . -name "*.md" -exec uvx flowmark@latest --auto {} \;`.
-      Replace with `uvx flowmark@latest --auto .` and add `--list-files` to the
-      key options table.
+#### New files
 
-- [ ] **Update SKILL.md key options table** (`src/flowmark/skills/SKILL.md:40-49`):
-      Add rows for `--extend-include`, `--exclude`, `--extend-exclude`,
-      `--no-respect-gitignore`, `--force-exclude`, and `--list-files`.
+**`src/flowmark/config.py`** — Config loading module:
 
-#### AGENTS.md Updates
+- `FlowmarkConfig` dataclass with all settings:
+  - Formatting: `width`, `semantic`, `cleanups`, `smartquotes`, `ellipses`,
+    `list_spacing`
+  - File discovery: `include`, `extend_include`, `exclude`, `extend_exclude`,
+    `files_max_size`, `respect_gitignore`, `force_exclude`
+  - Defaults match current CLI defaults (all formatting features off,
+    `width=88`)
 
-- [ ] **No changes needed** to AGENTS.md — it covers tbd workflow, not Flowmark
-      formatting features. The skill integration handles Flowmark-specific agent
-      instructions via SKILL.md.
+- `find_config_file(start_dir: Path) -> Path | None` — walks up from
+  `start_dir` looking for `.flowmark.toml` > `flowmark.toml` >
+  `pyproject.toml` (only if `[tool.flowmark]` section exists)
 
-#### pyproject.toml Updates
+- `load_config(config_path: Path) -> FlowmarkConfig` — reads TOML file,
+  extracts `[tool.flowmark]` section if pyproject.toml, maps TOML keys
+  (kebab-case like `list-spacing`) to Python fields (snake_case like
+  `list_spacing`), returns populated `FlowmarkConfig`
+  - Uses `tomllib` (Python 3.11+) or `tomli` (Python 3.10 backport)
 
-- [ ] **Add `pathspec` dependency** to `[project] dependencies` list.
+- `merge_cli_with_config(cli_opts: Options, config: FlowmarkConfig | None, is_auto: bool) -> Options`
+  — implements settings resolution:
+  - If `is_auto`: formatting settings come from `--auto` preset (fixed),
+    file discovery settings come from config, `width` from config if present
+  - If not `is_auto`: explicit CLI flags override config, config overrides
+    defaults
+  - Handles the three-way precedence: CLI flags > config > built-in defaults
+  - Needs to distinguish "user passed `--semantic`" from "default `False`" —
+    use `argparse` default sentinel or track which flags were explicitly set
 
-#### Internal Documentation
+#### Modified files
 
-- [ ] **Add module-level docstring** to `file_resolver/__init__.py` explaining the
-      module's purpose, public API, and that it is designed for future extraction as a
-      standalone library.
+**`src/flowmark/cli.py`** — Config integration:
 
-- [ ] **Add docstrings** to `FileResolver` class and `resolve()` method with usage
-      examples (these serve as the library API docs).
+1. **In `_parse_args()` or `main()`**: After parsing args but before
+   constructing `Options`:
+   - Call `find_config_file(Path.cwd())`
+   - If found, call `load_config(config_path)` to get `FlowmarkConfig`
+   - Call `merge_cli_with_config()` to produce final `Options`
+   - The `--auto` flag determines which merge strategy to use
 
-#### Verification
+2. **Track explicitly-set CLI flags**: Change `argparse` defaults for boolean
+   formatting flags from `False` to `None` (sentinel). This lets
+   `merge_cli_with_config` distinguish "user didn't pass `--semantic`"
+   (should use config value) from "user passed `--semantic`" (should
+   override config).
+   The `--auto` expansion in `_parse_args()` sets all formatting flags to
+   `True` explicitly, so `--auto` always overrides config.
 
-- [ ] Review that the `file_resolver/` module has no imports from `flowmark.*`
-- [ ] Run full test suite and verify no regressions
-- [ ] Run `flowmark --help` and verify the new flags appear correctly
-- [ ] Run `flowmark --list-files .` in the flowmark repo itself and verify output
-      is sensible (should list all `.md` files, skipping `.venv/`, `.git/`, etc.)
-- [ ] Verify `flowmark --docs` output is consistent (it reads README.md)
+**`pyproject.toml`** — already added `tomli` in Phase 1.
+
+#### New test files
+
+**`tests/test_config.py`** — Config loading tests:
+- Uses `tmp_path` to create config files
+- Test groups:
+  - `find_config_file` — finds `.flowmark.toml`, `flowmark.toml`,
+    `pyproject.toml` in correct precedence order
+  - `find_config_file` — walks up to parent directories
+  - `find_config_file` — skips `pyproject.toml` without `[tool.flowmark]`
+  - `load_config` from `flowmark.toml` — all fields correctly mapped
+  - `load_config` from `pyproject.toml` — extracts `[tool.flowmark]`
+  - `load_config` — partial config (missing fields use defaults)
+  - `load_config` — kebab-case keys map to snake_case fields
+  - `merge_cli_with_config` — explicit CLI flags override config
+  - `merge_cli_with_config` — unset CLI flags fall through to config
+  - `merge_cli_with_config` with `--auto` — formatting settings from preset,
+    file discovery from config, `width` from config
+  - `merge_cli_with_config` — no config file → pure defaults
+  - Integration: create `flowmark.toml` in `tmp_path`, run CLI with
+    directory arg, verify config settings are applied
+
+### Phase 4: Documentation Updates
+
+All documentation changes needed to reflect new features. No new Python code.
+
+#### Modified files
+
+**`README.md`** — Multiple sections:
+
+1. **Update "Usage" section** (around line 178): Change CLI syntax from
+   `[file]` to `[files/dirs...]`. Add new flags to the help output block.
+
+2. **Replace "Batch Format" section** (around line 66-69): Replace the `find`
+   command recommendation with `flowmark --auto .`. Keep `find` as a
+   legacy note.
+
+3. **Add "File Discovery" section** (after "Usage", before "Use in
+   VSCode/Cursor"): New section covering:
+   - Directory recursion (`flowmark --auto .`)
+   - Default include patterns (`*.md`)
+   - Default exclusions (summarize key ones: `node_modules`, `.venv`, `.git`,
+     `build`, `dist`, etc.)
+   - `.gitignore` integration (on by default)
+   - `.flowmarkignore` for tool-specific exclusions
+   - `--list-files` for debugging
+   - Customizing includes/excludes
+
+4. **Add "Configuration" section** (after "File Discovery"): New section
+   covering:
+   - Config file locations (`.flowmark.toml`, `flowmark.toml`,
+     `pyproject.toml`)
+   - Example config
+   - `--auto` vs config interaction (link to or summarize the settings
+     resolution semantics)
+   - `width`, formatting options, file discovery options
+
+5. **Update "Use in VSCode/Cursor" section** (around line 249-264): Note
+   that `flowmark --auto .` can be used for batch formatting alongside
+   per-file-on-save.
+
+**`src/flowmark/skills/SKILL.md`** — Agent instructions:
+
+1. **Replace "Batch Format" workflow** (around line 66-69): Replace `find`
+   command with `uvx flowmark@latest --auto .`
+
+2. **Update key options table** (around line 40-49): Add rows for
+   `--list-files`, `--extend-include`, `--extend-exclude`,
+   `--files-max-size`
+
+**`src/flowmark/cli.py`** — Docstring only:
+- Already updated in Phase 2 with directory/glob examples
+
+#### Verification (all phases)
+
+- [ ] `file_resolver/` module has no imports from `flowmark.*`
+- [ ] Full test suite passes (`uv run pytest`)
+- [ ] Lint passes (`uv run ruff check src/ tests/`)
+- [ ] Type check passes (`uv run basedpyright`)
+- [ ] `flowmark --help` shows new flags correctly
+- [ ] `flowmark --list-files .` in the flowmark repo lists all `.md` files,
+      skipping `.venv/`, `.git/`, `node_modules/` etc.
+- [ ] `flowmark --auto .` in the flowmark repo formats all `.md` files
+- [ ] `flowmark --auto README.md` still works (backward compat)
+- [ ] `echo "# test" | flowmark` still works (stdin, backward compat)
+- [ ] `flowmark --docs` output is consistent (reads README.md)
+- [ ] Config file loading works with `flowmark.toml` and `pyproject.toml`
 
 ### Outstanding Questions
 
