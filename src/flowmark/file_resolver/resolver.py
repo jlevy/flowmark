@@ -39,6 +39,8 @@ class FileResolver:
         )
         self._tool_ignore: pathspec.PathSpec | None = None
         self._tool_ignore_loaded: bool = False
+        # Cache gitignore specs per directory to avoid re-reading from disk.
+        self._gitignore_cache: dict[Path, pathspec.PathSpec | None] = {}
 
     def resolve(self, paths: Sequence[str | Path]) -> list[Path]:
         """
@@ -109,7 +111,7 @@ class FileResolver:
             dirnames[:] = [
                 d
                 for d in dirnames
-                if not self._is_dir_excluded(d, rel_to_root / d, root, current, tool_ignore)
+                if not self._is_dir_excluded(d, rel_to_root / d, current, tool_ignore)
             ]
 
             # Yield files matching include patterns
@@ -122,7 +124,6 @@ class FileResolver:
         self,
         dirname: str,
         rel_path: Path,
-        walk_root: Path,  # pyright: ignore[reportUnusedParameter]
         current_dir: Path,
         tool_ignore: pathspec.PathSpec | None,
     ) -> bool:
@@ -130,19 +131,16 @@ class FileResolver:
         dir_with_slash = dirname + "/"
         rel_with_slash = str(rel_path) + "/"
 
-        # Check against exclude patterns (defaults + user overrides)
         if self._exclude_spec.match_file(dir_with_slash):
             return True
         if self._exclude_spec.match_file(rel_with_slash):
             return True
 
-        # Check gitignore
         if self._config.respect_gitignore:
-            gitignore_spec = load_gitignore(current_dir)
+            gitignore_spec = self._get_gitignore(current_dir)
             if gitignore_spec and gitignore_spec.match_file(dir_with_slash):
                 return True
 
-        # Check tool-specific ignore
         if tool_ignore and tool_ignore.match_file(dir_with_slash):
             return True
         if tool_ignore and tool_ignore.match_file(rel_with_slash):
@@ -175,6 +173,12 @@ class FileResolver:
             return path.stat().st_size > self._config.files_max_size
         except OSError:
             return False
+
+    def _get_gitignore(self, directory: Path) -> pathspec.PathSpec | None:
+        """Load and cache gitignore for a directory."""
+        if directory not in self._gitignore_cache:
+            self._gitignore_cache[directory] = load_gitignore(directory)
+        return self._gitignore_cache[directory]
 
     def _get_tool_ignore(self, start_dir: Path) -> pathspec.PathSpec | None:
         """Lazily load tool-specific ignore file."""

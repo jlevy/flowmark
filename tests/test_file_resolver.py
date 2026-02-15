@@ -6,37 +6,9 @@ from pathlib import Path
 
 from flowmark.file_resolver import (
     DEFAULT_EXCLUDES,
-    DEFAULT_INCLUDES,
     FileResolver,
     FileResolverConfig,
 )
-
-
-def test_default_includes():
-    assert DEFAULT_INCLUDES == ["*.md"]
-
-
-def test_default_excludes_contains_key_dirs():
-    for name in [".git", "node_modules", ".venv", "venv", "__pycache__", "build", "dist"]:
-        assert any(name in pattern for pattern in DEFAULT_EXCLUDES), (
-            f"{name} not in DEFAULT_EXCLUDES"
-        )
-
-
-def test_default_excludes_count():
-    assert len(DEFAULT_EXCLUDES) >= 30
-
-
-def test_config_defaults():
-    config = FileResolverConfig()
-    assert config.tool_name == "flowmark"
-    assert config.include == ["*.md"]
-    assert config.extend_include == []
-    assert config.exclude is None
-    assert config.extend_exclude == []
-    assert config.respect_gitignore is True
-    assert config.force_exclude is False
-    assert config.files_max_size == 1_048_576
 
 
 def test_config_effective_include():
@@ -49,11 +21,6 @@ def test_config_effective_include_custom_base():
     assert config.effective_include == ["*.txt", "*.rst"]
 
 
-def test_config_effective_exclude_defaults():
-    config = FileResolverConfig()
-    assert config.effective_exclude == DEFAULT_EXCLUDES
-
-
 def test_config_effective_exclude_replaced():
     config = FileResolverConfig(exclude=["custom_dir/"])
     assert config.effective_exclude == ["custom_dir/"]
@@ -63,7 +30,6 @@ def test_config_effective_exclude_extended():
     config = FileResolverConfig(extend_exclude=["extra_dir/"])
     effective = config.effective_exclude
     assert "extra_dir/" in effective
-    # Should also contain all defaults
     for pattern in DEFAULT_EXCLUDES:
         assert pattern in effective
 

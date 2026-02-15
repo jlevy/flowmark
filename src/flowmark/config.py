@@ -89,7 +89,7 @@ def _pyproject_has_flowmark_section(path: Path) -> bool:
     try:
         data = tomllib.loads(path.read_text())
         return "flowmark" in data.get("tool", {})
-    except Exception:
+    except (tomllib.TOMLDecodeError, OSError):
         return False
 
 

@@ -64,7 +64,9 @@ import argparse
 import importlib.metadata
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
+from flowmark.config import find_config_file, load_config, merge_cli_with_config
 from flowmark.formats.flowmark_markdown import ListSpacing
 from flowmark.reformat_api import reformat_files
 
@@ -347,8 +349,6 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
 
 def _needs_file_resolution(files: list[str]) -> bool:
     """Check if any input paths need file resolution (directories or globs)."""
-    from pathlib import Path
-
     for f in files:
         if f == "-":
             continue
@@ -423,10 +423,6 @@ def main(args: list[str] | None = None) -> int:
         return 0
 
     # Load and merge config file settings
-    from pathlib import Path
-
-    from flowmark.config import find_config_file, load_config, merge_cli_with_config
-
     config_path = find_config_file(Path.cwd())
     if config_path:
         config = load_config(config_path)

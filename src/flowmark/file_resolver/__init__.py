@@ -18,6 +18,8 @@ Usage::
     files = resolver.resolve([".", "extra/doc.md"])
 """
 
+from __future__ import annotations
+
 from flowmark.file_resolver.defaults import DEFAULT_EXCLUDES, DEFAULT_INCLUDES
 from flowmark.file_resolver.resolver import FileResolver
 from flowmark.file_resolver.types import FileResolverConfig

@@ -62,3 +62,6 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
+
+      - name: Run golden tests
+        run: npx tryscript@latest run tests/golden/
