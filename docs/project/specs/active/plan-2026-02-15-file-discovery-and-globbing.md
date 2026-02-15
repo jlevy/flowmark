@@ -143,6 +143,14 @@ default values and making them configurable.
 
 ## Stage 2: Architecture Stage
 
+### Current Source Layout (Post-Merge)
+
+The codebase now includes a skill system (`skill.py`, `skills/SKILL.md`) and additional
+CLI flags (`--skill`, `--install-skill`, `--agent-base`, `--docs`).
+The CLI already handles "early exit" options (version, skill, docs) before formatting.
+The file resolver integration follows the same pattern: resolve files early, then pass
+to the existing formatting pipeline.
+
 ### Module Structure
 
 ```
@@ -155,6 +163,8 @@ src/flowmark/
     types.py                  # Shared types (FileResolverConfig, etc.)
   cli.py                      # Updated — adds new flags, calls resolver
   reformat_api.py             # Unchanged — receives resolved file lists
+  skill.py                    # Unchanged — skill installation (already merged)
+  skills/SKILL.md             # Unchanged — skill definition (already merged)
   ...
 ```
 
@@ -381,15 +391,96 @@ Wire the resolver into Flowmark's CLI and add the ignore file.
 - [ ] Verify all existing CLI tests still pass unchanged
 - [ ] Update CLI help text and docstring examples
 
-### Phase 3: Documentation and Polish
+### Phase 3: Documentation Updates
 
-- [ ] Update README.md with new directory formatting usage
-- [ ] Document the file resolution algorithm
-- [ ] Document `.flowmarkignore` file format
-- [ ] Document all new CLI flags
-- [ ] Add a "File Discovery" section to README
-- [ ] Review module for any flowmark-specific imports (ensure extractability)
+All documentation changes needed to reflect the new file discovery features.
+
+#### README.md Updates
+
+The README currently has these relevant sections that need updating:
+
+- [ ] **Update "Usage" section** (`README.md:178`): The usage block currently shows
+      single-file CLI syntax (`[file]`). Update to show `[files/dirs...]` and add the
+      new flags (`--extend-include`, `--exclude`, `--extend-exclude`,
+      `--no-respect-gitignore`, `--force-exclude`, `--list-files`) to the help output
+      block.
+
+- [ ] **Update CLI docstring** (`cli.py:1-44`): Add directory and glob examples to the
+      module docstring, which is used as CLI epilog text. Add examples like:
+      ```
+      # Format all Markdown files in current directory recursively
+      flowmark --auto .
+
+      # Format all Markdown files in a specific directory
+      flowmark --auto docs/
+
+      # List files that would be formatted (without formatting)
+      flowmark --list-files .
+
+      # Format with additional file patterns
+      flowmark --auto --extend-include "*.mdx" .
+
+      # Format but skip a specific directory
+      flowmark --auto --extend-exclude "drafts/" .
+      ```
+
+- [ ] **Replace "Batch Format" section** (`README.md:66-69`): The current
+      recommendation is `find . -name "*.md" -exec uvx flowmark@latest --auto {} \;`
+      which is exactly the pain point this feature solves. Replace with the new
+      `flowmark --auto .` approach, keeping the `find` command as a legacy alternative.
+
+- [ ] **Add "File Discovery" section** to README: New section (after "Usage", before
+      "Use in VSCode/Cursor") covering:
+      - How directory recursion works (`flowmark --auto .`)
+      - Default include patterns (`*.md`)
+      - Default exclusions (link to full list or summarize key ones)
+      - `.gitignore` integration (on by default)
+      - `.flowmarkignore` for tool-specific exclusions
+      - `--list-files` for debugging
+      - Customizing includes/excludes
+
+- [ ] **Update "Use in VSCode/Cursor" section** (`README.md:249-264`): Consider noting
+      that the Run on Save extension is still needed for per-file formatting on save,
+      but `flowmark --auto .` can be used for batch formatting.
+
+#### SKILL.md Updates
+
+- [ ] **Update SKILL.md** (`src/flowmark/skills/SKILL.md:66-69`): The "Batch Format"
+      workflow currently shows `find . -name "*.md" -exec uvx flowmark@latest --auto {} \;`.
+      Replace with `uvx flowmark@latest --auto .` and add `--list-files` to the
+      key options table.
+
+- [ ] **Update SKILL.md key options table** (`src/flowmark/skills/SKILL.md:40-49`):
+      Add rows for `--extend-include`, `--exclude`, `--extend-exclude`,
+      `--no-respect-gitignore`, `--force-exclude`, and `--list-files`.
+
+#### AGENTS.md Updates
+
+- [ ] **No changes needed** to AGENTS.md — it covers tbd workflow, not Flowmark
+      formatting features. The skill integration handles Flowmark-specific agent
+      instructions via SKILL.md.
+
+#### pyproject.toml Updates
+
+- [ ] **Add `pathspec` dependency** to `[project] dependencies` list.
+
+#### Internal Documentation
+
+- [ ] **Add module-level docstring** to `file_resolver/__init__.py` explaining the
+      module's purpose, public API, and that it is designed for future extraction as a
+      standalone library.
+
+- [ ] **Add docstrings** to `FileResolver` class and `resolve()` method with usage
+      examples (these serve as the library API docs).
+
+#### Verification
+
+- [ ] Review that the `file_resolver/` module has no imports from `flowmark.*`
 - [ ] Run full test suite and verify no regressions
+- [ ] Run `flowmark --help` and verify the new flags appear correctly
+- [ ] Run `flowmark --list-files .` in the flowmark repo itself and verify output
+      is sensible (should list all `.md` files, skipping `.venv/`, `.git/`, etc.)
+- [ ] Verify `flowmark --docs` output is consistent (it reads README.md)
 
 ### Outstanding Questions
 
