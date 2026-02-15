@@ -100,8 +100,14 @@ class Options:
     docs: bool
 
 
-def _parse_args(args: list[str] | None = None) -> Options:
-    """Parse command-line arguments for the flowmark tool."""
+def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]:
+    """
+    Parse command-line arguments.
+
+    Returns a tuple of (options, explicit_flags, is_auto) where `explicit_flags`
+    tracks which flags the user explicitly passed (for config merge precedence)
+    and `is_auto` indicates whether --auto was used.
+    """
     # Use the module's docstring as the description
     module_doc = __doc__ or ""
     doc_parts = module_doc.split("\n\n")
@@ -269,6 +275,34 @@ def _parse_args(args: list[str] | None = None) -> Options:
     )
     opts = parser.parse_args(args)
 
+    # Track which flags the user explicitly set (for config merge precedence).
+    # argparse doesn't track this natively, so we compare against defaults.
+    _flag_defaults: dict[str, object] = {
+        "width": 88,
+        "semantic": False,
+        "cleanups": False,
+        "smartquotes": False,
+        "ellipses": False,
+        "list_spacing": "preserve",
+        "extend_include": [],
+        "exclude": None,
+        "extend_exclude": [],
+        "no_respect_gitignore": False,
+        "force_exclude": False,
+        "files_max_size": 1_048_576,
+    }
+    explicit_flags: set[str] = set()
+    for flag_name, default_val in _flag_defaults.items():
+        actual = getattr(opts, flag_name, None)
+        if actual != default_val:
+            # Map argparse dest names to Options field names
+            field_name = flag_name
+            if flag_name == "no_respect_gitignore":
+                field_name = "respect_gitignore"
+            explicit_flags.add(field_name)
+
+    is_auto = opts.auto
+
     if opts.auto:
         opts.inplace = True
         opts.nobackup = True
@@ -280,7 +314,7 @@ def _parse_args(args: list[str] | None = None) -> Options:
         if opts.files == ["-"]:
             opts.files = ["."]
 
-    return Options(
+    return (Options(
         files=opts.files,
         output=opts.output,
         width=opts.width,
@@ -304,7 +338,7 @@ def _parse_args(args: list[str] | None = None) -> Options:
         install_skill=opts.install_skill,
         agent_base=opts.agent_base,
         docs=opts.docs,
-    )
+    ), explicit_flags, is_auto)
 
 
 def _needs_file_resolution(files: list[str]) -> bool:
@@ -354,7 +388,7 @@ def main(args: list[str] | None = None) -> int:
     Returns:
         Exit code (0 for success, non-zero for errors)
     """
-    options = _parse_args(args)
+    options, explicit_flags, is_auto = _parse_args(args)
 
     # Display version information if requested
     if options.version:
@@ -383,6 +417,16 @@ def main(args: list[str] | None = None) -> int:
 
         print(get_docs_content())
         return 0
+
+    # Load and merge config file settings
+    from pathlib import Path
+
+    from flowmark.config import find_config_file, load_config, merge_cli_with_config
+
+    config_path = find_config_file(Path.cwd())
+    if config_path:
+        config = load_config(config_path)
+        merge_cli_with_config(options, config, is_auto, explicit_flags)
 
     # Resolve files if any input is a directory, glob, or --list-files is used
     resolved_files = _resolve_files(options)
