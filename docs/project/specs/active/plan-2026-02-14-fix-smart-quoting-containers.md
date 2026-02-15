@@ -137,19 +137,23 @@ same string to match them as a pair.
 
 ### Phase 1: Add Container Types + Cross-Inline Rewriting
 
-- [ ] Write failing tests for table smart quoting
-- [ ] Write failing tests for strikethrough smart quoting
-- [ ] Write failing tests for cross-inline quote spanning
-- [ ] Add missing types to `ContainerElement`
-- [ ] Implement `_collect_inline_segments()` helper
-- [ ] Implement `rewrite_text_across_inlines()` function
-- [ ] Update `fill_markdown()` to use new function for smart quotes
-- [ ] Verify all tests pass
-- [ ] Update reference test documents
+- [x] Write failing tests for table smart quoting
+- [x] Write failing tests for strikethrough smart quoting
+- [x] Write failing tests for cross-inline quote spanning
+- [x] Add missing types to `ContainerElement`
+- [x] Implement `_collect_inline_segments()` helper
+- [x] Implement `rewrite_text_across_inlines()` function
+- [x] Update `fill_markdown()` to use new function for smart quotes
+- [x] Verify all tests pass (202/202)
+- [x] Update reference test documents
+
+### Status
+
+**Complete.** All tasks done, all 202 tests passing.
 
 ### Open Questions
 
-- None at this time
+- None
 
 ## Assumptions
 
