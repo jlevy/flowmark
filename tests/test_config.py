@@ -247,7 +247,7 @@ def test_load_config_malformed_toml(tmp_path: Path, capsys: object) -> None:
     assert config.semantic is None
 
 
-def test_parse_config_warns_unknown_keys(tmp_path: Path, capsys: "pytest.CaptureFixture[str]") -> None:
+def test_parse_config_warns_unknown_keys(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """Unknown keys in config should produce a warning (fm-y9cx)."""
     config_file = tmp_path / "flowmark.toml"
     config_file.write_text("unknown_key = true\nwidth = 100\n")
