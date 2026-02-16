@@ -792,12 +792,16 @@ All documentation changes needed to reflect new features. No new Python code.
   symlinks passed as arguments are resolved and processed normally (since
   `Path.is_file()` follows symlinks by default).
 
-## Phase 5: CLI Argument Strictness and Documentation Updates
+## Phase 5: CLI Argument Strictness and Golden Tests
 
-This phase makes all CLI modes require explicit arguments and updates all
-documentation to reflect the final behavior.
+This phase makes all CLI modes require explicit arguments, adds golden tests
+for all error and stdin behaviors, and updates documentation.
 
 ### CLI Changes
+
+#### Modified files
+
+**`src/flowmark/cli.py`**:
 
 1. **Change `files` positional argument default from `["-"]` to `[]`**: This means
    bare `flowmark` with no args results in `options.files == []` instead of silently
@@ -819,6 +823,95 @@ documentation to reflect the final behavior.
 4. **Remove all `opts.files == ["-"]` checks** that previously detected "no args
    given" — replace with `not options.files` checks.
 
+### Golden Tests
+
+Add new test sections to `tests/golden/cli-golden.tryscript.md` covering all
+no-args error cases and explicit stdin behavior. These golden tests pin the exact
+error messages and exit codes, complementing the existing pytest unit tests.
+
+#### New golden test sections to add
+
+**Error: no arguments** — bare `flowmark` with no args:
+```console
+$ flowmark 2>&1
+Error: No input specified. Provide files, directories, or '-' for stdin.
+? 1
+```
+
+**Error: --auto with no file arguments**:
+```console
+$ flowmark --auto 2>&1
+Error: --auto requires at least one file or directory argument (use '.' for current directory)
+? 1
+```
+
+**Error: --list-files with no file arguments**:
+```console
+$ flowmark --list-files 2>&1
+Error: --list-files requires at least one file or directory argument (use '.' for current directory)
+? 1
+```
+
+**Error: --auto --list-files with no file arguments** (both flags, still no args):
+```console
+$ flowmark --auto --list-files 2>&1
+Error: --auto requires at least one file or directory argument (use '.' for current directory)
+? 1
+```
+
+**Stdin: explicit `-` still works** — confirm piping with explicit `-` arg:
+```console
+$ printf '# Hello\n\nWorld.\n' | flowmark -
+# Hello
+
+World.
+```
+
+**Stdin: explicit `-` with --semantic** — stdin with formatting flags:
+```console
+$ printf '# Hello\n\nFirst sentence. Second sentence.\n' | flowmark --semantic -
+# Hello
+
+First sentence.
+Second sentence.
+```
+
+**Help output** — pin `--help` output to catch unintended changes to argument
+descriptions (uses `[..]` elision for unstable parts):
+```console
+$ flowmark --help
+[..]
+```
+
+Note: The `--help` golden test uses `[..]` liberally since the full help text is
+long and changes frequently. The key assertion is that it exits 0 and produces
+output. Specific help text wording is tested in the unit tests.
+
+#### Existing golden tests to update
+
+The existing stdin tests already use `| flowmark -` (explicit `-`), so they are
+already compatible with the new behavior. No existing golden tests need modification.
+
+Specifically, these existing tests already pass explicit `-`:
+- "Stdin: default formatting" — `| flowmark -`
+- "Stdin: semantic mode" — `| flowmark --semantic -`
+- "Stdin: custom width" — `| flowmark --width 30 -`
+
+### Unit Tests
+
+#### Modified files
+
+**`tests/test_cli_file_discovery.py`** — New tests:
+
+| Test | Description | Status |
+|---|---|---|
+| `test_auto_no_args_errors` | `main(["--auto"])` returns 1 with error message | Done |
+| `test_list_files_no_args_errors` | `main(["--list-files"])` returns 1 with error message | Done |
+| `test_auto_with_dot_formats_cwd` | `main(["--auto", "."])` succeeds | Done |
+| `test_no_args_errors` | bare `main([])` returns 1 with "No input specified" error | Planned |
+| `test_stdin_explicit_dash` | `main(["-"])` with redirected stdin still works | Planned |
+| `test_auto_list_files_no_args_errors` | `main(["--auto", "--list-files"])` returns 1 | Planned |
+
 ### Documentation Changes
 
 All documentation updates for the file discovery and globbing feature, organized by
@@ -833,6 +926,7 @@ file:
 | New subsection: "Symlinks" (under File Discovery) | Added: symlinks not followed during recursion, resolved when explicit | Done |
 | Quick Start examples | Verify all examples use explicit args (already do) | Done |
 | Batch Formatting section | Verify examples use explicit `.` (already do) | Done |
+| `files` positional in Usage section | Update to note that at least one arg is required; `-` for stdin | Planned |
 
 #### `src/flowmark/skills/SKILL.md`
 
@@ -851,13 +945,3 @@ file:
 | `files` default | Needs change: `["-"]` → `[]` | Planned |
 | `main()` error check | Needs update: check for `not options.files` | Planned |
 | Module docstring examples | All already use explicit args | Done |
-
-#### `tests/test_cli_file_discovery.py`
-
-| Test | Change | Status |
-|---|---|---|
-| `test_auto_no_args_errors` | New test: `main(["--auto"])` returns 1 with error message | Done |
-| `test_list_files_no_args_errors` | New test: `main(["--list-files"])` returns 1 with error message | Done |
-| `test_auto_with_dot_formats_cwd` | New test: `main(["--auto", "."])` succeeds | Done |
-| `test_no_args_errors` | Planned: bare `main([])` returns 1 with error message | Planned |
-| `test_stdin_explicit_dash` | Planned: verify `main(["-"])` still works for stdin | Planned |
