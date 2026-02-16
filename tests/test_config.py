@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flowmark.cli import Options
 from flowmark.config import FlowmarkConfig, find_config_file, load_config, merge_cli_with_config
 from flowmark.formats.flowmark_markdown import ListSpacing
@@ -225,3 +227,31 @@ def test_merge_file_discovery_from_config() -> None:
     result = merge_cli_with_config(opts, config=config, is_auto=False, explicit_flags=set())
     assert result.extend_exclude == ["vendor/"]
     assert result.files_max_size == 500000
+
+
+def test_merge_extend_include_from_config() -> None:
+    """Config extend_include should be applied when not explicitly set (fm-p6x5)."""
+    config = FlowmarkConfig(extend_include=["*.mdx", "*.markdown"])
+    opts = _make_options()
+    result = merge_cli_with_config(opts, config=config, is_auto=False, explicit_flags=set())
+    assert result.extend_include == ["*.mdx", "*.markdown"]
+
+
+def test_load_config_malformed_toml(tmp_path: Path, capsys: object) -> None:
+    """Malformed TOML should return empty config, not crash (fm-lbku)."""
+    config_file = tmp_path / "flowmark.toml"
+    config_file.write_text("this is not valid toml [[[")
+    config = load_config(config_file)
+    # Should return default empty config
+    assert config.width is None
+    assert config.semantic is None
+
+
+def test_parse_config_warns_unknown_keys(tmp_path: Path, capsys: "pytest.CaptureFixture[str]") -> None:
+    """Unknown keys in config should produce a warning (fm-y9cx)."""
+    config_file = tmp_path / "flowmark.toml"
+    config_file.write_text("unknown_key = true\nwidth = 100\n")
+    config = load_config(config_file)
+    assert config.width == 100
+    captured = capsys.readouterr()
+    assert "unrecognized config key" in captured.err

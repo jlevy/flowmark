@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import stat
 from pathlib import Path
 
 from flowmark.file_resolver import (
@@ -9,6 +11,7 @@ from flowmark.file_resolver import (
     FileResolver,
     FileResolverConfig,
 )
+from flowmark.file_resolver.gitignore import _read_ignore_file
 
 
 def test_config_effective_include():
@@ -266,3 +269,121 @@ def test_resolver_nested_gitignore(tmp_path: Path):
     result = resolver.resolve([str(tmp_path)])
     names = sorted(p.name for p in result)
     assert names == ["keep.md", "root.md"]
+
+
+def test_resolver_nested_gitignore_combines_parent_rules(tmp_path: Path):
+    """Parent .gitignore rules should still apply in subdirectories (fm-8lf6)."""
+    (tmp_path / ".gitignore").write_text("*.log\n")
+    sub = tmp_path / "sub"
+    sub.mkdir()
+    (sub / "keep.md").write_text("# Keep")
+    (sub / "debug.log").write_text("log data")
+    (sub / ".gitignore").write_text("generated/\n")
+    gen = sub / "generated"
+    gen.mkdir()
+    (gen / "output.md").write_text("# Generated")
+
+    resolver = FileResolver(FileResolverConfig(include=["*.md", "*.log"]))
+    result = resolver.resolve([str(tmp_path)])
+    names = sorted(p.name for p in result)
+    # debug.log should be excluded by parent .gitignore, generated/ by sub .gitignore
+    assert names == ["keep.md"]
+
+
+def test_resolver_gitignore_file_patterns(tmp_path: Path):
+    """Gitignore should exclude files matching patterns, not just directories (fm-911m)."""
+    (tmp_path / "README.md").write_text("# Readme")
+    (tmp_path / "draft.md").write_text("# Draft")
+    (tmp_path / ".gitignore").write_text("draft.md\n")
+
+    resolver = FileResolver(FileResolverConfig())
+    result = resolver.resolve([str(tmp_path)])
+    names = [p.name for p in result]
+    assert names == ["README.md"]
+
+
+def test_resolver_gitignore_wildcard_file_pattern(tmp_path: Path):
+    """Gitignore wildcard patterns should match files (fm-qeeg)."""
+    (tmp_path / "keep.md").write_text("# Keep")
+    (tmp_path / "temp.md").write_text("# Temp")
+    (tmp_path / ".gitignore").write_text("temp.*\n")
+
+    resolver = FileResolver(FileResolverConfig())
+    result = resolver.resolve([str(tmp_path)])
+    assert len(result) == 1
+    assert result[0].name == "keep.md"
+
+
+def test_read_ignore_file_missing(tmp_path: Path):
+    """_read_ignore_file returns None for missing files (fm-39fo / fm-pek5)."""
+    result = _read_ignore_file(tmp_path / "nonexistent")
+    assert result is None
+
+
+def test_read_ignore_file_unreadable(tmp_path: Path):
+    """_read_ignore_file returns None for unreadable files (fm-39fo / fm-pek5)."""
+    if os.getuid() == 0:
+        # Root can read any file regardless of permissions; test the OSError
+        # path via a missing file instead.
+        result = _read_ignore_file(tmp_path / "nonexistent_ignore")
+        assert result is None
+        return
+    ignore_file = tmp_path / ".gitignore"
+    ignore_file.write_text("*.log\n")
+    ignore_file.chmod(0o000)
+    try:
+        result = _read_ignore_file(ignore_file)
+        assert result is None
+    finally:
+        ignore_file.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+
+def test_read_ignore_file_non_utf8(tmp_path: Path):
+    """_read_ignore_file returns None for non-UTF-8 files (fm-8to0)."""
+    ignore_file = tmp_path / ".gitignore"
+    ignore_file.write_bytes(b"\x80\x81\x82\xff\xfe")
+    result = _read_ignore_file(ignore_file)
+    assert result is None
+
+
+def test_resolver_tool_ignore_per_walk_root(tmp_path: Path):
+    """Tool ignore should be loaded per walk root, not cached from first (fm-jl1d)."""
+    # Create two separate directory trees with different .flowmarkignore files
+    dir_a = tmp_path / "a"
+    dir_a.mkdir()
+    (dir_a / "keep.md").write_text("# Keep")
+    skip_a = dir_a / "skip_a"
+    skip_a.mkdir()
+    (skip_a / "nope.md").write_text("# Nope")
+    (dir_a / ".flowmarkignore").write_text("skip_a/\n")
+
+    dir_b = tmp_path / "b"
+    dir_b.mkdir()
+    (dir_b / "keep.md").write_text("# Keep")
+    skip_b = dir_b / "skip_b"
+    skip_b.mkdir()
+    (skip_b / "nope.md").write_text("# Nope")
+    (dir_b / ".flowmarkignore").write_text("skip_b/\n")
+
+    resolver = FileResolver(FileResolverConfig())
+    result = resolver.resolve([str(dir_a), str(dir_b)])
+    names = sorted(p.name for p in result)
+    assert names == ["keep.md", "keep.md"]
+
+
+def test_resolver_flowmarkignore_positive_assertion(tmp_path: Path):
+    """Flowmarkignore test with positive assertion on kept files (fm-pvxa)."""
+    (tmp_path / "keep.md").write_text("# Keep")
+    (tmp_path / "also_keep.md").write_text("# Also Keep")
+    skip = tmp_path / "skip"
+    skip.mkdir()
+    (skip / "nope.md").write_text("# Nope")
+    (tmp_path / ".flowmarkignore").write_text("skip/\n")
+
+    resolver = FileResolver(FileResolverConfig())
+    result = resolver.resolve([str(tmp_path)])
+    names = sorted(p.name for p in result)
+    # Positive assertion: check exactly which files are kept
+    assert names == ["also_keep.md", "keep.md"]
+    # Negative assertion: skip directory files not present
+    assert not any("nope" in p.name for p in result)

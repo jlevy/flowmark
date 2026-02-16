@@ -37,8 +37,7 @@ class FileResolver:
         self._include_spec: pathspec.PathSpec = pathspec.PathSpec.from_lines(
             "gitignore", config.effective_include
         )
-        self._tool_ignore: pathspec.PathSpec | None = None
-        self._tool_ignore_loaded: bool = False
+        self._tool_ignore_cache: dict[Path, pathspec.PathSpec | None] = {}
         # Cache gitignore specs per directory to avoid re-reading from disk.
         self._gitignore_cache: dict[Path, pathspec.PathSpec | None] = {}
 
@@ -88,9 +87,9 @@ class FileResolver:
             rel = path.name
             if self._exclude_spec.match_file(rel):
                 return False
-            # Also check parent directory components
-            for parent in path.parents:
-                if self._exclude_spec.match_file(parent.name + "/"):
+            # Check parent directory components (only the path's own parts, not up to /)
+            for part in path.parts[:-1]:
+                if self._exclude_spec.match_file(part + "/"):
                     return False
         if self._exceeds_max_size(path):
             return False
@@ -111,14 +110,26 @@ class FileResolver:
             dirnames[:] = [
                 d
                 for d in dirnames
-                if not self._is_dir_excluded(d, rel_to_root / d, current, tool_ignore)
+                if not self._is_dir_excluded(d, rel_to_root / d, current, tool_ignore, root)
             ]
 
-            # Yield files matching include patterns
+            # Collect gitignore specs for this directory (including ancestors)
+            gitignore_specs: list[pathspec.PathSpec] = []
+            if self._config.respect_gitignore:
+                gitignore_specs = self._get_gitignore_chain(current, root)
+
+            # Yield files matching include patterns (applying gitignore + tool ignore)
             for filename in filenames:
                 filepath = current / filename
-                if self._include_spec.match_file(filename) and not self._exceeds_max_size(filepath):
-                    yield filepath
+                if not self._include_spec.match_file(filename):
+                    continue
+                if self._exceeds_max_size(filepath):
+                    continue
+                if any(spec.match_file(filename) for spec in gitignore_specs):
+                    continue
+                if tool_ignore and tool_ignore.match_file(filename):
+                    continue
+                yield filepath
 
     def _is_dir_excluded(
         self,
@@ -126,6 +137,7 @@ class FileResolver:
         rel_path: Path,
         current_dir: Path,
         tool_ignore: pathspec.PathSpec | None,
+        walk_root: Path | None = None,
     ) -> bool:
         """Check if a directory should be pruned during traversal."""
         dir_with_slash = dirname + "/"
@@ -137,9 +149,10 @@ class FileResolver:
             return True
 
         if self._config.respect_gitignore:
-            gitignore_spec = self._get_gitignore(current_dir)
-            if gitignore_spec and gitignore_spec.match_file(dir_with_slash):
-                return True
+            root = walk_root if walk_root is not None else current_dir
+            for spec in self._get_gitignore_chain(current_dir, root):
+                if spec.match_file(dir_with_slash):
+                    return True
 
         if tool_ignore and tool_ignore.match_file(dir_with_slash):
             return True
@@ -180,9 +193,31 @@ class FileResolver:
             self._gitignore_cache[directory] = load_gitignore(directory)
         return self._gitignore_cache[directory]
 
+    def _get_gitignore_chain(self, directory: Path, walk_root: Path) -> list[pathspec.PathSpec]:
+        """Collect all gitignore specs from walk_root down to directory (inclusive)."""
+        specs: list[pathspec.PathSpec] = []
+        resolved_root = walk_root.resolve()
+        resolved_dir = directory.resolve()
+        # Walk from root down to current directory
+        current = resolved_root
+        while True:
+            spec = self._get_gitignore(current)
+            if spec is not None:
+                specs.append(spec)
+            if current == resolved_dir:
+                break
+            try:
+                next_part = resolved_dir.relative_to(current).parts[0]
+            except (ValueError, IndexError):
+                break
+            current = current / next_part
+        return specs
+
     def _get_tool_ignore(self, start_dir: Path) -> pathspec.PathSpec | None:
-        """Lazily load tool-specific ignore file."""
-        if not self._tool_ignore_loaded:
-            self._tool_ignore = load_tool_ignore(self._config.tool_name, start_dir)
-            self._tool_ignore_loaded = True
-        return self._tool_ignore
+        """Lazily load tool-specific ignore file, cached per resolved start directory."""
+        resolved = start_dir.resolve()
+        if resolved not in self._tool_ignore_cache:
+            self._tool_ignore_cache[resolved] = load_tool_ignore(
+                self._config.tool_name, start_dir
+            )
+        return self._tool_ignore_cache[resolved]

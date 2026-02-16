@@ -278,29 +278,51 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
     opts = parser.parse_args(args)
 
     # Track which flags the user explicitly set (for config merge precedence).
-    # argparse doesn't track this natively, so we compare against defaults.
-    _flag_defaults: dict[str, object] = {
-        "width": 88,
-        "semantic": False,
-        "cleanups": False,
-        "smartquotes": False,
-        "ellipses": False,
-        "list_spacing": "preserve",
-        "extend_include": [],
-        "exclude": None,
-        "extend_exclude": [],
-        "no_respect_gitignore": False,
-        "force_exclude": False,
-        "files_max_size": 1_048_576,
+    # We use argparse sentinel defaults to detect actual CLI presence rather than
+    # comparing against default values (which fails when user passes the default).
+    _SENTINEL = object()
+    _tracked_flags: dict[str, str] = {
+        # argparse dest name -> Options field name
+        "width": "width",
+        "semantic": "semantic",
+        "cleanups": "cleanups",
+        "smartquotes": "smartquotes",
+        "ellipses": "ellipses",
+        "list_spacing": "list_spacing",
+        "extend_include": "extend_include",
+        "exclude": "exclude",
+        "extend_exclude": "extend_exclude",
+        "no_respect_gitignore": "respect_gitignore",
+        "force_exclude": "force_exclude",
+        "files_max_size": "files_max_size",
     }
+    # Re-parse with sentinel defaults to detect which flags were actually supplied.
+    # append actions use None as sentinel (argparse creates a list when the flag is used).
+    sentinel_parser = argparse.ArgumentParser(add_help=False)
+    sentinel_parser.add_argument("-w", "--width", type=int, default=_SENTINEL)
+    sentinel_parser.add_argument("-s", "--semantic", action="store_true", default=_SENTINEL)
+    sentinel_parser.add_argument("-c", "--cleanups", action="store_true", default=_SENTINEL)
+    sentinel_parser.add_argument("--smartquotes", action="store_true", default=_SENTINEL)
+    sentinel_parser.add_argument("--ellipses", action="store_true", default=_SENTINEL)
+    sentinel_parser.add_argument("--list-spacing", dest="list_spacing", default=_SENTINEL)
+    sentinel_parser.add_argument("--extend-include", action="append", default=None)
+    sentinel_parser.add_argument("--exclude", action="append", default=None)
+    sentinel_parser.add_argument("--extend-exclude", action="append", default=None)
+    sentinel_parser.add_argument(
+        "--no-respect-gitignore", dest="no_respect_gitignore", action="store_true", default=_SENTINEL
+    )
+    sentinel_parser.add_argument("--force-exclude", dest="force_exclude", action="store_true", default=_SENTINEL)
+    sentinel_parser.add_argument("--files-max-size", type=int, dest="files_max_size", default=_SENTINEL)
+    sentinel_opts, _ = sentinel_parser.parse_known_args(args if args is not None else sys.argv[1:])
+
     explicit_flags: set[str] = set()
-    for flag_name, default_val in _flag_defaults.items():
-        actual = getattr(opts, flag_name, None)
-        if actual != default_val:
-            # Map argparse dest names to Options field names
-            field_name = flag_name
-            if flag_name == "no_respect_gitignore":
-                field_name = "respect_gitignore"
+    for dest_name, field_name in _tracked_flags.items():
+        val = getattr(sentinel_opts, dest_name, _SENTINEL)
+        # For append actions, None means not supplied; a list means supplied
+        if dest_name in ("extend_include", "exclude", "extend_exclude"):
+            if val is not None:
+                explicit_flags.add(field_name)
+        elif val is not _SENTINEL:
             explicit_flags.add(field_name)
 
     is_auto = opts.auto
@@ -369,6 +391,10 @@ def _resolve_files(options: Options) -> list[str]:
 
     from flowmark.file_resolver import FileResolver, FileResolverConfig
 
+    # Filter out stdin marker before passing to resolver
+    resolvable = [f for f in options.files if f != "-"]
+    stdin_present = len(resolvable) < len(options.files)
+
     config = FileResolverConfig(
         extend_include=options.extend_include,
         exclude=options.exclude,
@@ -378,8 +404,11 @@ def _resolve_files(options: Options) -> list[str]:
         files_max_size=options.files_max_size,
     )
     resolver = FileResolver(config)
-    resolved = resolver.resolve(options.files)
-    return [str(p) for p in resolved]
+    resolved = resolver.resolve(resolvable)
+    result = [str(p) for p in resolved]
+    if stdin_present:
+        result.insert(0, "-")
+    return result
 
 
 def main(args: list[str] | None = None) -> int:

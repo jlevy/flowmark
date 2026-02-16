@@ -10,11 +10,16 @@ import pathspec
 def _read_ignore_file(path: Path) -> pathspec.PathSpec | None:
     """
     Read an ignore file (gitignore syntax), stripping comments and blanks.
-    Returns a compiled PathSpec, or None if the file has no active rules.
+    Returns a compiled PathSpec, or None if the file has no active rules or
+    cannot be read.
     """
+    try:
+        text = path.read_text()
+    except (OSError, UnicodeDecodeError):
+        return None
     lines = [
         line
-        for line in path.read_text().splitlines()
+        for line in text.splitlines()
         if line.strip() and not line.strip().startswith("#")
     ]
     if not lines:

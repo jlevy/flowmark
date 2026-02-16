@@ -157,3 +157,25 @@ def test_flowmarkignore(
     out = capsys.readouterr().out
     assert "keep.md" in out
     assert "skip" not in out
+
+
+def test_list_files_stdin_does_not_crash(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--list-files with stdin arg should not raise FileNotFoundError (fm-1xaz)."""
+    (tmp_path / "README.md").write_text("# Root\n")
+    monkeypatch.chdir(tmp_path)
+    # Passing '-' (stdin) together with a directory should not crash
+    assert main(["--list-files", "-", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "README.md" in out
+
+
+def test_explicit_flag_detection_with_default_value(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Passing --width 88 (the default) should still be detected as explicit (fm-4z3r)."""
+    from flowmark.cli import _parse_args
+
+    _, explicit_flags, _ = _parse_args(["--width", "88", str(tmp_path)])
+    assert "width" in explicit_flags

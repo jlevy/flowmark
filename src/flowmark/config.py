@@ -98,8 +98,16 @@ def load_config(config_path: Path) -> FlowmarkConfig:
     Load a `FlowmarkConfig` from a TOML file. Supports both standalone
     `flowmark.toml` / `.flowmark.toml` and `pyproject.toml` (extracts
     `[tool.flowmark]`). TOML kebab-case keys are mapped to Python snake_case.
+
+    Returns a default (empty) config if the file cannot be read or parsed.
     """
-    data = tomllib.loads(config_path.read_text())
+    try:
+        data = tomllib.loads(config_path.read_text())
+    except (tomllib.TOMLDecodeError, OSError):
+        import sys
+
+        print(f"Warning: could not parse config file {config_path}", file=sys.stderr)
+        return FlowmarkConfig()
 
     if config_path.name == "pyproject.toml":
         data = data.get("tool", {}).get("flowmark", {})
@@ -124,6 +132,11 @@ def _parse_config_data(data: dict[str, Any]) -> FlowmarkConfig:
         snake_key = _KEBAB_TO_SNAKE.get(key, key.replace("-", "_"))
         if snake_key in _VALID_FIELDS:
             mapped[snake_key] = value
+        else:
+            print(
+                f"Warning: unrecognized config key '{key}'",
+                file=sys.stderr,
+            )
 
     return FlowmarkConfig(**mapped)
 
