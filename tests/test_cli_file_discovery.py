@@ -111,10 +111,25 @@ def test_list_files_max_size(
     assert "large.md" not in out
 
 
-def test_auto_no_args_defaults_to_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_auto_no_args_errors(capsys: pytest.CaptureFixture[str]) -> None:
+    """--auto with no file args should error, not silently default to cwd."""
+    assert main(["--auto"]) == 1
+    err = capsys.readouterr().err
+    assert "--auto requires at least one file or directory argument" in err
+
+
+def test_list_files_no_args_errors(capsys: pytest.CaptureFixture[str]) -> None:
+    """--list-files with no file args should error, not silently default to cwd."""
+    assert main(["--list-files"]) == 1
+    err = capsys.readouterr().err
+    assert "--list-files requires at least one file or directory argument" in err
+
+
+def test_auto_with_dot_formats_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """--auto . should format files in current directory."""
     (tmp_path / "test.md").write_text("# Test\n\nSome text here.\n")
     monkeypatch.chdir(tmp_path)
-    assert main(["--auto"]) == 0
+    assert main(["--auto", "."]) == 0
     content = (tmp_path / "test.md").read_text()
     assert "# Test" in content
 

@@ -230,7 +230,7 @@ The main flags:
 | `--list-spacing` | Control list spacing: `preserve`, `loose`, `tight` |
 | `-i, --inplace` | Edit in place |
 | `--nobackup` | Skip `.orig` backup with `--inplace` |
-| `--auto` | All auto-formatting: `--inplace --nobackup --semantic --cleanups --smartquotes --ellipses`. With no file args, defaults to `.` |
+| `--auto` | All auto-formatting: `--inplace --nobackup --semantic --cleanups --smartquotes --ellipses`. Requires file/directory args (use `.` for current directory) |
 
 File discovery flags:
 
@@ -282,6 +282,37 @@ flowmark --auto --exclude "my_custom_dir/" .
 # Debug: see exactly which files would be formatted
 flowmark --list-files .
 ```
+
+### Glob Patterns
+
+When passing glob patterns as arguments, **always quote them** so Flowmark can handle
+expansion internally:
+
+```bash
+# Correct: Flowmark expands the glob (** works for recursive matching)
+flowmark --auto 'docs/**/*.md'
+
+# Risky: shell may expand ** incorrectly if globstar is off (the default in bash)
+flowmark --auto docs/**/*.md
+```
+
+Without quoting, the shell may expand `**` as a single `*` (matching only one directory
+level) or pass nothing if there are no matches.
+Flowmark uses Python's `pathlib.Path.glob()` internally, which always supports `**` for
+recursive matching regardless of shell settings.
+
+Note: The `--extend-include` and `--extend-exclude` flags use gitignore-style patterns
+(e.g., `*.mdx`, `drafts/`), not shell globs.
+
+### Symlinks
+
+During recursive directory traversal, **symlinks are not followed**. This prevents
+infinite loops from circular symlinks and avoids accidentally formatting files outside
+the project tree.
+
+However, if you pass a symlink **explicitly** as an argument (e.g.,
+`flowmark --auto link-to-readme.md`), the symlink is resolved and the target file is
+processed.
 
 ## Configuration
 

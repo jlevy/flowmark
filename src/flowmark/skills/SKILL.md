@@ -39,7 +39,7 @@ uvx flowmark@latest README.md
 
 | Flag | Purpose |
 |------|---------|
-| `--auto` | Format in-place with all improvements (semantic, smartquotes, ellipses). With no file args, defaults to `.` (current directory) |
+| `--auto` | Format in-place with all improvements (semantic, smartquotes, ellipses). Requires file/directory args (use `.` for current directory) |
 | `--inplace`, `-i` | Edit file in place |
 | `--semantic`, `-s` | Use semantic (sentence-based) line breaks |
 | `--smartquotes` | Convert straight to curly quotes |

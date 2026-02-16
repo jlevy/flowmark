@@ -195,7 +195,7 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
         "--auto",
         action="store_true",
         help="Same as `--inplace --nobackup --semantic --cleanups --smartquotes --ellipses`, as a convenience for "
-        "fully auto-formatting files. With no file arguments, defaults to '.' (current directory)",
+        "fully auto-formatting files. Requires at least one file or directory argument (use '.' for current directory)",
     )
     # File discovery options
     parser.add_argument(
@@ -235,7 +235,8 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
         "--list-files",
         action="store_true",
         dest="list_files",
-        help="Print resolved file paths without formatting (useful for debugging)",
+        help="Print resolved file paths without formatting. "
+        "Requires at least one file or directory argument (use '.' for current directory)",
     )
     parser.add_argument(
         "--files-max-size",
@@ -341,9 +342,6 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
         opts.cleanups = True
         opts.smartquotes = True
         opts.ellipses = True
-        # When --auto is used with no file args, default to current directory
-        if opts.files == ["-"]:
-            opts.files = ["."]
 
     return (
         Options(
@@ -457,6 +455,24 @@ def main(args: list[str] | None = None) -> int:
 
         print(get_docs_content())
         return 0
+
+    # Require explicit file/directory arguments for --auto and --list-files.
+    # (Use '.' for the current directory.)
+    if options.files == ["-"]:
+        if is_auto:
+            print(
+                "Error: --auto requires at least one file or directory argument"
+                " (use '.' for current directory)",
+                file=sys.stderr,
+            )
+            return 1
+        if options.list_files:
+            print(
+                "Error: --list-files requires at least one file or directory argument"
+                " (use '.' for current directory)",
+                file=sys.stderr,
+            )
+            return 1
 
     # Load and merge config file settings
     config_path = find_config_file(Path.cwd())
