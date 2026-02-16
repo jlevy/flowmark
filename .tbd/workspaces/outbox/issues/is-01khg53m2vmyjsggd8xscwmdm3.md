@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-15-file-discovery-and-globbing
 status: closed
 title: "Phase 1a: Create file_resolver package with types.py, defaults.py, and pathspec dependency"
 type: is
-updated_at: 2026-02-15T08:05:43.118Z
-version: 3
+updated_at: 2026-02-16T06:14:58.101Z
+version: 4
 ---

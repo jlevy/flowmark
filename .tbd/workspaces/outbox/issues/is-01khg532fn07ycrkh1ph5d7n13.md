@@ -16,6 +16,6 @@ spec_path: docs/project/specs/active/plan-2026-02-15-file-discovery-and-globbing
 status: closed
 title: "Spec: File discovery, globbing, config, and ignore-aware file resolution"
 type: is
-updated_at: 2026-02-15T08:15:35.254Z
-version: 6
+updated_at: 2026-02-16T06:14:58.090Z
+version: 7
 ---
