@@ -18,9 +18,7 @@ def _read_ignore_file(path: Path) -> pathspec.PathSpec | None:
     except (OSError, UnicodeDecodeError):
         return None
     lines = [
-        line
-        for line in text.splitlines()
-        if line.strip() and not line.strip().startswith("#")
+        line for line in text.splitlines() if line.strip() and not line.strip().startswith("#")
     ]
     if not lines:
         return None

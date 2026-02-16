@@ -309,10 +309,17 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
     sentinel_parser.add_argument("--exclude", action="append", default=None)
     sentinel_parser.add_argument("--extend-exclude", action="append", default=None)
     sentinel_parser.add_argument(
-        "--no-respect-gitignore", dest="no_respect_gitignore", action="store_true", default=_SENTINEL
+        "--no-respect-gitignore",
+        dest="no_respect_gitignore",
+        action="store_true",
+        default=_SENTINEL,
     )
-    sentinel_parser.add_argument("--force-exclude", dest="force_exclude", action="store_true", default=_SENTINEL)
-    sentinel_parser.add_argument("--files-max-size", type=int, dest="files_max_size", default=_SENTINEL)
+    sentinel_parser.add_argument(
+        "--force-exclude", dest="force_exclude", action="store_true", default=_SENTINEL
+    )
+    sentinel_parser.add_argument(
+        "--files-max-size", type=int, dest="files_max_size", default=_SENTINEL
+    )
     sentinel_opts, _ = sentinel_parser.parse_known_args(args if args is not None else sys.argv[1:])
 
     explicit_flags: set[str] = set()

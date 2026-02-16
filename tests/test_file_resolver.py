@@ -11,7 +11,9 @@ from flowmark.file_resolver import (
     FileResolver,
     FileResolverConfig,
 )
-from flowmark.file_resolver.gitignore import _read_ignore_file
+from flowmark.file_resolver.gitignore import (
+    _read_ignore_file,  # pyright: ignore[reportPrivateUsage]
+)
 
 
 def test_config_effective_include():

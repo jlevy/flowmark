@@ -217,7 +217,5 @@ class FileResolver:
         """Lazily load tool-specific ignore file, cached per resolved start directory."""
         resolved = start_dir.resolve()
         if resolved not in self._tool_ignore_cache:
-            self._tool_ignore_cache[resolved] = load_tool_ignore(
-                self._config.tool_name, start_dir
-            )
+            self._tool_ignore_cache[resolved] = load_tool_ignore(self._config.tool_name, start_dir)
         return self._tool_ignore_cache[resolved]

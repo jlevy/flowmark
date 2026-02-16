@@ -171,11 +171,9 @@ def test_list_files_stdin_does_not_crash(
     assert "README.md" in out
 
 
-def test_explicit_flag_detection_with_default_value(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_explicit_flag_detection_with_default_value(tmp_path: Path) -> None:
     """Passing --width 88 (the default) should still be detected as explicit (fm-4z3r)."""
-    from flowmark.cli import _parse_args
+    from flowmark.cli import _parse_args  # pyright: ignore[reportPrivateUsage]
 
     _, explicit_flags, _ = _parse_args(["--width", "88", str(tmp_path)])
     assert "width" in explicit_flags
