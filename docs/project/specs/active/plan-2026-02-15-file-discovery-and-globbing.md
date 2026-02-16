@@ -528,9 +528,10 @@ works.
    - If all inputs are explicit files and no `--list-files`, skip resolver
      (backward compat — behaves identically to today)
 
-4. **Update `--auto` behavior** (line 201-207): When `--auto` is set and
-   `files == ["-"]` (no file args given), change `files` to `["."]` so
-   `flowmark --auto` defaults to formatting the current directory.
+4. **Require explicit file arguments for `--auto` and `--list-files`**: When
+   either flag is used with no file args, print a clear error message and exit
+   with code 1. Do NOT default to `.` silently. (See Phase 5 for the broader
+   change making bare `flowmark` also require arguments.)
 
 5. **Update help text** for `files` positional arg (line 93-98): Change from
    `"Input files (use '-' for stdin, multiple files supported)"` to
@@ -564,12 +565,14 @@ works.
   - `flowmark --exclude "custom/" --list-files .` → replaces all defaults
   - `flowmark --no-respect-gitignore --list-files .` → ignores `.gitignore`
   - `flowmark --force-exclude --list-files .` → filters explicit files too
-  - `flowmark --auto` (no file args) → defaults to `.` (current directory)
+  - `flowmark --auto` (no file args) → error with helpful message
+  - `flowmark --list-files` (no file args) → error with helpful message
+  - `flowmark --auto .` → formats current directory
   - `flowmark README.md` (explicit file) → works identically to today
   - `flowmark --list-files .` with `.flowmarkignore` → respects ignore file
   - `flowmark --files-max-size 100 --list-files .` → skips large files
   - Backward compat: `flowmark --auto README.md` → still works
-  - Backward compat: `echo "text" | flowmark` → still works (stdin)
+  - Backward compat: `flowmark -` → stdin (explicit `-` required)
 
 ### Phase 3: Config File Loading
 
@@ -706,28 +709,26 @@ All documentation changes needed to reflect new features. No new Python code.
 
 #### Verification (all phases)
 
-- [ ] `file_resolver/` module has no imports from `flowmark.*`
-- [ ] Full test suite passes (`uv run pytest`)
-- [ ] Lint passes (`uv run ruff check src/ tests/`)
-- [ ] Type check passes (`uv run basedpyright`)
-- [ ] `flowmark --help` shows new flags correctly
-- [ ] `flowmark --list-files .` in the flowmark repo lists all `.md` files,
+- [x] `file_resolver/` module has no imports from `flowmark.*`
+- [x] Full test suite passes (`uv run pytest`)
+- [x] Lint passes (`uv run ruff check src/ tests/`)
+- [x] Type check passes (`uv run basedpyright`)
+- [x] `flowmark --help` shows new flags correctly
+- [x] `flowmark --list-files .` in the flowmark repo lists all `.md` files,
       skipping `.venv/`, `.git/`, `node_modules/` etc.
-- [ ] `flowmark --auto .` in the flowmark repo formats all `.md` files
-- [ ] `flowmark --auto README.md` still works (backward compat)
-- [ ] `echo "# test" | flowmark` still works (stdin, backward compat)
-- [ ] `flowmark --docs` output is consistent (reads README.md)
-- [ ] Config file loading works with `flowmark.toml` and `pyproject.toml`
+- [x] `flowmark --auto .` in the flowmark repo formats all `.md` files
+- [x] `flowmark --auto README.md` still works (backward compat)
+- [ ] `flowmark` (no args) → error (Phase 5)
+- [ ] `flowmark -` → stdin still works (explicit `-` required, Phase 5)
+- [x] `flowmark --auto` (no file args) → error
+- [x] `flowmark --list-files` (no file args) → error
+- [x] `flowmark --docs` output is consistent (reads README.md)
+- [x] Config file loading works with `flowmark.toml` and `pyproject.toml`
 
 ### Outstanding Questions
 
 - [ ] **Library name for future extraction**: `pathglob`? `gitglob`? `file-resolver`?
   `ignore-glob`? Should be researched for PyPI availability when the time comes.
-
-- [ ] **Should `--auto` imply directory recursion?** Currently `--auto` means
-  `--inplace --nobackup --semantic --cleanups --smartquotes --ellipses`.
-  Should `flowmark --auto` (no file args) default to `.`?
-  Probably yes, but this is a UX decision.
 
 ### Resolved Questions
 
@@ -751,3 +752,112 @@ All documentation changes needed to reflect new features. No new Python code.
   of 1 MiB (1,048,576 bytes), matching Biome's approach.
   Available as both a CLI flag and config setting.
   `0` disables the limit.
+
+- [x] **Explicit argument requirement (no implicit defaults)**: All modes require
+  explicit file/directory arguments. There is no implicit default-to-`.` or
+  implicit stdin behavior. This avoids error-prone silent defaults.
+
+  | Invocation | Behavior |
+  |---|---|
+  | `flowmark` (no args) | **Error**: "No input specified. Provide files, directories, or '-' for stdin." |
+  | `flowmark --auto` (no file args) | **Error**: "--auto requires at least one file or directory argument (use '.' for current directory)" |
+  | `flowmark --list-files` (no file args) | **Error**: "--list-files requires at least one file or directory argument (use '.' for current directory)" |
+  | `flowmark --auto .` | Formats all `.md` files in current directory recursively |
+  | `flowmark --auto README.md` | Formats a single file |
+  | `flowmark --list-files .` | Lists files that would be formatted |
+  | `flowmark README.md` | Formats file to stdout |
+  | `flowmark -` | Reads from stdin, formats to stdout |
+
+  **Rationale**: The previous behavior of defaulting to `.` when `--auto` was used
+  without arguments was considered error-prone. Requiring explicit `.` as the argument
+  makes the user conscious of what will be formatted. Similarly, bare `flowmark` with
+  no arguments previously read from stdin silently, which is surprising for a tool
+  whose primary use case is file formatting.
+
+  **Implementation status**: Error for `--auto` and `--list-files` with no args is
+  implemented. Error for bare `flowmark` (no args at all) is planned.
+
+- [x] **Glob patterns must be quoted**: Shell-expanded `**` globs may not work as
+  expected because bash does not expand `**` recursively unless `globstar` is enabled
+  (off by default). Users should always quote glob patterns
+  (e.g., `'docs/**/*.md'`) to let Flowmark handle expansion internally via
+  Python's `pathlib.Path.glob()`, which always supports `**` for recursive matching.
+
+  Note: `--extend-include` and `--extend-exclude` use gitignore-style patterns
+  (e.g., `*.mdx`, `drafts/`), not shell globs. These do not need quoting.
+
+- [x] **Symlink behavior**: During recursive directory traversal (`os.walk()`),
+  symlinks are **not followed**. This prevents infinite loops from circular symlinks
+  and avoids formatting files outside the project tree. However, explicitly named
+  symlinks passed as arguments are resolved and processed normally (since
+  `Path.is_file()` follows symlinks by default).
+
+## Phase 5: CLI Argument Strictness and Documentation Updates
+
+This phase makes all CLI modes require explicit arguments and updates all
+documentation to reflect the final behavior.
+
+### CLI Changes
+
+1. **Change `files` positional argument default from `["-"]` to `[]`**: This means
+   bare `flowmark` with no args results in `options.files == []` instead of silently
+   reading from stdin.
+
+2. **Add early error check in `main()`**: When `options.files` is empty, print a
+   clear error message and return exit code 1. Provide different messages depending
+   on which flags are active:
+   - `--auto`: "Error: --auto requires at least one file or directory argument
+     (use '.' for current directory)"
+   - `--list-files`: "Error: --list-files requires at least one file or directory
+     argument (use '.' for current directory)"
+   - Neither: "Error: No input specified. Provide files, directories, or '-' for
+     stdin."
+
+3. **Update help text** for the `files` positional argument to clarify that at least
+   one file, directory, or `-` is required.
+
+4. **Remove all `opts.files == ["-"]` checks** that previously detected "no args
+   given" — replace with `not options.files` checks.
+
+### Documentation Changes
+
+All documentation updates for the file discovery and globbing feature, organized by
+file:
+
+#### `README.md`
+
+| Section | Change | Status |
+|---|---|---|
+| CLI Reference table → `--auto` row | Changed "With no file args, defaults to `.`" → "Requires file/directory args (use `.` for current directory)" | Done |
+| New subsection: "Glob Patterns" (under File Discovery) | Added: always quote `**` patterns, explanation of shell vs Flowmark expansion, note that `--extend-include`/`--extend-exclude` use gitignore-style patterns | Done |
+| New subsection: "Symlinks" (under File Discovery) | Added: symlinks not followed during recursion, resolved when explicit | Done |
+| Quick Start examples | Verify all examples use explicit args (already do) | Done |
+| Batch Formatting section | Verify examples use explicit `.` (already do) | Done |
+
+#### `src/flowmark/skills/SKILL.md`
+
+| Section | Change | Status |
+|---|---|---|
+| Key Options table → `--auto` row | Changed "With no file args, defaults to `.`" → "Requires file/directory args (use `.` for current directory)" | Done |
+| Common Workflows examples | Verify all use explicit args (already do) | Done |
+
+#### `src/flowmark/cli.py`
+
+| Section | Change | Status |
+|---|---|---|
+| `--auto` help text | Changed to "Requires at least one file or directory argument (use '.' for current directory)" | Done |
+| `--list-files` help text | Changed to "Requires at least one file or directory argument (use '.' for current directory)" | Done |
+| `files` positional arg help text | Needs update: clarify that at least one arg is required | Planned |
+| `files` default | Needs change: `["-"]` → `[]` | Planned |
+| `main()` error check | Needs update: check for `not options.files` | Planned |
+| Module docstring examples | All already use explicit args | Done |
+
+#### `tests/test_cli_file_discovery.py`
+
+| Test | Change | Status |
+|---|---|---|
+| `test_auto_no_args_errors` | New test: `main(["--auto"])` returns 1 with error message | Done |
+| `test_list_files_no_args_errors` | New test: `main(["--list-files"])` returns 1 with error message | Done |
+| `test_auto_with_dot_formats_cwd` | New test: `main(["--auto", "."])` succeeds | Done |
+| `test_no_args_errors` | Planned: bare `main([])` returns 1 with error message | Planned |
+| `test_stdin_explicit_dash` | Planned: verify `main(["-"])` still works for stdin | Planned |
