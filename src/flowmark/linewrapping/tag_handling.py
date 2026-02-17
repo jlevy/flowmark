@@ -23,7 +23,11 @@ from flowmark.linewrapping.atomic_patterns import (
     SINGLE_JINJA_TAG,
     SINGLE_JINJA_VAR,
 )
-from flowmark.linewrapping.block_heuristics import line_is_block_content
+from flowmark.linewrapping.block_heuristics import (
+    line_is_block_content,
+    line_is_list_item,
+    line_is_table_row,
+)
 from flowmark.linewrapping.protocols import LineWrapper
 
 # Pattern to match complete template tags (for protecting content inside tags).
@@ -312,16 +316,16 @@ def add_tag_newline_handling(
             result = _fix_multiline_opening_tag_with_closing(result)
             return result
 
-        # Check if there are any tags in the text - only apply block content
-        # heuristics when tags are present to avoid changing normal markdown behavior
+        # Check if there are any tags in the text - only apply list heuristics
+        # when tags are present to avoid changing normal markdown behavior.
         has_tags = any(line_ends_with_tag(line) or line_starts_with_tag(line) for line in lines)
 
         # Group lines into segments that should be wrapped together
         # A new segment starts when:
         # - The previous line ends with a tag
         # - The current line starts with a tag
-        # - (Only if tags present) The current line is block content (table/list)
-        # - (Only if tags present) The previous line is block content
+        # - The current or previous line is a table row (always — tables are structural)
+        # - (Only if tags present) The current or previous line is a list item
         segments: list[str] = []
         current_segment_lines: list[str] = []
 
@@ -332,9 +336,15 @@ def add_tag_newline_handling(
             # Indented tag lines are continuations (e.g., list item continuations).
             curr_starts_with_tag = _is_unindented_tag_line(line)
 
-            # Block content heuristics only apply when tags are present
-            curr_is_block = has_tags and line_is_block_content(line)
-            prev_is_block = has_tags and not is_first_line and line_is_block_content(lines[i - 1])
+            # Table rows are always segment boundaries — they are structural
+            # markdown elements that must never be line-wrapped.
+            # List items are only boundaries when tags are present.
+            curr_is_table = line_is_table_row(line)
+            prev_is_table = not is_first_line and line_is_table_row(lines[i - 1])
+            curr_is_block = curr_is_table or (has_tags and line_is_list_item(line))
+            prev_is_block = prev_is_table or (
+                has_tags and not is_first_line and line_is_list_item(lines[i - 1])
+            )
 
             # Start a new segment if there's a tag or block content boundary
             if prev_ends_with_tag or curr_starts_with_tag or curr_is_block or prev_is_block:
@@ -354,12 +364,23 @@ def add_tag_newline_handling(
             result = _fix_multiline_opening_tag_with_closing(result)
             return result
 
-        # Wrap each segment separately
+        # Wrap each segment separately.
+        # Table row segments are passed through as-is (never wrapped) since
+        # pipe-delimited rows are structural markdown that must stay on one line.
         wrapped_segments: list[str] = []
         for i, segment in enumerate(segments):
             is_first = i == 0
             cur_initial_indent = initial_indent if is_first else subsequent_indent
-            wrapped = base_wrapper(segment, cur_initial_indent, subsequent_indent)
+            segment_lines = segment.split("\n")
+            if all(line_is_table_row(line) for line in segment_lines if line.strip()):
+                # Table rows: preserve verbatim with appropriate indent
+                indented_lines = []
+                for j, line in enumerate(segment_lines):
+                    indent = cur_initial_indent if j == 0 else subsequent_indent
+                    indented_lines.append(indent + line if line.strip() else line)
+                wrapped = "\n".join(indented_lines)
+            else:
+                wrapped = base_wrapper(segment, cur_initial_indent, subsequent_indent)
             wrapped_segments.append(wrapped)
 
         # Rejoin segments, normalizing newlines around block content.

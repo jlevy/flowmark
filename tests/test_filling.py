@@ -277,3 +277,63 @@ def test_multi_paragraph_list_items():
     print(normalized_doc)
 
     assert normalized_doc == expected_doc
+
+
+def test_wide_table_adjacent_to_paragraph():
+    """
+    Test that a wide table row immediately following paragraph text (no blank line)
+    is preserved on a single line by fill_markdown.
+
+    This is the reproduction case from GitHub issue #36: Marko's GFM parser does not
+    recognize a table when it directly follows paragraph text without a blank line.
+    The table rows get parsed as part of the paragraph and were previously broken
+    by the line wrapper.
+    """
+    # Table directly after paragraph (no blank line) — Marko parses as paragraph
+    input_doc = dedent(
+        """\
+    Some paragraph text here.
+    | Quarter | Revenue ($M) | YoY % | QoQ % | Segment A % | Segment B % | Geo: US % | Geo: Intl % |
+    |---------|-------------|-------|-------|-------------|-------------|-----------|-------------|
+    | Q1 2025 | 125.3 | +12% | +3% | 45% | 55% | 60% | 40% |
+    """
+    )
+
+    for semantic in (True, False):
+        result = fill_markdown(input_doc, semantic=semantic)
+
+        # Every table row must remain on its own single line
+        assert "| Quarter | Revenue ($M) | YoY % | QoQ % | Segment A % | Segment B % | Geo: US % | Geo: Intl % |" in result
+        assert "| Q1 2025 | 125.3 | +12% | +3% | 45% | 55% | 60% | 40% |" in result
+
+        # Verify rows are each on their own line (not merged with text)
+        result_lines = result.strip().split("\n")
+        table_lines = [l for l in result_lines if l.startswith("|")]
+        assert len(table_lines) == 3, f"Expected 3 table lines, got {len(table_lines)} in {semantic=}"
+
+
+def test_standalone_wide_table():
+    """
+    Test that a standalone wide table (properly parsed by GFM) continues to work.
+    This is a regression guard — tables that GFM recognizes should not be affected.
+    """
+    input_doc = dedent(
+        """\
+    | Quarter | Revenue ($M) | YoY % | QoQ % | Segment A % | Segment B % | Geo: US % | Geo: Intl % |
+    |---------|-------------|-------|-------|-------------|-------------|-----------|-------------|
+    | Q1 2025 | 125.3 | +12% | +3% | 45% | 55% | 60% | 40% |
+    | Q2 2025 | 131.7 | +15% | +5% | 46% | 54% | 58% | 42% |
+    """
+    )
+
+    result = fill_markdown(input_doc, semantic=True)
+
+    # All rows preserved
+    assert "| Quarter | Revenue ($M) |" in result
+    assert "| Q1 2025 |" in result
+    assert "| Q2 2025 |" in result
+
+    # Each row on its own line
+    result_lines = result.strip().split("\n")
+    table_lines = [l for l in result_lines if l.startswith("|")]
+    assert len(table_lines) == 4  # header + separator + 2 data rows

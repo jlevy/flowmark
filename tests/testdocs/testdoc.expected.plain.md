@@ -1678,6 +1678,18 @@ Here is ~~"deleted" and don't~~ some text.
 He said "this is *really* important." She read "the [documentation](https://example.com)
 first."
 
+## Wide Table Adjacent to Paragraph
+
+This tests that table rows are not broken by line wrapping when they directly follow
+paragraph text without a blank line separator. When Marko's GFM parser sees a table
+directly after paragraph text, it may parse the table rows as paragraph content rather
+than a table element. The line wrapper must still preserve each table row on its own
+line.
+| Quarter | Revenue ($M) | YoY % | QoQ % | Segment A % | Segment B % | Geo: US % | Geo: Intl % |
+|---------|-------------|-------|-------|-------------|-------------|-----------|-------------|
+| Q1 2025 | 125.3 | +12% | +3% | 45% | 55% | 60% | 40% |
+| Q2 2025 | 131.7 | +15% | +5% | 46% | 54% | 58% | 42% |
+
 ## Summary
 
 All these corner cases should format consistently and predictably.
