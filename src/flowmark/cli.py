@@ -462,19 +462,20 @@ def main(args: list[str] | None = None) -> int:
         if is_auto:
             print(
                 "Error: --auto requires at least one file or directory argument"
-                " (use '.' for current directory)",
+                " (use '.' for current directory, --help for more options)",
                 file=sys.stderr,
             )
             return 1
         if options.list_files:
             print(
                 "Error: --list-files requires at least one file or directory argument"
-                " (use '.' for current directory)",
+                " (use '.' for current directory, --help for more options)",
                 file=sys.stderr,
             )
             return 1
         print(
-            "Error: No input specified. Provide files, directories, or '-' for stdin.",
+            "Error: No input specified. Provide files, directories (use '.' for current"
+            " directory), or '-' for stdin. Use --help for more options.",
             file=sys.stderr,
         )
         return 1

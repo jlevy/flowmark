@@ -144,7 +144,7 @@ $ flowmark --list-files --force-exclude node_modules/pkg/README.md | wc -l
 
 ```console
 $ flowmark 2>&1
-Error: No input specified. Provide files, directories, or '-' for stdin.
+Error: No input specified. Provide files, directories (use '.' for current directory), or '-' for stdin. Use --help for more options.
 ? 1
 ```
 
@@ -152,7 +152,7 @@ Error: No input specified. Provide files, directories, or '-' for stdin.
 
 ```console
 $ flowmark --auto 2>&1
-Error: --auto requires at least one file or directory argument (use '.' for current directory)
+Error: --auto requires at least one file or directory argument (use '.' for current directory, --help for more options)
 ? 1
 ```
 
@@ -160,7 +160,7 @@ Error: --auto requires at least one file or directory argument (use '.' for curr
 
 ```console
 $ flowmark --list-files 2>&1
-Error: --list-files requires at least one file or directory argument (use '.' for current directory)
+Error: --list-files requires at least one file or directory argument (use '.' for current directory, --help for more options)
 ? 1
 ```
 
@@ -168,7 +168,7 @@ Error: --list-files requires at least one file or directory argument (use '.' fo
 
 ```console
 $ flowmark --auto --list-files 2>&1
-Error: --auto requires at least one file or directory argument (use '.' for current directory)
+Error: --auto requires at least one file or directory argument (use '.' for current directory, --help for more options)
 ? 1
 ```
 

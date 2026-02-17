@@ -192,6 +192,8 @@ def test_no_args_errors(capsys: pytest.CaptureFixture[str]) -> None:
     err = capsys.readouterr().err
     assert "No input specified" in err
     assert "'-' for stdin" in err
+    assert "'.' for current directory" in err
+    assert "--help" in err
 
 
 def test_stdin_explicit_dash(
