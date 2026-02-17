@@ -39,7 +39,7 @@ uvx flowmark@latest README.md
 
 | Flag | Purpose |
 |------|---------|
-| `--auto` | Format in-place with all improvements (semantic, smartquotes, ellipses) |
+| `--auto` | Format in-place with all improvements (semantic, smartquotes, ellipses). Requires file/directory args (use `.` for current directory) |
 | `--inplace`, `-i` | Edit file in place |
 | `--semantic`, `-s` | Use semantic (sentence-based) line breaks |
 | `--smartquotes` | Convert straight to curly quotes |
@@ -47,6 +47,10 @@ uvx flowmark@latest README.md
 | `--width WIDTH` | Line width (default: 88, use 0 to disable wrapping) |
 | `--plaintext`, `-p` | Process as plain text instead of Markdown |
 | `--list-spacing` | Control list spacing: preserve, loose, or tight |
+| `--list-files` | Print resolved file paths, don't format (useful for debugging) |
+| `--extend-include PAT` | Additional file patterns (e.g., `*.mdx`) |
+| `--extend-exclude PAT` | Add to default exclusions (e.g., `drafts/`) |
+| `--files-max-size BYTES` | Skip files larger than this (default: 1 MiB, 0 = no limit) |
 
 ## Common Workflows
 
@@ -60,13 +64,17 @@ git diff  # Review clean, semantic diffs
 ### Format LLM Output
 
 ```bash
-echo "$llm_output" | uvx flowmark@latest --semantic
+echo "$llm_output" | uvx flowmark@latest --semantic -
 ```
 
 ### Batch Format
 
 ```bash
-find . -name "*.md" -exec uvx flowmark@latest --auto {} \;
+# Format all Markdown files in current directory recursively
+uvx flowmark@latest --auto .
+
+# List files that would be formatted (without formatting)
+uvx flowmark@latest --list-files .
 ```
 
 ### Stdin/Stdout Processing

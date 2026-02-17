@@ -1,0 +1,54 @@
+"""Gitignore and tool-specific ignore file handling using pathspec."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pathspec
+
+
+def _read_ignore_file(path: Path) -> pathspec.PathSpec | None:
+    """
+    Read an ignore file (gitignore syntax), stripping comments and blanks.
+    Returns a compiled PathSpec, or None if the file has no active rules or
+    cannot be read.
+    """
+    try:
+        text = path.read_text()
+    except (OSError, UnicodeDecodeError):
+        return None
+    lines = [
+        line for line in text.splitlines() if line.strip() and not line.strip().startswith("#")
+    ]
+    if not lines:
+        return None
+    return pathspec.PathSpec.from_lines("gitignore", lines)
+
+
+def load_gitignore(directory: Path) -> pathspec.PathSpec | None:
+    """
+    Read `.gitignore` in the given directory and return a compiled `PathSpec`,
+    or `None` if the file doesn't exist or is empty.
+    """
+    gitignore = directory / ".gitignore"
+    if not gitignore.is_file():
+        return None
+    return _read_ignore_file(gitignore)
+
+
+def load_tool_ignore(tool_name: str, start_dir: Path) -> pathspec.PathSpec | None:
+    """
+    Walk up from `start_dir` looking for `.{tool_name}ignore` (e.g., `.flowmarkignore`).
+    Returns compiled `PathSpec` from first found, or `None`.
+    """
+    ignore_name = f".{tool_name}ignore"
+    current = start_dir.resolve()
+    while True:
+        candidate = current / ignore_name
+        if candidate.is_file():
+            return _read_ignore_file(candidate)
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
+    return None

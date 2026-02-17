@@ -6,8 +6,8 @@ Actions, when using the
 
 Thanks to
 [the dynamic versioning plugin](https://github.com/ninoseki/uv-dynamic-versioning/) and
-the [`publish.yml`
-workflow](https://github.com/jlevy/simple-modern-uv/blob/main/template/.github/workflows/publish.yml),
+the
+[`publish.yml` workflow](https://github.com/jlevy/simple-modern-uv/blob/main/template/.github/workflows/publish.yml),
 you can simply create tagged releases (using standard format for the tag name, e.g.
 `v0.1.0`) on GitHub and the tag will trigger a release build, which then uploads it to
 PyPI.
@@ -113,10 +113,10 @@ Follow this checklist for each new release.
    ```shell
    # Get the last release tag:
    LAST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
-   
+
    # View commits since last release:
    git log ${LAST_TAG}..HEAD --oneline
-   
+
    # View full diff:
    git diff ${LAST_TAG}..HEAD
    ```
@@ -126,16 +126,16 @@ Follow this checklist for each new release.
    ```shell
    NEW_TAG="vX.Y.Z"  # Replace with actual version
    LAST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
-   
+
    gh release create "${NEW_TAG}" \
      --title "${NEW_TAG}" \
      --notes "$(cat <<'EOF'
    ## What's Changed
-   
+
    [Summarize changes here—see format guide below]
-   
+
    ### Full Changelog
-   
+
    https://github.com/OWNER/PROJECT/compare/${LAST_TAG}...${NEW_TAG}
    EOF
    )"
@@ -149,7 +149,7 @@ Follow this checklist for each new release.
    ```shell
    # Check the release workflow:
    gh run list --workflow=publish.yml --limit 1
-   
+
    # Verify on PyPI (may take a minute):
    # https://pypi.org/project/PROJECT
    ```
