@@ -141,7 +141,7 @@ be paying $\$0.55116 \times \$0.80$ per share, or $0.44093 per share. And $\$420
 ## Typical ChatGPT Output
 
 | **Feature** | **OpenAPI 3.1** | **OpenAI tool schema** | **Anthropic tool schema** | **Model Context Protocol (MCP) 2025-06-18** | **Pydantic v2 generated schema** |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| --- | --- | --- | --- | --- | --- |
 | **Primary scope** | Full REST contract: paths, verbs, auth, servers **plus** data shapes | *Input-only* definition of a function’s parameters for `/chat/completions` `tools=[…]` | Same for `/v1/messages` `tools=[…]`; also used in Claude server-tools | Tool discovery & invocation over JSON-RPC / SSE; adds output contract & rich result types | In-process data validation; can emit JSON-Schema or OpenAPI components |
 | **Where it lives / transport** | `.yaml`/`.json` served over HTTPS or bundled with code | Embedded inside a chat request | Embedded inside a chat request | Separate MCP server; clients list and call tools via `tools/*` RPC methods | Python code emits schema at runtime (`model_json_schema()` or `.schema_json()`) |
 | **JSON-Schema dialect** | Official OAS dialect, built on **draft 2020-12**([spec.openapis.org][1]) | Fixed **draft 07 subset** (no `$ref` across docs, no `oneOf` of heterogeneous types)([community.openai.com][2], [community.openai.com][3]) | **draft 2020-12** (full vocabulary)([docs.anthropic.com][4]) | **draft 2020-12** for both `inputSchema` & `outputSchema`([modelcontextprotocol.io][5]) | **draft 2020-12** (and emits OpenAPI 3.1 when asked)([docs.pydantic.dev][6]) |
@@ -496,7 +496,7 @@ The following table summarizes the native capabilities of the primary platforms
 evaluated against the core requirements:
 
 | **Feature** | **Vercel** | **Netlify** | **Cloudflare Pages** | **AWS (S3/CloudFront)** |
-| ------------- | ----------- | -------- | --- | ------------ |
+| --- | --- | --- | --- | --- |
 | **CLI Tool Availability** | Yes (vercel) 1 | Yes (netlify) 2 | Yes (wrangler) 3 | Yes (aws) 4 |
 | **Primary CLI Auth Method** | User Access Token 9 | Personal Access Token (PAT) 2 | API Token 10 | IAM Credentials / STS Token 11 |
 | **Native Token/Key Scoping** | User/Team Level 24 | User/Site Level 30 | Account Level (for Pages Edit) 3 | Path/Prefix Level (via IAM) 4 |
@@ -975,7 +975,7 @@ valuation, shares, fundraising, and dilution
 (<a href="http://ownyourventure.com/equitySim.html">source</a>) <br> </div>
 
 | Specific AWS Services | Basics | Tips | Gotchas |
-| --------------------------------------- | -------------------------------- | ------------------------------- | ------------------------------------------------ |
+| --- | --- | --- | --- |
 | [Security and IAM](#security-and-iam) | [📗](#security-and-iam-basics) | [📘](#security-and-iam-tips) | [📙](#security-and-iam-gotchas-and-limitations) |
 | [S3](#s3) | [📗](#s3-basics) | [📘](#s3-tips) | [📙](#s3-gotchas-and-limitations) |
 | [EC2](#ec2) | [📗](#ec2-basics) | [📘](#ec2-tips) | [📙](#ec2-gotchas-and-limitations) |
@@ -1443,7 +1443,7 @@ content required):
 {% field kind="table" id="data" label="Data Table" %}
 
 | Name | Value |
-| ------ | ------- |
+| --- | --- |
 | A | 1 |
 | B | 2 |
 
@@ -1457,7 +1457,7 @@ lines):
 {% table_container id="pricing" %}
 
 | Plan | Price | Features |
-| ------ | ------- | ---------- |
+| --- | --- | --- |
 | Free | $0 | Basic |
 | Pro | $10 | Advanced |
 
@@ -1468,7 +1468,7 @@ Tables inside HTML comment tags without blank lines:
 <!-- f:table id="comparison" -->
 
 | Feature | Product A | Product B |
-| --------- | ----------- | ----------- |
+| --- | --- | --- |
 | Speed | Fast | Faster |
 | Cost | Low | Medium |
 
@@ -1479,7 +1479,7 @@ Tables inside Jinja variable tags (edge case):
 {{ table_header }}
 
 | Column 1 | Column 2 |
-| ---------- | ---------- |
+| --- | --- |
 | Data 1 | Data 2 |
 
 {{ table_footer }}
@@ -1489,7 +1489,7 @@ Tables with proper blank lines already (should be unchanged):
 {% data_grid id="users" %}
 
 | User | Role |
-| ------ | ------ |
+| --- | --- |
 | Alice | Admin |
 | Bob | Editor |
 
@@ -1498,7 +1498,7 @@ Tables with proper blank lines already (should be unchanged):
 <!-- f:spreadsheet id="data" -->
 
 | Item | Count |
-| ------ | ------- |
+| --- | --- |
 | Apples | 5 |
 | Oranges | 3 |
 
@@ -1546,7 +1546,7 @@ Self-closing tags with tables:
 {% divider style="double" /%}
 
 | Before Divider | After Divider |
-| ---------------- | --------------- |
+| --- | --- |
 | A | B |
 
 {% spacer height="20" /%}
@@ -1554,7 +1554,7 @@ Self-closing tags with tables:
 <!-- separator -->
 
 | Item | Value |
-| ------ | ------- |
+| --- | --- |
 | X | 1 |
 
 <!-- end-section -->
