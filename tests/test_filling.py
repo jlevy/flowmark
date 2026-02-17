@@ -308,7 +308,7 @@ def test_wide_table_adjacent_to_paragraph():
 
         # Verify rows are each on their own line (not merged with text)
         result_lines = result.strip().split("\n")
-        table_lines = [l for l in result_lines if l.startswith("|")]
+        table_lines = [line for line in result_lines if line.startswith("|")]
         assert len(table_lines) == 3, f"Expected 3 table lines, got {len(table_lines)} in {semantic=}"
 
 
@@ -335,5 +335,5 @@ def test_standalone_wide_table():
 
     # Each row on its own line
     result_lines = result.strip().split("\n")
-    table_lines = [l for l in result_lines if l.startswith("|")]
+    table_lines = [line for line in result_lines if line.startswith("|")]
     assert len(table_lines) == 4  # header + separator + 2 data rows

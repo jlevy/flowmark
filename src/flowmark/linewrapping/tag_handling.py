@@ -374,7 +374,7 @@ def add_tag_newline_handling(
             segment_lines = segment.split("\n")
             if all(line_is_table_row(line) for line in segment_lines if line.strip()):
                 # Table rows: preserve verbatim with appropriate indent
-                indented_lines = []
+                indented_lines: list[str] = []
                 for j, line in enumerate(segment_lines):
                     indent = cur_initial_indent if j == 0 else subsequent_indent
                     indented_lines.append(indent + line if line.strip() else line)
