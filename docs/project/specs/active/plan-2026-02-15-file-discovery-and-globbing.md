@@ -908,9 +908,9 @@ Specifically, these existing tests already pass explicit `-`:
 | `test_auto_no_args_errors` | `main(["--auto"])` returns 1 with error message | Done |
 | `test_list_files_no_args_errors` | `main(["--list-files"])` returns 1 with error message | Done |
 | `test_auto_with_dot_formats_cwd` | `main(["--auto", "."])` succeeds | Done |
-| `test_no_args_errors` | bare `main([])` returns 1 with "No input specified" error | Planned |
-| `test_stdin_explicit_dash` | `main(["-"])` with redirected stdin still works | Planned |
-| `test_auto_list_files_no_args_errors` | `main(["--auto", "--list-files"])` returns 1 | Planned |
+| `test_no_args_errors` | bare `main([])` returns 1 with "No input specified" error | Done |
+| `test_stdin_explicit_dash` | `main(["-"])` with redirected stdin still works | Done |
+| `test_auto_list_files_no_args_errors` | `main(["--auto", "--list-files"])` returns 1 | Done |
 
 ### Documentation Changes
 
@@ -926,7 +926,7 @@ file:
 | New subsection: "Symlinks" (under File Discovery) | Added: symlinks not followed during recursion, resolved when explicit | Done |
 | Quick Start examples | Verify all examples use explicit args (already do) | Done |
 | Batch Formatting section | Verify examples use explicit `.` (already do) | Done |
-| `files` positional in Usage section | Update to note that at least one arg is required; `-` for stdin | Planned |
+| `files` positional in Usage section | Added stdin example to Quick Start; updated piping examples to use `-` | Done |
 
 #### `src/flowmark/skills/SKILL.md`
 
@@ -941,7 +941,7 @@ file:
 |---|---|---|
 | `--auto` help text | Changed to "Requires at least one file or directory argument (use '.' for current directory)" | Done |
 | `--list-files` help text | Changed to "Requires at least one file or directory argument (use '.' for current directory)" | Done |
-| `files` positional arg help text | Needs update: clarify that at least one arg is required | Planned |
-| `files` default | Needs change: `["-"]` → `[]` | Planned |
-| `main()` error check | Needs update: check for `not options.files` | Planned |
+| `files` positional arg help text | Updated: "(required; use '-' for stdin, '.' for current directory)" | Done |
+| `files` default | Changed: `["-"]` → `[]` | Done |
+| `main()` error check | Added: check for `not options.files` with three error messages | Done |
 | Module docstring examples | All already use explicit args | Done |
