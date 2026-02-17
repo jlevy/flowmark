@@ -64,7 +64,7 @@ git diff  # Review clean, semantic diffs
 ### Format LLM Output
 
 ```bash
-echo "$llm_output" | uvx flowmark@latest --semantic
+echo "$llm_output" | uvx flowmark@latest --semantic -
 ```
 
 ### Batch Format

@@ -194,6 +194,9 @@ flowmark --list-files .
 
 # Format to stdout
 flowmark README.md
+
+# Format from stdin (use '-' explicitly)
+echo "Some text" | flowmark -
 ```
 
 ### Batch Formatting
@@ -422,8 +425,8 @@ uvx flowmark@latest --auto README.md
 # Preview formatted output
 uvx flowmark@latest README.md
 
-# Format LLM output
-echo "$llm_output" | uvx flowmark@latest --semantic
+# Format LLM output (use '-' for stdin)
+echo "$llm_output" | uvx flowmark@latest --semantic -
 ```
 
 ## Why Another Markdown Formatter?
