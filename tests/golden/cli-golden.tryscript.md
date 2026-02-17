@@ -140,6 +140,57 @@ $ flowmark --list-files --force-exclude node_modules/pkg/README.md | wc -l
 0
 ```
 
+## Error: no arguments
+
+```console
+$ flowmark 2>&1
+Error: No input specified. Provide files, directories, or '-' for stdin.
+? 1
+```
+
+## Error: --auto with no file arguments
+
+```console
+$ flowmark --auto 2>&1
+Error: --auto requires at least one file or directory argument (use '.' for current directory)
+? 1
+```
+
+## Error: --list-files with no file arguments
+
+```console
+$ flowmark --list-files 2>&1
+Error: --list-files requires at least one file or directory argument (use '.' for current directory)
+? 1
+```
+
+## Error: --auto --list-files with no file arguments
+
+```console
+$ flowmark --auto --list-files 2>&1
+Error: --auto requires at least one file or directory argument (use '.' for current directory)
+? 1
+```
+
+## Stdin: explicit dash still works
+
+```console
+$ printf '# Hello\n\nWorld.\n' | flowmark -
+# Hello
+
+World.
+```
+
+## Stdin: explicit dash with --semantic
+
+```console
+$ printf '# Hello\n\nFirst sentence here. Second sentence here.\n' | flowmark --semantic -
+# Hello
+
+First sentence here.
+Second sentence here.
+```
+
 ## Error handling: nonexistent file
 
 ```console
