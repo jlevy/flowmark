@@ -10,6 +10,6 @@ priority: 1
 status: closed
 title: _walk_directory does not apply gitignore patterns to files, only directories
 type: is
-updated_at: 2026-02-16T06:14:02.917Z
-version: 3
+updated_at: 2026-02-17T00:41:32.331Z
+version: 4
 ---

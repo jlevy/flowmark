@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-15-file-discovery-and-globbing
 status: closed
 title: "Phase 3: Config file loading — FlowmarkConfig, TOML loading, CLI integration, tests"
 type: is
-updated_at: 2026-02-16T06:14:58.114Z
-version: 4
+updated_at: 2026-02-17T00:41:32.300Z
+version: 5
 ---

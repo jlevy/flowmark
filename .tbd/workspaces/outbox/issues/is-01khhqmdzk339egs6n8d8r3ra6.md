@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: Add test for _read_ignore_file with unreadable/missing file (OSError path)
 type: is
-updated_at: 2026-02-16T06:14:05.987Z
-version: 3
+updated_at: 2026-02-17T00:41:32.389Z
+version: 4
 ---

@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: Add test for gitignore file patterns (e.g. ignoring *.log) not just directory patterns
 type: is
-updated_at: 2026-02-16T06:14:06.369Z
-version: 3
+updated_at: 2026-02-17T00:41:32.405Z
+version: 4
 ---

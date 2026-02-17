@@ -10,6 +10,6 @@ priority: 3
 status: closed
 title: Add test for config merge with file discovery list fields (extend_include from config)
 type: is
-updated_at: 2026-02-16T06:14:06.763Z
-version: 3
+updated_at: 2026-02-17T00:41:32.398Z
+version: 4
 ---

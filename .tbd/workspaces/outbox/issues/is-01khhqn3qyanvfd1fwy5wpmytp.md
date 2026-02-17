@@ -10,6 +10,6 @@ priority: 3
 status: closed
 title: Config file silently ignores unknown keys — consider warning on unrecognized keys
 type: is
-updated_at: 2026-02-16T06:14:07.555Z
-version: 3
+updated_at: 2026-02-17T00:41:32.413Z
+version: 4
 ---

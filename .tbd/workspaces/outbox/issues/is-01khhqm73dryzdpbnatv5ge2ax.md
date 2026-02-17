@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: Explicit flag detection in cli.py uses value comparison not actual CLI presence
 type: is
-updated_at: 2026-02-16T06:14:04.452Z
-version: 3
+updated_at: 2026-02-17T00:41:32.381Z
+version: 4
 ---

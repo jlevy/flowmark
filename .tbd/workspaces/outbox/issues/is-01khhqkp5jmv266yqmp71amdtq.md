@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: UnicodeDecodeError not caught when reading non-UTF8 ignore files
 type: is
-updated_at: 2026-02-16T06:14:04.836Z
-version: 3
+updated_at: 2026-02-17T00:41:32.363Z
+version: 4
 ---

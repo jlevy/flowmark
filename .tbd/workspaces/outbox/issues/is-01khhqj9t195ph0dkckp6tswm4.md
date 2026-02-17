@@ -10,6 +10,6 @@ priority: 1
 status: closed
 title: _should_include_explicit iterates all path.parents up to filesystem root
 type: is
-updated_at: 2026-02-16T06:14:03.300Z
-version: 3
+updated_at: 2026-02-17T00:41:32.323Z
+version: 4
 ---

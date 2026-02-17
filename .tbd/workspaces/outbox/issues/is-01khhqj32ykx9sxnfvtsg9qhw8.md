@@ -10,6 +10,6 @@ priority: 1
 status: closed
 title: Missing OSError handling in _read_ignore_file (gitignore.py)
 type: is
-updated_at: 2026-02-16T06:14:03.686Z
-version: 3
+updated_at: 2026-02-17T00:41:32.315Z
+version: 4
 ---

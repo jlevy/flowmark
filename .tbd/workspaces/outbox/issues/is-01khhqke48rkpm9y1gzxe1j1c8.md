@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: list-files with stdin arg passes stdin to resolver causing FileNotFoundError
 type: is
-updated_at: 2026-02-16T06:14:04.063Z
-version: 3
+updated_at: 2026-02-17T00:41:32.355Z
+version: 4
 ---

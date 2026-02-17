@@ -10,6 +10,6 @@ priority: 3
 status: closed
 title: Golden test for flowmarkignore uses grep -c which only tests count, add positive assertion
 type: is
-updated_at: 2026-02-16T06:14:07.162Z
-version: 3
+updated_at: 2026-02-17T00:41:32.421Z
+version: 4
 ---

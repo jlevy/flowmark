@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: Config file load_config has no error handling for malformed TOML
 type: is
-updated_at: 2026-02-16T06:14:05.609Z
-version: 3
+updated_at: 2026-02-17T00:41:32.372Z
+version: 4
 ---

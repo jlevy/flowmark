@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: tool_ignore is only loaded once from first resolved directory, not per walk root
 type: is
-updated_at: 2026-02-16T06:14:05.221Z
-version: 3
+updated_at: 2026-02-17T00:41:32.340Z
+version: 4
 ---

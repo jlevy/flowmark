@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-15-file-discovery-and-globbing
 status: closed
 title: "Phase 2: CLI integration — flags, resolver wiring, --auto defaults, docstring, tests"
 type: is
-updated_at: 2026-02-16T06:14:58.108Z
-version: 4
+updated_at: 2026-02-17T00:41:32.292Z
+version: 5
 ---
