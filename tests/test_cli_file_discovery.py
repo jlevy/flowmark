@@ -186,6 +186,31 @@ def test_list_files_stdin_does_not_crash(
     assert "README.md" in out
 
 
+def test_no_args_errors(capsys: pytest.CaptureFixture[str]) -> None:
+    """Bare `flowmark` with no arguments should error with a helpful message."""
+    assert main([]) == 1
+    err = capsys.readouterr().err
+    assert "No input specified" in err
+    assert "'-' for stdin" in err
+
+
+def test_stdin_explicit_dash(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Explicit `-` argument should still read from stdin after default change."""
+    monkeypatch.setattr("sys.stdin", io.StringIO("# Via dash\n"))
+    assert main(["-"]) == 0
+    out = capsys.readouterr().out
+    assert "# Via dash" in out
+
+
+def test_auto_list_files_no_args_errors(capsys: pytest.CaptureFixture[str]) -> None:
+    """--auto --list-files with no file args should error (--auto message takes priority)."""
+    assert main(["--auto", "--list-files"]) == 1
+    err = capsys.readouterr().err
+    assert "--auto requires at least one file or directory argument" in err
+
+
 def test_explicit_flag_detection_with_default_value(tmp_path: Path) -> None:
     """Passing --width 88 (the default) should still be detected as explicit (fm-4z3r)."""
     from flowmark.cli import _parse_args  # pyright: ignore[reportPrivateUsage]

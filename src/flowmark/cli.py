@@ -125,8 +125,8 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
         "files",
         nargs="*",
         type=str,
-        default=["-"],
-        help="Input files or directories (use '-' for stdin, '.' for current directory)",
+        default=[],
+        help="Input files or directories (required; use '-' for stdin, '.' for current directory)",
     )
     parser.add_argument(
         "-o",
@@ -456,9 +456,9 @@ def main(args: list[str] | None = None) -> int:
         print(get_docs_content())
         return 0
 
-    # Require explicit file/directory arguments for --auto and --list-files.
-    # (Use '.' for the current directory.)
-    if options.files == ["-"]:
+    # Require explicit file/directory arguments.
+    # (Use '.' for the current directory, '-' for stdin.)
+    if not options.files:
         if is_auto:
             print(
                 "Error: --auto requires at least one file or directory argument"
@@ -473,6 +473,11 @@ def main(args: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
+        print(
+            "Error: No input specified. Provide files, directories, or '-' for stdin.",
+            file=sys.stderr,
+        )
+        return 1
 
     # Load and merge config file settings
     config_path = find_config_file(Path.cwd())
