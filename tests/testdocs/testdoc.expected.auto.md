@@ -1737,7 +1737,7 @@ When Marko’s GFM parser sees a table directly after paragraph text, it may par
 table rows as paragraph content rather than a table element.
 The line wrapper must still preserve each table row on its own line.
 | Quarter | Revenue ($M) | YoY % | QoQ % | Segment A % | Segment B % | Geo: US % | Geo: Intl % |
-|---------|-------------|-------|-------|-------------|-------------|-----------|-------------|
+| --- | --- | --- | --- | --- | --- | --- | --- |
 | Q1 2025 | 125.3 | +12% | +3% | 45% | 55% | 60% | 40% |
 | Q2 2025 | 131.7 | +15% | +5% | 46% | 54% | 58% | 42% |
 

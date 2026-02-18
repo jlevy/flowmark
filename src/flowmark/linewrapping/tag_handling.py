@@ -27,6 +27,7 @@ from flowmark.linewrapping.block_heuristics import (
     line_is_block_content,
     line_is_list_item,
     line_is_table_row,
+    normalize_table_separator,
 )
 from flowmark.linewrapping.protocols import LineWrapper
 
@@ -373,11 +374,13 @@ def add_tag_newline_handling(
             cur_initial_indent = initial_indent if is_first else subsequent_indent
             segment_lines = segment.split("\n")
             if all(line_is_table_row(line) for line in segment_lines if line.strip()):
-                # Table rows: preserve verbatim with appropriate indent
+                # Table rows: preserve verbatim with appropriate indent,
+                # but normalize separator rows to 3 dashes for consistency.
                 indented_lines: list[str] = []
                 for j, line in enumerate(segment_lines):
                     indent = cur_initial_indent if j == 0 else subsequent_indent
-                    indented_lines.append(indent + line if line.strip() else line)
+                    normalized = normalize_table_separator(line) if line.strip() else line
+                    indented_lines.append(indent + normalized if normalized.strip() else normalized)
                 wrapped = "\n".join(indented_lines)
             else:
                 wrapped = base_wrapper(segment, cur_initial_indent, subsequent_indent)

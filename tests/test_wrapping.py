@@ -682,7 +682,7 @@ def test_block_heuristics_table_rows():
     # Each table row should be on its own line
     assert "{% field %}\n" in result
     assert "\n| A | B |\n" in result
-    assert "\n|---|---|\n" in result
+    assert "\n| --- | --- |\n" in result
     assert "\n| 1 | 2 |\n" in result
     assert "\n{% /field %}" in result
 
@@ -706,7 +706,7 @@ def test_table_rows_preserved_without_tags():
 
     assert "Some text\n" in result
     assert "\n| A | B | C |\n" in result
-    assert "\n|---|---|---|\n" in result
+    assert "\n| --- | --- | --- |\n" in result
     assert "| 1 | 2 | 3 |" in result
 
 
@@ -722,21 +722,23 @@ def test_wide_table_rows_not_wrapped():
     wrapper = line_wrap_to_width(width=88, is_markdown=True)
 
     wide_header = "| Quarter | Revenue ($M) | YoY % | QoQ % | Segment A % | Segment B % | Geo: US % | Geo: Intl % |"
-    separator = "|---------|-------------|-------|-------|-------------|-------------|-----------|-------------|"
+    input_separator = "|---------|-------------|-------|-------|-------------|-------------|-----------|-------------|"
+    normalized_separator = "| --- | --- | --- | --- | --- | --- | --- | --- |"
     data_row = "| Q1 2025 | 125.3 | +12% | +3% | 45% | 55% | 60% | 40% |"
 
     # Wide table after paragraph text (the exact reproduction case from #36)
-    text = f"Paragraph text here.\n{wide_header}\n{separator}\n{data_row}"
+    text = f"Paragraph text here.\n{wide_header}\n{input_separator}\n{data_row}"
     result = wrapper(text, "", "")
 
     # Each table row must remain on a single line, not wrapped
+    # Separator row should be normalized to 3 dashes
     assert wide_header in result
-    assert separator in result
+    assert normalized_separator in result
     assert data_row in result
     # Verify they're each on their own line
     result_lines = result.split("\n")
     assert any(line == wide_header for line in result_lines)
-    assert any(line == separator for line in result_lines)
+    assert any(line == normalized_separator for line in result_lines)
     assert any(line == data_row for line in result_lines)
 
 
@@ -749,15 +751,17 @@ def test_table_rows_with_semantic_wrapping():
     wrapper = line_wrap_by_sentence(width=88, min_line_len=40, is_markdown=True)
 
     wide_header = "| Quarter | Revenue ($M) | YoY % | QoQ % | Segment A % | Segment B % | Geo: US % | Geo: Intl % |"
-    separator = "|---------|-------------|-------|-------|-------------|-------------|-----------|-------------|"
+    input_separator = "|---------|-------------|-------|-------|-------------|-------------|-----------|-------------|"
+    normalized_separator = "| --- | --- | --- | --- | --- | --- | --- | --- |"
     data_row = "| Q1 2025 | 125.3 | +12% | +3% | 45% | 55% | 60% | 40% |"
 
-    text = f"Paragraph text. Another sentence here.\n{wide_header}\n{separator}\n{data_row}"
+    text = f"Paragraph text. Another sentence here.\n{wide_header}\n{input_separator}\n{data_row}"
     result = wrapper(text, "", "")
 
     # Table rows must not be wrapped even in semantic mode
+    # Separator row should be normalized to 3 dashes
     assert wide_header in result
-    assert separator in result
+    assert normalized_separator in result
     assert data_row in result
 
 
@@ -774,7 +778,7 @@ def test_table_rows_only_no_surrounding_text():
     result = wrapper(text, "", "")
 
     assert "| A long header | Another long header |" in result
-    assert "|---|---|" in result
+    assert "| --- | --- |" in result
     assert "| Cell data | More cell data |" in result
 
 
@@ -847,7 +851,7 @@ def test_block_heuristics_mixed_content():
     assert "{% field %}\n" in result
     # Table rows should each be on own line
     assert "\n| Col1 | Col2 |\n" in result
-    assert "\n|------|------|\n" in result
+    assert "\n| --- | --- |\n" in result
     # Closing tag preserved
     assert "\n{% /field %}" in result
 
