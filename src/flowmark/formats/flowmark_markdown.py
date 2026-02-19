@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Generator
+import unicodedata
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from enum import Enum
 from typing import Any, NamedTuple, cast
@@ -92,6 +93,20 @@ class ExtendedParseInfo(NamedTuple):
     fence_len: int
 
 
+def _is_unicode_punctuation(c: str) -> bool:
+    """Check if a character is Unicode punctuation per GFM spec.
+
+    Includes characters in Unicode categories Pc, Pd, Pe, Pf, Pi, Po, Ps,
+    plus ASCII symbols (U+0021-U+002F, U+003A-U+0040, U+005B-U+0060, U+007B-U+007E).
+    """
+    return unicodedata.category(c).startswith("P") or (
+        "\u0021" <= c <= "\u002f"
+        or "\u003a" <= c <= "\u0040"
+        or "\u005b" <= c <= "\u0060"
+        or "\u007b" <= c <= "\u007e"
+    )
+
+
 class CustomStrikethrough(gfm_elements.Strikethrough):
     """
     Fixed Strikethrough that implements GFM flanking delimiter rules.
@@ -107,12 +122,66 @@ class CustomStrikethrough(gfm_elements.Strikethrough):
     - `(?!\\s)` after the opening delimiter (left-flanking: not followed by whitespace)
     - `(?<!\\s)` before the closing delimiter (right-flanking: not preceded by whitespace)
     - Non-greedy `+?` for correct minimal matching
+
+    The `find` method adds full GFM punctuation flanking checks that can't be
+    expressed in a simple regex. Per the GFM spec, a delimiter preceded by
+    punctuation is only right-flanking if followed by whitespace, punctuation,
+    or end of string. Without this, `~100 (~200)` gets incorrectly parsed as
+    strikethrough because `(~` matches as a closing delimiter.
     """
 
     pattern: re.Pattern[str] = re.compile(r"(?<!~)(~{1,2})(?!\s)([^~]+?)(?<!\s)\1(?!~)")
     priority: int = 5
     parse_children: bool = True
     parse_group: int = 2
+
+    @override
+    @classmethod
+    def find(cls, text: str, *, source: Source) -> Iterator[re.Match[str]]:
+        """Filter matches by full GFM flanking delimiter rules.
+
+        The regex handles whitespace flanking checks. This method adds
+        punctuation flanking checks per GFM spec:
+
+        - Left-flanking: not followed by punctuation, OR followed by punctuation
+          AND preceded by whitespace/punctuation/start of string
+        - Right-flanking: not preceded by punctuation, OR preceded by punctuation
+          AND followed by whitespace/punctuation/end of string
+        """
+        for match in cls.pattern.finditer(text):
+            delim_len = len(match.group(1))
+
+            # Opening delimiter positions
+            open_start = match.start()
+            open_end = open_start + delim_len
+
+            # Closing delimiter positions
+            close_end = match.end()
+            close_start = close_end - delim_len
+
+            # Left-flanking check for opening delimiter (punctuation rule)
+            char_after_open = text[open_end] if open_end < len(text) else None
+            if char_after_open and _is_unicode_punctuation(char_after_open):
+                # Followed by punctuation — only left-flanking if preceded by
+                # whitespace, punctuation, or start of string
+                char_before_open = text[open_start - 1] if open_start > 0 else None
+                if char_before_open is not None and not (
+                    char_before_open.isspace() or _is_unicode_punctuation(char_before_open)
+                ):
+                    continue
+
+            # Right-flanking check for closing delimiter (punctuation rule)
+            char_before_close = text[close_start - 1] if close_start > 0 else None
+            if char_before_close and _is_unicode_punctuation(char_before_close):
+                # Preceded by punctuation — only right-flanking if followed by
+                # whitespace, punctuation, or end of string
+                char_after_close = text[close_end] if close_end < len(text) else None
+                if char_after_close is not None and not (
+                    char_after_close.isspace() or _is_unicode_punctuation(char_after_close)
+                ):
+                    continue
+
+            yield match
 
     @override
     @classmethod
