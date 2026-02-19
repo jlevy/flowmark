@@ -98,3 +98,91 @@ def test_strikethrough_in_paragraph():
     assert "~50 users" in result
     # Make sure ~50 doesn't become ~~50
     assert "~~50" not in result
+
+
+# --- Tilde-in-parentheses bug (GFM punctuation flanking rules) ---
+
+
+def test_tilde_before_and_inside_parens():
+    """~100 (~200) must NOT be parsed as strikethrough.
+
+    The closing ~ in '(~200)' is preceded by '(' (punctuation) and followed
+    by '2' (word char), so it is NOT right-flanking per GFM spec.
+    """
+    md = flowmark_markdown()
+    result = md("~100 (~200)\n")
+    assert result == "~100 (~200)\n"
+
+
+def test_tilde_before_and_inside_parens_fill():
+    """Same bug through the full fill_markdown pipeline."""
+    result = fill_markdown("~100 (~200)")
+    assert "~~" not in result
+    assert result.strip() == "~100 (~200)"
+
+
+def test_tilde_only_inside_parens():
+    """100 (~200) — tilde only inside parens should remain literal."""
+    md = flowmark_markdown()
+    result = md("100 (~200)\n")
+    assert result == "100 (~200)\n"
+
+
+def test_tilde_inside_parens_with_text():
+    """~100 (x ~200) — tilde inside parens with intervening text stays literal."""
+    md = flowmark_markdown()
+    result = md("~100 (x ~200)\n")
+    assert result == "~100 (x ~200)\n"
+
+
+def test_tilde_in_parens_then_outside():
+    """(~200) ~100 — tilde in parens then outside, both literal."""
+    md = flowmark_markdown()
+    result = md("(~200) ~100\n")
+    assert result == "(~200) ~100\n"
+
+
+def test_tilde_before_parens_no_tilde_inside():
+    """~100 (200) — tilde before parens without tilde inside stays literal."""
+    md = flowmark_markdown()
+    result = md("~100 (200)\n")
+    assert result == "~100 (200)\n"
+
+
+def test_strikethrough_inside_parens():
+    """(~~text~~) — valid double-tilde strikethrough inside parens is preserved."""
+    md = flowmark_markdown()
+    result = md("(~~text~~) end\n")
+    assert result == "(~~text~~) end\n"
+
+
+def test_strikethrough_after_punctuation():
+    """Strikethrough after punctuation like quotes should still work.
+
+    Opening ~ after '"' (punctuation) is left-flanking because it's preceded by
+    punctuation. Closing ~ before '"' (punctuation) is right-flanking because
+    it's followed by punctuation.
+    """
+    md = flowmark_markdown()
+    result = md('"~~text~~" end\n')
+    assert result == '"~~text~~" end\n'
+
+
+def test_strikethrough_with_punctuation_content():
+    """~~hello!~~ — strikethrough containing punctuation at end of content.
+
+    Closing ~~ after '!' (punctuation) is right-flanking because the next
+    char after ~~ is whitespace or end of string.
+    """
+    md = flowmark_markdown()
+    result = md("~~hello!~~ end\n")
+    assert result == "~~hello!~~ end\n"
+
+
+def test_tilde_in_brackets():
+    """~100 [~200] — tilde near square brackets, same flanking logic."""
+    md = flowmark_markdown()
+    result = md("~100 [~200]\n")
+    # The [ before closing ~ is punctuation, followed by word char → not right-flanking
+    # But also [~200] has no matching closer for the ~ so stays literal anyway.
+    assert "~~" not in result
