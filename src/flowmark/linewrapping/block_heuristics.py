@@ -70,6 +70,53 @@ def line_is_list_item(line: str) -> bool:
     return False
 
 
+import re
+
+_TABLE_SEPARATOR_RE = re.compile(r"^\|(\s*:?-+:?\s*\|)+\s*$")
+
+
+def line_is_table_separator(line: str) -> bool:
+    """
+    Check if a line is a GFM table separator row (e.g., `|---|---|` or `| --- | --- |`).
+
+    A separator row consists only of pipe characters, dashes, optional colons
+    for alignment, and whitespace.
+    """
+    return bool(_TABLE_SEPARATOR_RE.match(line.strip()))
+
+
+def normalize_table_separator(line: str) -> str:
+    """
+    Normalize a table separator row to use exactly 3 dashes per cell,
+    preserving alignment colons.
+
+    For example: `|---------|:------------|` -> `| --- | :--- |`
+    """
+    if not line_is_table_separator(line):
+        return line
+
+    stripped = line.strip()
+    # Remove leading/trailing pipes and split into cells
+    inner = stripped[1:]  # Remove leading |
+    if inner.endswith("|"):
+        inner = inner[:-1]  # Remove trailing |
+    cells = inner.split("|")
+
+    normalized_cells: list[str] = []
+    for cell in cells:
+        cell = cell.strip()
+        if cell.startswith(":") and cell.endswith(":"):
+            normalized_cells.append(":---:")
+        elif cell.startswith(":"):
+            normalized_cells.append(":---")
+        elif cell.endswith(":"):
+            normalized_cells.append("---:")
+        else:
+            normalized_cells.append("---")
+
+    return "| " + " | ".join(normalized_cells) + " |"
+
+
 def line_is_block_content(line: str) -> bool:
     """
     Check if a line is block content (table row or list item).
@@ -134,6 +181,36 @@ def test_line_is_list_item_ordered():
     assert not line_is_list_item("1.")  # No space after (nothing after)
     assert not line_is_list_item("1")  # Just a number
     assert not line_is_list_item("12345678901. Item")  # Too many digits (>9)
+
+
+def test_line_is_table_separator():
+    # Valid separator rows
+    assert line_is_table_separator("|---|---|")
+    assert line_is_table_separator("| --- | --- |")
+    assert line_is_table_separator("|---------|-------------|-------|")
+    assert line_is_table_separator("| :--- | ---: | :---: |")
+    assert line_is_table_separator("|:---|---:|:---:|")
+
+    # Not separator rows
+    assert not line_is_table_separator("| A | B |")
+    assert not line_is_table_separator("| Data | More |")
+    assert not line_is_table_separator("Not a table")
+    assert not line_is_table_separator("")
+
+
+def test_normalize_table_separator():
+    # Basic normalization
+    assert normalize_table_separator("|---|---|") == "| --- | --- |"
+    assert normalize_table_separator("|---------|-------------|") == "| --- | --- |"
+    assert normalize_table_separator("| --- | --- |") == "| --- | --- |"
+
+    # With alignment
+    assert normalize_table_separator("|:---|---:|:---:|") == "| :--- | ---: | :---: |"
+    assert normalize_table_separator("| :------------ | --------: |") == "| :--- | ---: |"
+
+    # Non-separator lines are returned unchanged
+    assert normalize_table_separator("| A | B |") == "| A | B |"
+    assert normalize_table_separator("Not a table") == "Not a table"
 
 
 def test_line_is_block_content():
