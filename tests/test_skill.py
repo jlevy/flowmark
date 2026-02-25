@@ -29,6 +29,12 @@ class TestGetSkillContent:
         assert "# Flowmark" in content
         assert "uvx flowmark" in content
 
+    def test_skill_content_has_vscode_cursor_setup(self) -> None:
+        """SKILL.md includes VS Code/Cursor run-on-save guidance."""
+        content = get_skill_content()
+        assert "VS Code/Cursor" in content
+        assert "emeraldwalk.runonsave" in content
+
 
 class TestGetDocsContent:
     """Tests for get_docs_content function."""
@@ -46,6 +52,12 @@ class TestGetDocsContent:
         assert "# flowmark" in content.lower()
         assert "## Installation" in content
         assert "## Semantic Line Breaks" in content
+
+    def test_docs_content_has_vscode_cursor_setup(self) -> None:
+        """README/docs content includes VS Code/Cursor run-on-save setup."""
+        content = get_docs_content()
+        assert "Use in VSCode/Cursor" in content or "Use in VS Code/Cursor" in content
+        assert "emeraldwalk.runonsave" in content
 
 
 class TestInstallSkill:

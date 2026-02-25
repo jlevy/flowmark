@@ -1,7 +1,10 @@
 # flowmark
 
-Flowmark is a pure Python Markdown auto-formatter designed for **better LLM workflows**,
-**clean git diffs**, and **flexible use from CLI, from IDEs, or as a library**.
+Flowmark is a Markdown auto-formatter, written
+[in Python](https://github.com/jlevy/flowmark) with an auto-synced
+[Rust port](https://github.com/jlevy/flowmark-rs), designed for **better LLM
+workflows**, **clean git diffs**, and **flexible use from CLI, from IDEs, or as a
+library**.
 
 With AI tools increasingly using Markdown, having consistent, diff-friendly formatting
 has become essential for modern writing, editing, and document processing workflows.
