@@ -1,5 +1,11 @@
 # flowmark
 
+[![Follow @ojoshe on X](https://img.shields.io/badge/follow_%40ojoshe-black?logo=x&logoColor=white)](https://x.com/ojoshe)
+[![CI](https://github.com/jlevy/flowmark/actions/workflows/ci.yml/badge.svg)](https://github.com/jlevy/flowmark/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/flowmark)](https://pypi.org/project/flowmark/)
+[![Python versions](https://img.shields.io/pypi/pyversions/flowmark)](https://pypi.org/project/flowmark/)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+
 Flowmark is a Markdown auto-formatter, written
 [in Python](https://github.com/jlevy/flowmark) with an auto-synced
 [Rust port](https://github.com/jlevy/flowmark-rs), designed for **better LLM
