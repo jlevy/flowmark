@@ -50,7 +50,7 @@ class TestGetDocsContent:
         content = get_docs_content()
         # README.md has these distinctive sections
         assert "# flowmark" in content.lower()
-        assert "## Installation" in content
+        assert "## Installing Flowmark (Python CLI)" in content
         assert "## Semantic Line Breaks" in content
 
     def test_docs_content_has_vscode_cursor_setup(self) -> None:
