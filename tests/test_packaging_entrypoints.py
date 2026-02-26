@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
-    import tomli as tomllib
+if sys.version_info >= (3, 11):
+    import tomllib  # pyright: ignore[reportUnreachable]
+else:
+    import tomli as tomllib  # type: ignore[no-redef]  # pyright: ignore[reportUnreachable]
 
 
 def test_flowmark_py_alias_entrypoint() -> None:
