@@ -12,10 +12,11 @@ scripts/generate-python-readme.py.
 
 ## Original Python Flowmark
 
-This repository is the Python reference implementation of Flowmark.
-
-For fastest CLI usage via a single native binary, consider the auto-synced Rust port:
-[flowmark-rs](https://github.com/jlevy/flowmark-rs).
+> [!TIP]
+> This repository is the Python reference implementation of Flowmark.
+> 
+> For fastest CLI usage via a single native binary, consider the auto-synced Rust port:
+> [flowmark-rs](https://github.com/jlevy/flowmark-rs).
 
 ## Installing Python Flowmark CLI
 
