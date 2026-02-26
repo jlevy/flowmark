@@ -99,9 +99,6 @@ Install the `emeraldwalk.runonsave` extension and add this to `settings.json`:
 }
 ```
 
-If you prefer not to install the CLI globally, use `uvx flowmark@latest --auto ${file}`
-instead.
-
 ## Semantic Line Breaks
 
 Flowmark's `--semantic` option breaks lines at sentence boundaries instead of at fixed
