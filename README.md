@@ -1,4 +1,6 @@
-<!-- Generated from docs/shared/flowmark-readme-shared.md via scripts/generate-python-readme.py. -->
+<!-- Generated from docs/shared/flowmark-readme-shared.md via
+scripts/generate-python-readme.py.
+-->
 
 # flowmark
 
@@ -10,13 +12,14 @@
 
 ## Original Python Flowmark
 
-This repository is the original Python implementation of Flowmark.
-For fastest CLI usage via a single native binary, use the auto-synced Rust port:
+This repository is the Python reference implementation of Flowmark.
+
+For fastest CLI usage via a single native binary, consider the auto-synced Rust port:
 [flowmark-rs](https://github.com/jlevy/flowmark-rs).
 
-## Installing Flowmark (Python CLI)
+## Installing Python Flowmark CLI
 
-The simplest way to use the tool is [uv](https://github.com/astral-sh/uv).
+The simplest way to use the Python version is [uv](https://github.com/astral-sh/uv).
 
 Run with `uvx flowmark --help` or install it as a tool:
 
@@ -33,7 +36,7 @@ flowmark --help
 For use in Python projects, add the [`flowmark`](https://pypi.org/project/flowmark/)
 package via uv, poetry, or pip.
 
-Primary command: `flowmark`.
+Primary command: `flowmark`. Alias available in this repo: `flowmark-py`.
 
 * * *
 
