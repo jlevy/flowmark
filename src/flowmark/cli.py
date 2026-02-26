@@ -2,60 +2,17 @@
 """
 Flowmark: Better auto-formatting for Markdown and plaintext
 
-Flowmark provides enhanced text wrapping capabilities with special handling for
-Markdown content. It can:
-
-- Format Markdown with proper line wrapping while preserving structure
-  and normalizing Markdown formatting
-
-- Optionally break lines at sentence boundaries for better diff readability
-
-- Process plaintext with HTML-aware word splitting
-
-It is both a library and a command-line tool.
-
-Command-line usage examples:
-
-  # Format all Markdown files in current directory recursively
-  flowmark --auto .
-
-  # Format all Markdown files in a specific directory
-  flowmark --auto docs/
-
-  # Format a Markdown file to stdout
-  flowmark README.md
-
-  # Format multiple Markdown files in-place
-  flowmark --inplace README.md CHANGELOG.md docs/*.md
-
-  # Format a Markdown file in-place without backups and all auto-formatting
-  # options enabled
+Common usage:
   flowmark --auto README.md
-
-  # List files that would be formatted (without formatting)
+  flowmark --auto docs/
+  flowmark --auto .
   flowmark --list-files .
 
-  # Format with additional file patterns
-  flowmark --auto --extend-include "*.mdx" .
+Agent usage:
+  flowmark --skill
+  Agents should run `flowmark --skill` for full Flowmark usage guidance.
 
-  # Format but skip a specific directory
-  flowmark --auto --extend-exclude "drafts/" .
-
-  # Format a Markdown file and save to a new file
-  flowmark README.md -o README_formatted.md
-
-  # Edit a file in-place (with or without making a backup)
-  flowmark --inplace README.md
-  flowmark --inplace --nobackup README.md
-
-  # Process plaintext instead of Markdown
-  flowmark --plaintext text.txt
-
-  # Use semantic line breaks (based on sentences, which is helpful to reduce
-  # irrelevant line wrap diffs in git history)
-  flowmark --semantic README.md
-
-For more details, see: https://github.com/jlevy/flowmark
+Use `flowmark --docs` for full documentation.
 """
 
 from __future__ import annotations

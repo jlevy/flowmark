@@ -28,6 +28,33 @@ $ flowmark --version
 [VERSION]
 ```
 
+## Help: tagline and concise footer
+
+```console
+$ flowmark --help | grep -F "Flowmark: Better auto-formatting for Markdown and plaintext"
+Flowmark: Better auto-formatting for Markdown and plaintext
+```
+
+```console
+$ flowmark --help | grep -F "flowmark --auto README.md"
+  flowmark --auto README.md
+```
+
+```console
+$ flowmark --help | grep -F "flowmark --list-files ."
+  flowmark --list-files .
+```
+
+```console
+$ flowmark --help | grep -Fx "  flowmark --skill"
+  flowmark --skill
+```
+
+```console
+$ flowmark --help | grep -F "Agents should run"
+  Agents should run `flowmark --skill` for full Flowmark usage guidance.
+```
+
 ## Stdin: default formatting
 
 ```console
@@ -136,7 +163,7 @@ $ flowmark --list-files --no-respect-gitignore . | grep generated
 ## Force exclude: explicit file in excluded dir
 
 ```console
-$ flowmark --list-files --force-exclude node_modules/pkg/README.md | wc -l
+$ flowmark --list-files --force-exclude node_modules/pkg/README.md | wc -l | tr -d ' '
 0
 ```
 

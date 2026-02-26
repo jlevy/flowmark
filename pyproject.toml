@@ -61,6 +61,7 @@ dev = [
 [project.scripts]
 # Add script entry points here.
 flowmark = "flowmark.cli:main"
+flowmark-py = "flowmark.cli:main"
 
 
 

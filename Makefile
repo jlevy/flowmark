@@ -4,9 +4,11 @@
 
 .DEFAULT_GOAL := default
 
-.PHONY: default install lint test upgrade build clean format-docs benchmark profile
+.PHONY: default install lint test upgrade build clean format format-docs benchmark profile
 
-default: format-docs install lint test
+default: format install lint test
+
+format: format-docs
 
 install:
 	uv sync --all-extras
@@ -32,7 +34,7 @@ clean:
 	-find . -type d -name "__pycache__" -exec rm -rf {} +
 
 format-docs:
-	uv run flowmark --auto README.md docs/*.md
+	uv run flowmark --auto .
 
 benchmark:
 	uv run devtools/benchmark.py --compare 0.6.0
@@ -46,4 +48,3 @@ reset-ref-docs:
 	cp tests/testdocs/testdoc.actual.cleaned.md tests/testdocs/testdoc.expected.cleaned.md
 	cp tests/testdocs/testdoc.actual.plain.md tests/testdocs/testdoc.expected.plain.md
 	cp tests/testdocs/testdoc.actual.semantic.md tests/testdocs/testdoc.expected.semantic.md
-
