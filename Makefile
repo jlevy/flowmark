@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := default
 
-.PHONY: default install lint test upgrade build clean format format-docs benchmark profile
+.PHONY: default install lint test test-golden test-golden-coverage upgrade build clean format format-docs benchmark profile
 
 default: format install lint test
 
@@ -18,6 +18,13 @@ lint:
 
 test:
 	uv run pytest
+	$(MAKE) test-golden
+
+test-golden:
+	npx tryscript@latest run tests/tryscript/*.tryscript.md
+
+test-golden-coverage:
+	bash scripts/check-golden-coverage.sh
 
 upgrade:
 	uv sync --upgrade --all-extras --dev

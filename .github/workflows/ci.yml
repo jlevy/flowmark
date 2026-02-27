@@ -63,5 +63,8 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
+      - name: Check golden coverage
+        run: bash scripts/check-golden-coverage.sh
+
       - name: Run golden tests
-        run: npx tryscript@latest run
+        run: npx tryscript@latest run tests/tryscript/*.tryscript.md
