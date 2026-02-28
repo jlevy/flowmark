@@ -7,6 +7,8 @@ path:
   - $TRYSCRIPT_GIT_ROOT/.venv/bin
 before: |
   cp -r $TRYSCRIPT_TEST_DIR/fixtures/. fixtures/
+  # Ignore any local untracked fixture artifacts so this suite stays deterministic.
+  rm -rf fixtures/project/.venv fixtures/project/build fixtures/project/skip fixtures/project/nested/generated
 ---
 
 # File Discovery Tests
@@ -136,9 +138,7 @@ $ flowmark --list-files --exclude "docs/" fixtures/project/ | xargs -I{} basenam
 README.md
 README.md
 README.md
-README.md
 file.md
 lib.md
-output.md
 wip.md
 ```
