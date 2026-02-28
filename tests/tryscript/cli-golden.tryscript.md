@@ -5,8 +5,6 @@ env:
   LC_ALL: C
 path:
   - $TRYSCRIPT_GIT_ROOT/.venv/bin
-patterns:
-  VERSION: 'flowmark \d+\.\d+\.\d+.*'
 before: |
   mkdir -p project/docs project/node_modules/pkg project/.venv/lib project/drafts
   printf '# Root\n' > project/README.md
@@ -19,14 +17,14 @@ before: |
 
 # Flowmark CLI Golden Tests
 
-End-to-end tests for the Rust flowmark CLI, covering formatting, file discovery,
+End-to-end tests for the Flowmark CLI, covering formatting, file discovery,
 error handling, and agent skills.
 
 ## Version
 
 ```console
-$ flowmark --version | grep '^v'
-v[..]
+$ flowmark --version
+[VERSION]
 ```
 
 ## Error: no arguments

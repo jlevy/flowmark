@@ -65,6 +65,14 @@ Error: Cannot specify output file when processing multiple files (use --inplace 
 ? 1
 ```
 
+## FO4c: Long `--output` flag with direct file input also errors
+
+```console
+$ flowmark --output output.md fixtures/content/simple.md 2>&1
+Error: Cannot specify output file when processing multiple files (use --inplace instead)
+? 1
+```
+
 ## FO5: Output to stdout (explicit dash)
 
 ```console
@@ -101,7 +109,17 @@ Content of file A.
 Content of file B.
 ```
 
-## FO8: Auto mode on single file
+## FO8: Short alias `-i` performs in-place formatting with backup
+
+```console
+$ printf '# Test\nsome   text   here\n' > test-short-alias.md && flowmark -i test-short-alias.md && cat test-short-alias.md && test -f test-short-alias.md.orig && echo "short inplace alias backup"
+# Test
+
+some text here
+short inplace alias backup
+```
+
+## FO9: Auto mode on single file
 
 ```console
 $ cp fixtures/content/simple.md test-auto.md && flowmark --auto test-auto.md && cat test-auto.md

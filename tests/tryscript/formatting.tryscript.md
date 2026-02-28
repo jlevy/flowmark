@@ -368,3 +368,46 @@ here.
 $ flowmark fixtures/content/comprehensive.md > /tmp/first.md && flowmark /tmp/first.md > /tmp/second.md && diff /tmp/first.md /tmp/second.md && echo "idempotent"
 idempotent
 ```
+
+## F13: Short alias `-w` matches `--width`
+
+```console
+$ flowmark -w 30 fixtures/content/simple.md
+# Simple Document
+
+This is a basic paragraph with
+some text.
+
+Another paragraph here.
+```
+
+## F14: Short alias `-p` for plaintext mode
+
+```console
+$ printf 'This is plain text and should wrap cleanly without markdown parsing.\n' | flowmark -p - && echo ""
+This is plain text and should wrap cleanly without markdown parsing.
+
+```
+
+## F15: Short aliases `-s -c` for semantic + cleanups
+
+```console
+$ flowmark -s -c fixtures/content/headings.md
+# Heading Level 1
+
+## Heading Level 2
+
+### Heading Level 3
+
+#### Heading Level 4
+
+##### Heading Level 5
+
+###### Heading Level 6
+
+## Bold Heading That Should Be Cleaned
+
+### Another Bold Heading
+
+Regular paragraph after headings.
+```

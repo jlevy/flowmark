@@ -36,7 +36,7 @@ enabled.
 
 ```console
 $ printf 'He said "hello" to them.\n' | flowmark --smartquotes -
-[..]
+He said “hello” to them.
 ```
 
 ## S4: Stdin with width

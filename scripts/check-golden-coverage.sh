@@ -60,42 +60,61 @@ done
 
 echo ""
 echo "Checking key CLI flag coverage..."
-check_pattern() {
+check_cmd_pattern() {
   local label="$1"
-  local pattern="$2"
+  local regex="$2"
   local matches
   local count
-  matches=$(grep -R -- "$pattern" "$TESTS_DIR" 2>/dev/null || true)
-  count=$(printf "%s" "$matches" | wc -l | tr -d ' ')
+  matches=$(rg -n --pcre2 "$regex" "$TESTS_DIR"/*.tryscript.md 2>/dev/null || true)
+  count=$(printf "%s\n" "$matches" | sed '/^$/d' | wc -l | tr -d ' ')
   if [ "$count" -eq 0 ]; then
-    echo "  MISSING: $label ($pattern)"
+    echo "  MISSING: $label"
     EXIT_CODE=1
   else
     echo "  OK: $label ($count matches)"
   fi
 }
 
-check_pattern "auto mode" "--auto"
-check_pattern "list files" "--list-files"
-check_pattern "width control" "--width"
-check_pattern "plaintext mode" "--plaintext"
-check_pattern "semantic mode" "--semantic"
-check_pattern "cleanups mode" "--cleanups"
-check_pattern "smartquotes mode" "--smartquotes"
-check_pattern "ellipses mode" "--ellipses"
-check_pattern "list spacing mode" "--list-spacing"
-check_pattern "inplace mode" "--inplace"
-check_pattern "no backup mode" "--nobackup"
-check_pattern "docs mode" "--docs"
-check_pattern "skill mode" "--skill"
+check_cmd_pattern "output flag (--output)" '^\$ .*--output(\s|$)'
+check_cmd_pattern "output short alias (-o)" '^\$ .*(^|\s)-o(\s|$)'
+check_cmd_pattern "width flag (--width)" '^\$ .*--width(\s|$)'
+check_cmd_pattern "width short alias (-w)" '^\$ .*(^|\s)-w(\s|$)'
+check_cmd_pattern "plaintext flag (--plaintext)" '^\$ .*--plaintext(\s|$)'
+check_cmd_pattern "plaintext short alias (-p)" '^\$ .*(^|\s)-p(\s|$)'
+check_cmd_pattern "semantic flag (--semantic)" '^\$ .*--semantic(\s|$)'
+check_cmd_pattern "semantic short alias (-s)" '^\$ .*(^|\s)-s(\s|$)'
+check_cmd_pattern "cleanups flag (--cleanups)" '^\$ .*--cleanups(\s|$)'
+check_cmd_pattern "cleanups short alias (-c)" '^\$ .*(^|\s)-c(\s|$)'
+check_cmd_pattern "smartquotes flag (--smartquotes)" '^\$ .*--smartquotes(\s|$)'
+check_cmd_pattern "ellipses flag (--ellipses)" '^\$ .*--ellipses(\s|$)'
+check_cmd_pattern "list spacing flag (--list-spacing)" '^\$ .*--list-spacing(\s|$)'
+check_cmd_pattern "inplace flag (--inplace)" '^\$ .*--inplace(\s|$)'
+check_cmd_pattern "inplace short alias (-i)" '^\$ .*(^|\s)-i(\s|$)'
+check_cmd_pattern "no backup flag (--nobackup)" '^\$ .*--nobackup(\s|$)'
+check_cmd_pattern "auto mode (--auto)" '^\$ .*--auto(\s|$)'
+check_cmd_pattern "extend include (--extend-include)" '^\$ .*--extend-include(\s|$)'
+check_cmd_pattern "exclude replacement (--exclude)" '^\$ .*--exclude(\s|$)'
+check_cmd_pattern "extend exclude (--extend-exclude)" '^\$ .*--extend-exclude(\s|$)'
+check_cmd_pattern "gitignore toggle (--no-respect-gitignore)" '^\$ .*--no-respect-gitignore(\s|$)'
+check_cmd_pattern "force exclude (--force-exclude)" '^\$ .*--force-exclude(\s|$)'
+check_cmd_pattern "list files (--list-files)" '^\$ .*--list-files(\s|$)'
+check_cmd_pattern "max file size (--files-max-size)" '^\$ .*--files-max-size(\s|$)'
+check_cmd_pattern "version flag (--version)" '^\$ .*--version(\s|$)'
+check_cmd_pattern "help flag (--help)" '^\$ .*--help(\s|$)'
+check_cmd_pattern "skill flag (--skill)" '^\$ .*--skill(\s|$)'
+check_cmd_pattern "install skill flag (--install-skill)" '^\$ .*--install-skill(\s|$)'
+check_cmd_pattern "agent base flag (--agent-base)" '^\$ .*--agent-base(\s|$)'
+check_cmd_pattern "docs flag (--docs)" '^\$ .*--docs(\s|$)'
 
-OUTPUT_MATCHES=$(grep -R -E -- '--output|-o ' "$TESTS_DIR" 2>/dev/null || true)
-OUTPUT_COUNT=$(printf "%s" "$OUTPUT_MATCHES" | wc -l | tr -d ' ')
-if [ "$OUTPUT_COUNT" -eq 0 ]; then
-  echo "  MISSING: output flag (--output or -o)"
+echo ""
+echo "Checking wildcard discipline..."
+UNKNOWN_WILDCARDS=$(rg -n '\[\?\?\]|^\?\?\?$' "$TESTS_DIR"/*.tryscript.md 2>/dev/null || true)
+if [ -n "$UNKNOWN_WILDCARDS" ]; then
+  echo "ERROR: Found unknown wildcard placeholders ([??] or ???):"
+  echo "$UNKNOWN_WILDCARDS"
   EXIT_CODE=1
 else
-  echo "  OK: output flag ($OUTPUT_COUNT matches)"
+  echo "OK: no unknown wildcard placeholders"
 fi
 
 echo ""

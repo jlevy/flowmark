@@ -125,3 +125,20 @@ tutorial.md
 $ flowmark --list-files fixtures/project/README.md | xargs -I{} basename {}
 README.md
 ```
+
+## D11: Exclude replaces defaults
+
+With `--exclude`, defaults are replaced rather than extended.
+Excluding only `docs/` therefore includes paths normally excluded by defaults.
+
+```console
+$ flowmark --list-files --exclude "docs/" fixtures/project/ | xargs -I{} basename {} | sort
+README.md
+README.md
+README.md
+README.md
+file.md
+lib.md
+output.md
+wip.md
+```

@@ -96,25 +96,65 @@ Apostrophes: the cat’s meow, the '90s, rock ‘n’ roll.
 
 ## T4: Smart quotes NOT converted in code blocks
 
-Verify code block content preserved and only text outside code blocks gets converted.
-Note: full output cannot be asserted in tryscript format due to nested code fences.
-We use `tail -1` to check the final text line. This is NOT a masking pattern — Rust
-and Python produce identical output for this test (verified by direct diff).
+Verify full output so code fences and code content are preserved while text outside code
+blocks is transformed.
 
-```console
-$ flowmark --smartquotes fixtures/content/code-blocks.md | tail -1
-Text after code blocks with “quotes” and ... ellipses.
+````console
+$ flowmark --smartquotes fixtures/content/code-blocks.md
+# Code Blocks
+
+A backtick fenced code block:
+
+```python
+def hello():
+    print("Hello, world!")
+    x = 'single quotes'
+    y = "double quotes"
+    z = "it's a test..."
 ```
+
+A tilde fenced code block:
+
+~~~javascript
+function greet() {
+    console.log("Hello...");
+    const msg = 'Don\'t worry';
+}
+~~~
+
+Text after code blocks with “quotes” and ... ellipses.
+````
 
 ## T5: Ellipses NOT converted in code blocks
 
-Note: full output cannot be asserted due to nested code fences (same as T4).
-Rust and Python produce identical output (verified by direct diff).
+Verify full output so code fences and code content are preserved while text outside code
+blocks is transformed.
 
-```console
-$ flowmark --ellipses fixtures/content/code-blocks.md | tail -1
-Text after code blocks with "quotes" and … ellipses.
+````console
+$ flowmark --ellipses fixtures/content/code-blocks.md
+# Code Blocks
+
+A backtick fenced code block:
+
+```python
+def hello():
+    print("Hello, world!")
+    x = 'single quotes'
+    y = "double quotes"
+    z = "it's a test..."
 ```
+
+A tilde fenced code block:
+
+~~~javascript
+function greet() {
+    console.log("Hello...");
+    const msg = 'Don\'t worry';
+}
+~~~
+
+Text after code blocks with "quotes" and … ellipses.
+````
 
 ## T6: Smart quotes with escapes
 

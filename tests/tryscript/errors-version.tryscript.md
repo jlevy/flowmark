@@ -17,7 +17,7 @@ Tests for error handling and version output.
 
 ```console
 $ flowmark --version
-[..]
+[VERSION]
 ```
 
 ## E2: No arguments
