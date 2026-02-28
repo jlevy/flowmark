@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   env: {
     NO_COLOR: "1",
     LC_ALL: "C",

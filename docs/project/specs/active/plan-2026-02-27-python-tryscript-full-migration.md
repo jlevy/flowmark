@@ -32,14 +32,14 @@ Third-party reference reviewed via `tbd shortcut checkout`:
 
 Blobsy patterns worth adopting:
 
-1. central `tryscript.config.ts` with normalized env/path/patterns
+1. central `tryscript.config.js` with normalized env/path/patterns
 2. taxonomy split by concern (`commands`, `errors`, `workflows`, `json`)
 3. golden quality gate script enforcing command coverage and anti-pattern checks
 4. deterministic placeholder patterns for volatile fields
 
 Applied from blobsy in this migration:
 
-1. root `tryscript.config.ts` with global env/path/patterns
+1. root `tryscript.config.js` with global env/path/patterns
 2. modular scenario layout replacing single-file monolith
 3. `scripts/check-golden-coverage.sh` gate with anti-pattern enforcement
 
@@ -103,7 +103,7 @@ Out of scope:
 
 1. `tests/tryscript/` for scenario files
 2. `tests/tryscript/fixtures/` for reusable content/project/config fixtures
-3. root `tryscript.config.ts` for deterministic settings
+3. root `tryscript.config.js` for deterministic settings
 4. `scripts/check-golden-coverage.sh` for quality/coverage enforcement
 
 ### Suite organization
@@ -162,7 +162,7 @@ Use the flowmark-rs case-study structure and naming where possible:
 
 ### Phase F3: Add quality gates
 
-- [x] add root `tryscript.config.ts`
+- [x] add root `tryscript.config.js`
 - [x] add `scripts/check-golden-coverage.sh` with:
   - command coverage checks
   - anti-pattern checks (`...` elisions)
@@ -197,7 +197,7 @@ Secondary checks:
 
 1. comprehensive tryscript scenario set under `tests/tryscript/`
 2. reusable fixture tree for content/project/config discovery behaviors
-3. `tryscript.config.ts`
+3. `tryscript.config.js`
 4. command coverage + anti-pattern gate script
 5. migration report with failure triage and follow-up backlog
 
