@@ -1,0 +1,7 @@
+This is plain text content without any Markdown formatting.
+
+It has multiple paragraphs that should be wrapped at the appropriate width just like Markdown paragraphs but without any special structure handling.
+
+A short paragraph.
+
+This is another long paragraph that goes on and on with enough text to test that plaintext wrapping works correctly at various width settings for the flowmark tool.
