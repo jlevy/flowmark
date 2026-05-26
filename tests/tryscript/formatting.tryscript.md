@@ -230,6 +230,8 @@ Regular paragraph after headings.
 Tests that ALL Markdown structures are preserved through formatting.
 Asserts full output with no truncation. This test validates:
 - Reference links preserved as reference syntax (not inlined)
+- Reference links whose label equals their text use the collapsed `[label][]`
+  form, never the fragile shortcut `[label]` form (issue #45)
 - Footnote definitions stay in their original position (not moved to end)
 - Nested list spacing matches Python (no extra blank lines)
 - All other Markdown structures round-trip correctly
@@ -311,7 +313,10 @@ Backslash escapes: \* not bold \* and \# not a heading.
 
 An [inline link](https://example.com) and a [reference link][ref1].
 
+A [collapsed][] reference where label equals text.
+
 [ref1]: https://example.com "Example Reference"
+[collapsed]: https://example.com/collapsed
 
 ![An image](https://example.com/image.png)
 

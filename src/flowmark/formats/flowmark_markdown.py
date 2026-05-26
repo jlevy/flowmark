@@ -553,7 +553,12 @@ class MarkdownNormalizer(Renderer):
         )
         if label is not None:
             if label == link_text:
-                return f"[{label}]"
+                # Use the collapsed reference form [label][] rather than the
+                # shortcut form [label]. A shortcut reference is fragile: it
+                # merges with a following "(...)" (becoming an inline link) or
+                # "[...]" (becoming a full/collapsed reference), silently
+                # changing or dropping links. See issue #45.
+                return f"[{label}][]"
             return f"[{link_text}][{label}]"
         title = f" {link_title}" if link_title is not None else ""
         return f"[{link_text}]({element.dest}{title})"

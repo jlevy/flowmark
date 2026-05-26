@@ -67,7 +67,10 @@ Backslash escapes: \* not bold \* and \# not a heading.
 
 An [inline link](https://example.com) and a [reference link][ref1].
 
+A [collapsed][collapsed] reference where label equals text.
+
 [ref1]: https://example.com "Example Reference"
+[collapsed]: https://example.com/collapsed
 
 ![An image](https://example.com/image.png)
 
