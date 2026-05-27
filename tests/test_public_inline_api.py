@@ -139,6 +139,17 @@ def test_iter_atomic_spans_round_trip_and_offsets():
     assert [sp.text for sp in spans if sp.is_atomic] == ["[a b](http://x.com)", "`co de`"]
 
 
+def test_atomic_span_name_distinguishes_link_from_code():
+    s = "[a b](http://x.com) and `co de`"
+    atomic = [sp for sp in iter_atomic_spans(s) if sp.is_atomic]
+    assert [(sp.text, sp.name) for sp in atomic] == [
+        ("[a b](http://x.com)", "markdown_link"),
+        ("`co de`", "inline_code_span"),
+    ]
+    # Non-atomic gaps carry no name.
+    assert all(sp.name is None for sp in iter_atomic_spans(s) if not sp.is_atomic)
+
+
 def test_iter_atomic_spans_empty_patterns_yields_single_nonatomic_span():
     from flowmark.atomic import AtomicSpan
 

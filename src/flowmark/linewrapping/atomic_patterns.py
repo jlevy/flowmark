@@ -229,17 +229,41 @@ class AtomicSpan(NamedTuple):
     so `text == source[start:end]`) produced by `iter_atomic_spans`. `is_atomic` is True
     when the span is an atomic construct — a link, code span, autolink, URL, or tag that
     must not be split mid-construct — and False for the plain-text gaps between them.
+
+    `name` is the `AtomicPattern.name` of the construct that matched (e.g. `"markdown_link"`
+    vs `"inline_code_span"`), or `None` for non-atomic spans. It lets a consumer tell a
+    link span from a code span without re-matching the patterns.
     """
 
     text: str
     start: int
     end: int
     is_atomic: bool
+    name: str | None = None
 
 
 @cache
 def _combined_pattern(patterns: tuple[AtomicPattern, ...]) -> re.Pattern[str]:
     return re.compile("|".join(p.pattern for p in patterns), re.DOTALL)
+
+
+@cache
+def _named_patterns(
+    patterns: tuple[AtomicPattern, ...],
+) -> tuple[tuple[str, re.Pattern[str]], ...]:
+    # Individual compiled patterns, in priority order, used to label which construct a
+    # combined-regex match came from. We can't use named groups in the combined regex
+    # because several patterns rely on numbered backreferences (e.g. code spans).
+    return tuple((p.name, re.compile(p.pattern, re.DOTALL)) for p in patterns)
+
+
+def _match_name(patterns: tuple[AtomicPattern, ...], text: str, start: int) -> str | None:
+    # The combined alternation is ordered, so the matched construct is the first pattern
+    # that matches anchored at `start`.
+    for name, rx in _named_patterns(patterns):
+        if rx.match(text, start):
+            return name
+    return None
 
 
 def iter_atomic_spans(
@@ -251,7 +275,8 @@ def iter_atomic_spans(
 
     Atomic spans match one of `patterns` — a Markdown/templating construct that must not
     be broken mid-construct (code span, link, autolink, URL, tag); non-atomic spans are
-    the plain-text gaps between them. Round-trips: `"".join(s.text ...) == text` and
+    the plain-text gaps between them. Each atomic span's `name` is the matched
+    `AtomicPattern.name`. Round-trips: `"".join(s.text ...) == text` and
     `text[s.start:s.end] == s.text` for every span. An empty `patterns` yields the whole
     input as a single non-atomic span.
     """
@@ -264,7 +289,9 @@ def iter_atomic_spans(
     for m in regex.finditer(text):
         if m.start() > pos:
             yield AtomicSpan(text[pos : m.start()], pos, m.start(), False)
-        yield AtomicSpan(m.group(0), m.start(), m.end(), True)
+        yield AtomicSpan(
+            m.group(0), m.start(), m.end(), True, _match_name(patterns, text, m.start())
+        )
         pos = m.end()
     if pos < len(text):
         yield AtomicSpan(text[pos:], pos, len(text), False)
