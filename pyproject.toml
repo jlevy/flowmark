@@ -55,6 +55,7 @@ dev = [
     "rich>=14.0.0",
     "basedpyright==1.29.5",  # TODO: Upgrade when Cursor supports it.
     "funlog>=0.2.1",
+    "pip-audit>=2.10.0",  # Supply-chain audit gate; see SUPPLY-CHAIN-SECURITY.md.
 ]
 
 

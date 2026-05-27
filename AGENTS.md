@@ -4,6 +4,10 @@ For development setup, see [docs/development.md](docs/development.md).
 
 For documentation overview, see [docs/docs-overview.md](docs/docs-overview.md).
 
+Before adding or upgrading any dependency, read
+[SUPPLY-CHAIN-SECURITY.md](SUPPLY-CHAIN-SECURITY.md) (14-day cool-off, frozen lockfile,
+pinned runners).
+
 
 <!-- BEGIN TBD INTEGRATION -->
 ---

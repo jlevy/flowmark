@@ -21,7 +21,7 @@ test:
 	$(MAKE) test-golden
 
 test-golden:
-	npx tryscript@latest run tests/tryscript/*.tryscript.md
+	npx tryscript@0.1.7 run tests/tryscript/*.tryscript.md
 
 test-golden-coverage:
 	bash scripts/check-golden-coverage.sh

@@ -55,7 +55,9 @@ jobs:
       #     python-version: ${{ matrix.python-version }}
 
       - name: Install all dependencies
-        run: uv sync --all-extras
+        # --frozen: install exactly from uv.lock, never re-resolving in CI.
+        # See SUPPLY-CHAIN-SECURITY.md.
+        run: uv sync --all-extras --frozen
 
       - name: Run linting
         run: uv run python devtools/lint.py
@@ -63,8 +65,14 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
+      - name: Audit dependencies (pip-audit)
+        # Non-blocking for now; flip continue-on-error to false once the
+        # advisory backlog (if any) is cleared. See SUPPLY-CHAIN-SECURITY.md.
+        continue-on-error: true
+        run: uv run pip-audit
+
       - name: Check golden coverage
         run: bash scripts/check-golden-coverage.sh
 
       - name: Run golden tests
-        run: npx tryscript@latest run tests/tryscript/*.tryscript.md
+        run: npx tryscript@0.1.7 run tests/tryscript/*.tryscript.md
