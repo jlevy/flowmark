@@ -276,20 +276,22 @@ appropriate), reading `dest`/`title` and rendering child `RawText` for `text`.
 
 ### Phase B — offset-preserving span splitter + sentence spans
 
-- [ ] `iter_atomic_spans` with round-trip + atomic-boundary tests; selectable `patterns`.
-- [ ] Reimplement `_extract_atomic_constructs` on `iter_atomic_spans`; confirm wrapping
-      golden corpus is byte-identical.
-- [ ] `split_sentences_with_spans` with verbatim-span + never-bisect-atomic tests.
+- [x] `iter_atomic_spans` with round-trip + atomic-boundary tests; selectable `patterns`.
+- [x] Reimplement the word splitter on `iter_atomic_words`; wrapping golden corpus
+      byte-identical (324 pytest + 127 golden tryscript).
+- [x] `split_sentences_with_spans` with verbatim-span + never-bisect-atomic tests.
 
 ### Phase C — (gated) default atomic-aware splitting
 
-- [ ] Spike: route `line_wrap_by_sentence` through the atomic-aware splitter; diff golden
-      corpus. Adopt as default only if equal-or-better; otherwise keep opt-in.
+- [x] Spike: routed `line_wrap_by_sentence` through the atomic-aware splitter; diffed the
+      corpus (1 doc changed, 0 regressions — fixed a link bisected at `St.`). Adopted as
+      default with sign-off; regenerated semantic/cleaned/auto goldens. `split_sentences_atomic`
+      also exposed as an opt-in `SentenceSplitter`.
 
 ### Status
 
-**Phase A: complete** (`flowmark.atomic`, `flowmark.ast`, patterns, tests). Phase B and
-Phase C in progress.
+**Complete.** Phases A, B, and C all implemented and tested. `flowmark.atomic` and
+`flowmark.ast` are the public surface; semantic wrapping is atomic-aware by default.
 
 ### Open Questions (resolved)
 
