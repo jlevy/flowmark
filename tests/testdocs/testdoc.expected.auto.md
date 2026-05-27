@@ -197,9 +197,9 @@ first grade. By age seven, he received his first formal training in English at a
 school in London; his first and second languages were Spanish and French.
 As a boy, Buckley developed a love for music, sailing, horses, hunting, and skiing.
 All of these interests would be reflected in his later writings.
-Just before World War II, at age 12–13, he attended the Catholic preparatory school [St.
-John’s Beaumont School](https://en.wikipedia.org/wiki/St_John%27s_Beaumont_School) in
-England.
+Just before World War II, at age 12–13, he attended the Catholic preparatory school
+[St. John’s Beaumont School](https://en.wikipedia.org/wiki/St_John%27s_Beaumont_School)
+in England.
 
 The U.S. holds 50% of the global startup investment pool, down from 95% in the 1990s.
 (This data is
