@@ -14,13 +14,12 @@ __all__ = (
     "wrap_paragraph",
     "wrap_paragraph_lines",
     "Wrap",
-    # Most-used names from the inline API; the canonical surface is the `flowmark.atomic`
-    # and `flowmark.ast` submodules.
+    # Most-used names from the inline API; the canonical surface is the
+    # `flowmark.atomic_spans` and `flowmark.markdown_ast` submodules.
     "Link",
     "extract_links",
 )
 
-from flowmark.ast import Link, extract_links
 from flowmark.formats.flowmark_markdown import flowmark_markdown
 from flowmark.linewrapping.line_wrappers import line_wrap_by_sentence, line_wrap_to_width
 from flowmark.linewrapping.markdown_filling import fill_markdown
@@ -36,4 +35,5 @@ from flowmark.linewrapping.text_wrapping import (
     wrap_paragraph,
     wrap_paragraph_lines,
 )
+from flowmark.markdown_ast import Link, extract_links
 from flowmark.reformat_api import reformat_file, reformat_text

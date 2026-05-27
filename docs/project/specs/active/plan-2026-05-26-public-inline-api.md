@@ -87,16 +87,16 @@ time. But a consumer that wants sentence *spans* (chopdiff) is exposed to it dir
 
 Add two public submodules, strictly additively:
 
-- **`flowmark.atomic`** — publish the atomic-construct patterns and a new
+- **`flowmark.atomic_spans`** — publish the atomic-construct patterns and a new
   offset-preserving span splitter `iter_atomic_spans(text, patterns=...)` that yields
   `(text, start, end, is_atomic)`. Make this the single atomic-span primitive and
   reimplement the wrapping word splitter on top of it. Add an offset-preserving,
   atomic-aware `split_sentences_with_spans(text)` built on the same primitive.
-- **`flowmark.ast`** — publish a read-only `walk_elements(element)` and a convenience
+- **`flowmark.markdown_ast`** — publish a read-only `walk_elements(element)` and a convenience
   `extract_links(doc) -> list[Link]` where `Link(text, url, title)` carries **no span**
   (per the identity-vs-spans principle), built on a small generic AST walk.
 
-Keep marko an implementation detail everywhere except `flowmark.ast`, where the AST is
+Keep marko an implementation detail everywhere except `flowmark.markdown_ast`, where the AST is
 unavoidably part of the contract.
 
 ### Explicitly not in scope
@@ -113,9 +113,9 @@ unavoidably part of the contract.
 
 ### Acceptance criteria
 
-- `from flowmark.atomic import ATOMIC_PATTERNS, ATOMIC_CONSTRUCT_PATTERN, iter_atomic_spans, split_sentences_with_spans`
+- `from flowmark.atomic_spans import ATOMIC_PATTERNS, ATOMIC_CONSTRUCT_PATTERN, iter_atomic_spans, split_sentences_with_spans`
   works and is covered by `__all__`.
-- `from flowmark.ast import walk_elements, extract_links, Link` works and is in `__all__`.
+- `from flowmark.markdown_ast import walk_elements, extract_links, Link` works and is in `__all__`.
 - `iter_atomic_spans` round-trips: `"".join(sp.text for sp in iter_atomic_spans(s)) == s`
   and every span's `s[start:end] == text`.
 - `split_sentences_with_spans(s)` never returns a span that bisects an atomic span; for
@@ -134,7 +134,7 @@ unavoidably part of the contract.
   enforced by golden tests). Any default-splitter change is deferred to Phase C and
   re-validated.
 - **Internal moves:** `atomic_patterns.py` constants may be re-exported from
-  `flowmark.atomic` without moving the source module, to avoid breaking internal imports
+  `flowmark.atomic_spans` without moving the source module, to avoid breaking internal imports
   (`text_wrapping.py`, `tag_handling.py`). The public submodule is the supported surface;
   internal module paths remain unsupported.
 - **Versioning:** The new submodules follow semver. They are an intentional API, not
@@ -170,7 +170,7 @@ convenient defaults, not as the only options:
 
 ## Stage 2: Architecture Stage
 
-### `flowmark.atomic`
+### `flowmark.atomic_spans`
 
 Re-export from `atomic_patterns.py`: `AtomicPattern`, `INLINE_CODE_SPAN`,
 `MARKDOWN_LINK`, the tag/comment patterns, `ATOMIC_PATTERNS`, `ATOMIC_CONSTRUCT_PATTERN`.
@@ -202,9 +202,9 @@ non-atomic spans. This is the single source of truth; `_extract_atomic_construct
 "join non-atomic spans, keep atomic spans whole").
 
 Warning to document on `MARKDOWN_LINK` / the module: these patterns identify *unbreakable
-spans for wrapping*, not links. To enumerate links, use `flowmark.ast.extract_links`.
+spans for wrapping*, not links. To enumerate links, use `flowmark.markdown_ast.extract_links`.
 
-### `flowmark.atomic` sentence spans
+### `flowmark.atomic_spans` sentence spans
 
 ```python
 class SentenceSpan(NamedTuple):
@@ -226,7 +226,7 @@ def split_sentences_with_spans(
 This reuses `heuristic_end_of_sentence` from `sentence_split_regex.py` so flowmark keeps
 one sentence heuristic. The lossy `split_sentences_regex` is unchanged.
 
-### `flowmark.ast`
+### `flowmark.markdown_ast`
 
 ```python
 class Link(NamedTuple):
@@ -267,12 +267,12 @@ appropriate), reading `dest`/`title` and rendering child `RawText` for `text`.
 
 ### Phase A — publish patterns + AST helpers
 
-- [x] Create `src/flowmark/atomic.py` re-exporting the patterns + `AtomicPattern`; add
+- [x] Create `src/flowmark/atomic_spans.py` re-exporting the patterns + `AtomicPattern`; add
       `MARKDOWN_INLINE_PATTERNS`; add the heuristic-vs-parser warning in the docstring.
 - [x] Make `AtomicPattern`'s delimiter fields default to `""` so it is a usable public
       type (`AtomicPattern(name=..., pattern=...)`).
 - [x] Add `AUTOLINK` + `BARE_URL` patterns; include them in `MARKDOWN_INLINE_PATTERNS`.
-- [x] Create `src/flowmark/ast.py` with `Link`, `walk_elements` (standalone generic AST
+- [x] Create `src/flowmark/markdown_ast.py` with `Link`, `walk_elements` (standalone generic AST
       walk), `extract_links`.
 - [x] Tests: `extract_links` identity cases (inline, reference, collapsed, autolink,
       image-excluded); nested/escaped/reference/duplicate cases; code-block exclusion.
@@ -295,8 +295,8 @@ appropriate), reading `dest`/`title` and rendering child `RawText` for `text`.
 
 ### Status
 
-**Complete.** Phases A, B, and C all implemented and tested. `flowmark.atomic` and
-`flowmark.ast` are the public surface; semantic wrapping is atomic-aware by default.
+**Complete.** Phases A, B, and C all implemented and tested. `flowmark.atomic_spans` and
+`flowmark.markdown_ast` are the public surface; semantic wrapping is atomic-aware by default.
 
 ### Open Questions (resolved)
 

@@ -24,7 +24,7 @@ flowmark internals.
 tokenization. They are deliberately simpler than a real Markdown parser: ``MARKDOWN_LINK``
 does not resolve reference links, handle nested brackets, distinguish images, or honor
 escapes. Do **not** use them to enumerate links — for that, parse with
-:func:`flowmark.flowmark_markdown` and use :func:`flowmark.ast.extract_links`, which
+:func:`flowmark.flowmark_markdown` and use :func:`flowmark.markdown_ast.extract_links`, which
 reflects what Markdown actually treats as a link.
 
 This module also exposes the offset-preserving tokenizers built on these patterns

@@ -1,10 +1,9 @@
-"""Tests for the public Markdown-inline API: flowmark.atomic and flowmark.ast."""
+"""Tests for the public Markdown-inline API: flowmark.atomic_spans and flowmark.markdown_ast."""
 
 from __future__ import annotations
 
 from flowmark import Link, extract_links, flowmark_markdown
-from flowmark.ast import walk_elements
-from flowmark.atomic import (
+from flowmark.atomic_spans import (
     ATOMIC_PATTERNS,
     AUTOLINK,
     BARE_URL,
@@ -17,6 +16,7 @@ from flowmark.atomic import (
     split_sentences_atomic,
     split_sentences_with_spans,
 )
+from flowmark.markdown_ast import walk_elements
 
 
 def _parse(text: str):
@@ -151,7 +151,7 @@ def test_atomic_span_name_distinguishes_link_from_code():
 
 
 def test_iter_atomic_spans_empty_patterns_yields_single_nonatomic_span():
-    from flowmark.atomic import AtomicSpan
+    from flowmark.atomic_spans import AtomicSpan
 
     assert list(iter_atomic_spans("abc", patterns=())) == [AtomicSpan("abc", 0, 3, False)]
     assert list(iter_atomic_spans("", patterns=())) == []

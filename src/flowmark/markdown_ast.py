@@ -75,7 +75,7 @@ def extract_links(
     Extract all links from a parsed Markdown document, in document order.
 
     Reflects what Markdown actually treats as a link (reference links resolved, escapes
-    honored), unlike the regex patterns in :mod:`flowmark.atomic`.
+    honored), unlike the regex patterns in :mod:`flowmark.atomic_spans`.
 
     :param include_autolinks: include ``<url>`` autolinks and GFM bare-URL autolinks
         (their `text` equals the URL). GFM bare URLs (`gfm_elements.Url`) subclass
