@@ -357,6 +357,48 @@ are always read from config regardless of `--auto`.
 When not using `--auto`, all formatting settings can be configured via the config file
 and overridden by explicit CLI flags.
 
+## Library Usage
+
+Flowmark is a flexible Python library, not just a CLI. Add it with `uv add flowmark` (or
+`pip install flowmark`) and use the high-level helpers or the lower-level building
+blocks.
+
+**Format Markdown text or files** with the same engine as the CLI:
+
+```python
+from flowmark import reformat_text, reformat_file
+
+# Normalize a Markdown string (semantic line breaks on by default; opt into typography)
+clean = reformat_text(messy_markdown, smartquotes=True, ellipses=True)
+
+# Reformat a file in place, atomically (pass output=None with inplace=True)
+reformat_file("README.md", None, inplace=True, semantic=True)
+```
+
+**Use it as a smarter `textwrap`.** `wrap_paragraph` / `wrap_paragraph_lines` (with the
+`Wrap` enum) generalize the stdlib `textwrap` with control over initial vs.
+subsequent indentation and pluggable word splitters that never break inside Markdown
+links, code spans, HTML/template tags, or URLs.
+
+**Inspect Markdown inline structure** with the public inline API (new in v0.7.0),
+exposed so downstream tools can reuse Flowmark’s own primitives instead of
+re-implementing them:
+
+```python
+from flowmark import flowmark_markdown, extract_links
+
+doc = flowmark_markdown().parse(markdown_text)
+for link in extract_links(doc):   # -> list[Link(text, url, title)], reference links resolved
+    print(link.text, link.url)
+```
+
+- `flowmark.markdown_ast` — `walk_elements`, `extract_links`, and the `Link` type for
+  AST-aware inspection of a parsed document.
+- `flowmark.atomic_spans` — the atomic-construct patterns Flowmark uses internally (code
+  spans, links, autolinks, bare URLs, HTML/Jinja tags), the offset-preserving tokenizers
+  `iter_atomic_spans` / `iter_atomic_words`, and the atomic-aware sentence splitter
+  `split_sentences_with_spans` / `split_sentences_atomic`.
+
 ## Use in VSCode/Cursor
 
 You can use Flowmark to auto-format Markdown on save in VSCode or Cursor.
@@ -381,10 +423,18 @@ For batch formatting an entire project, use `flowmark --auto .` from the termina
 
 ## Agent Use (Claude Code and Other AI Coding Agents)
 
-Flowmark can be installed as a skill for Claude Code and other AI coding agents,
-enabling automatic Markdown formatting in agent workflows.
+Flowmark is built to be the **default Markdown auto-formatter for agent workflows**. Its
+deterministic, diff-friendly output and semantic line breaks keep LLM-generated and
+LLM-edited Markdown clean in git, and the Rust port makes it fast enough to run on every
+save or every agent turn.
+It works with any agent that can run a shell command, and ships a
+[SKILL.md](https://agentskills.io) so capable agents discover when to use it on their
+own.
 
 ### Install the Skill
+
+`flowmark --install-skill` installs the skill for Claude Code (to `~/.claude` by
+default, or a project’s `./.claude`):
 
 ```bash
 # Install globally (available to all projects)
@@ -408,7 +458,7 @@ Markdown formatting tasks.
 
 ### Manual Usage in Agents
 
-If you prefer to use Flowmark manually within agent sessions:
+Any agent with a shell can call Flowmark directly — no skill required:
 
 ```bash
 # Format with all auto-formatting options
@@ -419,6 +469,15 @@ flowmark README.md
 
 # Format LLM output (use '-' for stdin)
 echo "$llm_output" | flowmark --semantic -
+```
+
+In ephemeral or cloud agent environments where nothing is installed, run it via a
+**version-pinned** zero-install runner (pin the version so the agent can’t silently pull
+a newer release):
+
+```bash
+uvx --from flowmark==<version> flowmark --auto README.md   # Python
+# or use the Rust binary (flowmark-rs) for maximum speed
 ```
 
 ## Why Another Markdown Formatter?
@@ -452,6 +511,15 @@ There are several other Markdown auto-formatters:
 All of these are worth looking at, but none offer the more advanced line breaking
 features of Flowmark or seemed to have the “just works” CLI defaults and library usage I
 found most useful.
+
+On speed, Flowmark’s auto-synced
+[Rust port (flowmark-rs)](https://github.com/jlevy/flowmark-rs) compiles to a single
+native binary and is among the fastest Markdown formatters available — in the same
+performance class as Rust-based tools like dprint — while keeping the same formatting
+behavior as the Python reference implementation.
+So you get Flowmark’s formatting either way: the Python library/CLI for flexibility and
+embedding, or the Rust binary when you want maximum CLI speed (large repos, hot paths,
+latency-sensitive agent loops).
 
 ## Project Docs
 
