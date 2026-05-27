@@ -96,7 +96,11 @@ def first_sentence(
 
 
 class SentenceSpan(NamedTuple):
-    """A sentence with its exact `[start, end)` offsets into the source text."""
+    """
+    A sentence and its exact `[start, end)` character offsets into the original Markdown
+    source, such that `text == source[start:end]` (verbatim, including any Markdown markup
+    the sentence contains).
+    """
 
     text: str
     start: int
@@ -110,14 +114,17 @@ def split_sentences_with_spans(
     patterns: tuple[AtomicPattern, ...] = MARKDOWN_INLINE_PATTERNS,
 ) -> list[SentenceSpan]:
     """
-    Offset-preserving, atomic-aware variant of `split_sentences_regex`.
+    Split Markdown `text` into sentences, each returned as a `SentenceSpan`: the sentence
+    text plus its exact `[start, end)` offsets into the original Markdown source (so
+    `span.text == text[start:end]`, verbatim).
 
-    Unlike `split_sentences_regex` (which normalizes whitespace via `split()`/`join()`
-    and can bisect a link whose text contains spaces), this keeps each atomic construct
-    (link, code span, autolink, URL) whole, applies the end-of-sentence heuristic only at
-    word boundaries between constructs, and returns verbatim spans: each
-    `SentenceSpan.text == text[start:end]`. A sentence boundary therefore never falls
-    inside a link or code span.
+    This is the offset-preserving, Markdown-aware counterpart to `split_sentences_regex`
+    (which normalizes whitespace via `split()`/`join()` and so loses offsets). It is
+    "atomic-aware" with respect to Markdown inline constructs in `patterns` — links, code
+    spans, autolinks, and bare URLs — keeping each one whole so a sentence boundary is
+    never placed inside it (e.g. a link whose text contains spaces or a `.` is not
+    bisected). The end-of-sentence heuristic is applied only at word boundaries between
+    these constructs.
     """
     sentences: list[SentenceSpan] = []
     s_start = -1
