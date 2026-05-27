@@ -57,6 +57,12 @@ class Options:
     install_skill: bool
     agent_base: str | None
     docs: bool
+    # Cross-agent install targeting (used with --install-skill)
+    skill_all: bool
+    skill_claude: bool
+    skill_codex: bool
+    skill_skip_claude: bool
+    skill_skip_codex: bool
 
 
 def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]:
@@ -219,14 +225,44 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
         "--install-skill",
         action="store_true",
         dest="install_skill",
-        help="Install Claude Code skill for flowmark",
+        help="Install the flowmark agent skill (project-local .agents/skills + .claude/skills by default)",
     )
     parser.add_argument(
         "--agent-base",
         type=str,
         dest="agent_base",
         metavar="DIR",
-        help="Agent config directory for skill installation (default: ~/.claude)",
+        help="Install the skill to a single explicit base dir (e.g. ~/.claude); for global/custom installs",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        dest="skill_all",
+        help="With --install-skill: install all project-local skill surfaces",
+    )
+    parser.add_argument(
+        "--claude",
+        action="store_true",
+        dest="skill_claude",
+        help="With --install-skill: install the Claude Code surface (.claude/skills)",
+    )
+    parser.add_argument(
+        "--codex",
+        action="store_true",
+        dest="skill_codex",
+        help="With --install-skill: install the portable surface (.agents/skills; Codex, Gemini, pi)",
+    )
+    parser.add_argument(
+        "--skip-claude",
+        action="store_true",
+        dest="skill_skip_claude",
+        help="With --install-skill: skip the Claude Code surface",
+    )
+    parser.add_argument(
+        "--skip-codex",
+        action="store_true",
+        dest="skill_skip_codex",
+        help="With --install-skill: skip the portable surface",
     )
     parser.add_argument(
         "--docs",
@@ -325,6 +361,11 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
             install_skill=opts.install_skill,
             agent_base=opts.agent_base,
             docs=opts.docs,
+            skill_all=opts.skill_all,
+            skill_claude=opts.skill_claude,
+            skill_codex=opts.skill_codex,
+            skill_skip_claude=opts.skill_skip_claude,
+            skill_skip_codex=opts.skill_skip_codex,
         ),
         explicit_flags,
         is_auto,
@@ -398,8 +439,23 @@ def main(args: list[str] | None = None) -> int:
     if options.install_skill:
         from flowmark.skill import install_skill
 
-        install_skill(agent_base=options.agent_base)
-        return 0
+        if options.agent_base is not None:
+            results = install_skill(agent_base=options.agent_base)
+        else:
+            # Tri-state targeting: a positive flag forces that surface on (and suppresses
+            # untargeted ones); with no positive flag both are on; --skip-* forces off.
+            if options.skill_all or options.skill_claude or options.skill_codex:
+                claude = options.skill_all or options.skill_claude
+                codex = options.skill_all or options.skill_codex
+            else:
+                claude = codex = True
+            if options.skill_skip_claude:
+                claude = False
+            if options.skill_skip_codex:
+                codex = False
+            results = install_skill(claude=claude, codex=codex)
+        # Forward-compat guard: fail if any surface was newer than this build understands.
+        return 1 if any(r.action == "blocked-newer" for r in results) else 0
 
     if options.skill_instructions:
         from flowmark.skill import compose_skill

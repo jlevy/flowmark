@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from flowmark.skill import (
     DOC_VERSION_PIN,
     compose_skill,
@@ -95,18 +93,46 @@ class TestGetDocsContent:
 class TestInstallSkill:
     """Tests for install_skill function."""
 
-    def test_install_skill_default(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Skill installs to ~/.claude by default."""
-        # Mock Path.home() to return tmp_path
-        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    def test_install_default_writes_both_project_local_surfaces(self, tmp_path: Path) -> None:
+        """Default project-local install writes both portable and Claude surfaces."""
+        install_skill(project_root=tmp_path)
 
-        install_skill()
+        portable = tmp_path / ".agents" / "skills" / "flowmark" / "SKILL.md"
+        claude = tmp_path / ".claude" / "skills" / "flowmark" / "SKILL.md"
+        assert portable.exists()
+        assert claude.exists()
+        assert "name: flowmark" in claude.read_text()
 
-        skill_file = tmp_path / ".claude" / "skills" / "flowmark" / "SKILL.md"
-        assert skill_file.exists()
+    def test_install_target_selection(self, tmp_path: Path) -> None:
+        """codex/claude flags select which surfaces are written."""
+        install_skill(project_root=tmp_path, claude=False, codex=True)
+        assert (tmp_path / ".agents" / "skills" / "flowmark" / "SKILL.md").exists()
+        assert not (tmp_path / ".claude").exists()
 
-        content = skill_file.read_text()
-        assert "name: flowmark" in content
+    def test_installed_file_has_do_not_edit_and_format_stamp(self, tmp_path: Path) -> None:
+        install_skill(project_root=tmp_path)
+        content = (tmp_path / ".claude" / "skills" / "flowmark" / "SKILL.md").read_text()
+        assert "DO NOT EDIT" in content
+        assert "skill-format=f01" in content
+        # Frontmatter must still come first for the skill to parse.
+        assert content.startswith("---\nname: flowmark\n")
+
+    def test_install_is_idempotent(self, tmp_path: Path) -> None:
+        first = install_skill(project_root=tmp_path)
+        assert {r.action for r in first} == {"installed"}
+        second = install_skill(project_root=tmp_path)
+        assert {r.action for r in second} == {"unchanged"}
+
+    def test_forward_compat_guard_blocks_newer_format(self, tmp_path: Path) -> None:
+        """A surface stamped with a newer format is not clobbered."""
+        target = tmp_path / ".claude" / "skills" / "flowmark" / "SKILL.md"
+        target.parent.mkdir(parents=True)
+        target.write_text("<!-- skill-format=f99 -->\nnewer", encoding="utf-8")
+
+        results = install_skill(project_root=tmp_path, codex=False, claude=True)
+
+        assert [r.action for r in results] == ["blocked-newer"]
+        assert target.read_text() == "<!-- skill-format=f99 -->\nnewer"
 
     def test_install_skill_custom_base(self, tmp_path: Path) -> None:
         """Skill installs to custom agent base directory."""

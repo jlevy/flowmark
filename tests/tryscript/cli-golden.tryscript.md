@@ -139,7 +139,7 @@ $ printf 'drafts/\n' > project/.flowmarkignore && flowmark --list-files project 
 $ flowmark --skill | head -3
 ---
 name: flowmark
-description: Auto-format Markdown with semantic line breaks, smart quotes, and diff-friendly output. Use for formatting Markdown files, normalizing LLM outputs, or when user mentions flowmark, markdown formatting, or semantic line breaks.
+description: Auto-format Markdown — semantic line breaks, smart quotes, diff-friendly output. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM Markdown output, or when the user mentions flowmark, markdown formatting, or semantic line breaks.
 ```
 
 ## Docs: print documentation
