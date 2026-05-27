@@ -3,9 +3,9 @@ type: is
 id: is-01kskcc95bk93gn9mz8x57c13z
 title: "Spec: public Markdown-inline API (atomic spans, sentence spans, AST)"
 kind: epic
-status: open
+status: closed
 priority: 2
-version: 13
+version: 14
 spec_path: docs/project/specs/active/plan-2026-05-26-public-inline-api.md
 labels: []
 dependencies: []
@@ -22,5 +22,7 @@ child_order_hints:
   - is-01kskcdj5jkydhmc0v9ye1pcvh
   - is-01kskcdjgxdyx2rwyw8nkabwh7
 created_at: 2026-05-27T00:12:02.090Z
-updated_at: 2026-05-27T00:42:34.948Z
+updated_at: 2026-05-27T03:56:44.160Z
+closed_at: 2026-05-27T03:56:44.159Z
+close_reason: All Phase A-C beads complete; public inline API shipped, spec marked complete
 ---
