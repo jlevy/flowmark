@@ -16,15 +16,16 @@ exception applies.
 Malicious releases are typically detected and yanked within minutes to
 days, so waiting costs only slightly staler dependencies.
 
-With `uv`, gate resolution by publish date.
-`uv`’s `--exclude-newer` takes an absolute date (`YYYY-MM-DD`), **not** a duration like
-`"14 days"` (that is rejected), so compute a rolling cutoff:
+With `uv`, gate resolution by publish date:
 
 ```bash
-export UV_EXCLUDE_NEWER="$(date -u -d '14 days ago' +%F)"   # GNU/Linux
-# macOS/BSD: export UV_EXCLUDE_NEWER="$(date -u -v-14d +%F)"
-uv lock --upgrade                                           # re-resolve under the cool-off
+export UV_EXCLUDE_NEWER="14 days"   # exclude anything published in the last 14 days
+uv lock --upgrade                   # re-resolve under the cool-off
 ```
+
+The friendly duration needs **uv ≥ 0.9** (0.8.x rejects it and wants an absolute
+`YYYY-MM-DD` date instead — one more reason to keep uv current).
+This repo pins uv in CI, and that pin should track a recent-but-cooled-off uv release.
 
 To check one version’s publish time before pinning it:
 

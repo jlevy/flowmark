@@ -27,6 +27,14 @@ jobs:
     # Linux only by default. Use ${{ matrix.os }} for other OSes.
     runs-on: ${{ matrix.os }}
 
+    env:
+      # 14-day install cool-off for any resolution in CI (e.g. the pinned pip-audit
+      # tool below). The friendly duration needs uv >= 0.9 (we pin a newer uv).
+      # `uv sync --frozen` does not re-resolve, so this is belt-and-suspenders for it.
+      # NOTE: deliberately NOT setting UV_NO_BUILD — it blocks building the editable
+      # local package and breaks `uv sync`. See SUPPLY-CHAIN-SECURITY.md.
+      UV_EXCLUDE_NEWER: "14 days"
+
     steps:
       # Generally following uv docs:
       # https://docs.astral.sh/uv/guides/integration/github/
@@ -41,7 +49,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           # Update this as needed:
-          version: "0.9.25"
+          version: "0.11.13"
           enable-cache: true
           python-version: ${{ matrix.python-version }}
 
