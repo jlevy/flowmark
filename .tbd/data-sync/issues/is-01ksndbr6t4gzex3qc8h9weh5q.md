@@ -3,9 +3,9 @@ type: is
 id: is-01ksndbr6t4gzex3qc8h9weh5q
 title: "install_skill: write portable .agents/skills/flowmark/ + .claude/skills/flowmark/ mirror; copy payload (no symlinks); DO NOT EDIT + format=f01 stamp (Phase 1)"
 kind: task
-status: open
+status: closed
 priority: 2
-version: 5
+version: 7
 spec_path: docs/project/specs/active/plan-2026-05-27-cross-agent-skill-support.md
 labels: []
 dependencies:
@@ -19,5 +19,7 @@ dependencies:
     target: is-01ksndbtrbsg7z2bj1mytpen7r
 parent_id: is-01ksndb3np52knrvzb8stf07pk
 created_at: 2026-05-27T19:07:42.170Z
-updated_at: 2026-05-27T19:08:04.786Z
+updated_at: 2026-05-27T19:46:55.108Z
+closed_at: 2026-05-27T19:46:55.107Z
+close_reason: cross-agent install_skill (portable + claude mirror, stamp)
 ---

@@ -3,9 +3,9 @@ type: is
 id: is-01ksndb3np52knrvzb8stf07pk
 title: "Spec: comprehensive cross-agent skill support"
 kind: epic
-status: open
+status: closed
 priority: 2
-version: 12
+version: 13
 spec_path: docs/project/specs/active/plan-2026-05-27-cross-agent-skill-support.md
 labels: []
 dependencies: []
@@ -22,5 +22,7 @@ child_order_hints:
   - is-01ksndbtfcq2eqfgqdd6jnhsn2
   - is-01ksndbtrbsg7z2bj1mytpen7r
 created_at: 2026-05-27T19:07:21.141Z
-updated_at: 2026-05-27T19:07:44.779Z
+updated_at: 2026-05-27T19:53:21.646Z
+closed_at: 2026-05-27T19:53:21.646Z
+close_reason: all child beads implemented, tested, documented
 ---
