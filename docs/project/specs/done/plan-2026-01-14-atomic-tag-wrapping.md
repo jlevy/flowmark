@@ -2,22 +2,23 @@
 
 ## Purpose
 
-This is a technical design doc for making Flowmark treat template tags (Markdoc/Jinja/HTML
-comments) as atomic units during line wrapping, preventing any line breaks from occurring
-inside a tag.
+This is a technical design doc for making Flowmark treat template tags
+(Markdoc/Jinja/HTML comments) as atomic units during line wrapping, preventing any line
+breaks from occurring inside a tag.
 
 ## Background
 
 **Problem Context:**
 
 Flowmark currently attempts to keep tags together during line wrapping using word
-coalescing patterns. However, this approach has limitations:
+coalescing patterns.
+However, this approach has limitations:
 
-1. The coalescing has a `MAX_TAG_WORDS = 12` limit, so tags with many attributes can still
-   be broken
-2. Even when coalesced, the tag becomes one very long "word" that may then be placed on a
-   line where it gets truncated or causes issues
-3. Markdoc's parser has bugs when multi-line opening tags have closing tags on the same
+1. The coalescing has a `MAX_TAG_WORDS = 12` limit, so tags with many attributes can
+   still be broken
+2. Even when coalesced, the tag becomes one very long “word” that may then be placed on
+   a line where it gets truncated or causes issues
+3. Markdoc’s parser has bugs when multi-line opening tags have closing tags on the same
    continuation line (see GitHub Issue #17)
 
 **Current Behavior:**
@@ -33,8 +34,9 @@ Currently wraps to:
 maxLength=100 placeholder="Enter name" %}{% /field %}
 ```
 
-This triggers Markdoc parser bugs. Our current fix (PR #18) post-processes to move the
-closing tag to its own line, but this is a workaround, not a proper solution.
+This triggers Markdoc parser bugs.
+Our current fix (PR #18) post-processes to move the closing tag to its own line, but
+this is a workaround, not a proper solution.
 
 **Desired Behavior:**
 
@@ -58,7 +60,7 @@ More text after.
 Add a `--tags` CLI option to control how template tags are handled during line wrapping:
 
 | Mode | Behavior |
-|------|----------|
+| --- | --- |
 | `atomic` | Tags are never broken across lines (NEW DEFAULT) |
 | `wrap` | Tags can be wrapped like normal text (current behavior) |
 
@@ -99,13 +101,13 @@ Users who depend on current behavior can add `--tags=wrap` to their commands.
 ### Minimum Viable Feature
 
 1. Identify complete tags during word splitting
-2. Treat tags as indivisible tokens (single "words")
+2. Treat tags as indivisible tokens (single “words”)
 3. Handle nested/paired tags appropriately
-4. Respect Markdown code spans (don't treat tag-like content inside backticks as tags)
+4. Respect Markdown code spans (don’t treat tag-like content inside backticks as tags)
 
 ### Not In Scope
 
-- Breaking tags across lines in any "smart" way
+- Breaking tags across lines in any “smart” way
 - Formatting the interior of tags (e.g., multi-line attribute formatting)
 - Validation of tag syntax
 - Special handling for specific tag types (all tags treated uniformly)
@@ -125,13 +127,14 @@ Users who depend on current behavior can add `--tags=wrap` to their commands.
 ### Resolved Questions
 
 - [x] **Q1**: Should there be a maximum tag length beyond which we warn or error?
-  **Decision**: No limit. Allow any length tag. Very long lines are acceptable for
-  machine-parseable content.
+  **Decision**: No limit.
+  Allow any length tag.
+  Very long lines are acceptable for machine-parseable content.
 
 - [x] **Q2**: For paired tags like `{% field %}{% /field %}`, should they always stay
   together, or only if they fit on one line?
-  **Decision**: In `atomic` mode, paired tags stay together. In `wrap` mode, current
-  behavior (coalescing with limits) applies.
+  **Decision**: In `atomic` mode, paired tags stay together.
+  In `wrap` mode, current behavior (coalescing with limits) applies.
 
 - [x] **Q3**: Should this behavior be configurable?
   **Decision**: Yes, via `--tags={atomic|wrap}` with `atomic` as default.
@@ -191,8 +194,8 @@ Output: "Text\n{% field attr="val" %} more\ntext"
 **Problems discovered during implementation:**
 
 1. **Length distortion**: Placeholders are shorter than original tags (e.g., 7 chars vs
-   50 chars), causing incorrect wrapping decisions. Lines that should wrap don't wrap
-   because the placeholder makes them appear shorter.
+   50 chars), causing incorrect wrapping decisions.
+   Lines that should wrap don’t wrap because the placeholder makes them appear shorter.
 
 2. **Context blindness**: The extraction happens at raw text level without understanding
    Markdown structure. Content inside backticks like `` `<!--% ... -->` `` gets
@@ -236,13 +239,14 @@ Output: Correctly wrapped with accurate line lengths
 
 **Advantages:**
 
-1. **Accurate lengths**: Tags stay as-is, become single tokens. A 50-char tag is seen as
-   a 50-char word, so wrapping decisions are correct.
+1. **Accurate lengths**: Tags stay as-is, become single tokens.
+   A 50-char tag is seen as a 50-char word, so wrapping decisions are correct.
 
-2. **Context-aware**: Code spans are identified first, protecting content inside backticks
-   from being treated as tags.
+2. **Context-aware**: Code spans are identified first, protecting content inside
+   backticks from being treated as tags.
 
-3. **Single pass**: No extract/restore cycle. Just smarter tokenization.
+3. **Single pass**: No extract/restore cycle.
+   Just smarter tokenization.
 
 4. **Natural integration**: The word splitter is already the right abstraction layer.
    It already handles code spans and links as atomic units.

@@ -5,7 +5,8 @@
 This is a validation spec for the `--list-spacing` CLI option that controls how tight vs
 loose list formatting is handled during Markdown normalization.
 
-**Feature Plan:** [plan-2026-01-14-list-spacing-control.md](plan-2026-01-14-list-spacing-control.md)
+**Feature Plan:**
+[plan-2026-01-14-list-spacing-control.md](plan-2026-01-14-list-spacing-control.md)
 
 ## Stage 4: Validation Stage
 
@@ -29,8 +30,8 @@ The following unit tests have been added or updated in `tests/test_list_spacing.
 **Tight Mode Tests:**
 - `test_loose_list_to_tight` - Loose lists become tight
 - `test_tight_list_stays_tight` - Tight lists stay tight
-- `test_multi_para_stays_loose_in_tight_mode` - Multi-paragraph items force loose (CommonMark
-  requirement)
+- `test_multi_para_stays_loose_in_tight_mode` - Multi-paragraph items force loose
+  (CommonMark requirement)
 
 **Nested List Tests:**
 - `test_nested_lists_independent_preserve` - Each nested list independently preserves
@@ -57,20 +58,21 @@ The following unit tests have been added or updated in `tests/test_list_spacing.
 
 - All 172 tests pass (`make test`)
 - Linting passes (`make lint`)
-- Reference documents (`tests/testdocs/testdoc.expected.*.md`) regenerated for new default
-  behavior
+- Reference documents (`tests/testdocs/testdoc.expected.*.md`) regenerated for new
+  default behavior
 
 ## Manual Testing Needed
 
-All core functionality is covered by automated tests. Manual review is only needed for:
+All core functionality is covered by automated tests.
+Manual review is only needed for:
 
 ### Code Review Items
 
-1. **Help text clarity** - Review `flowmark --help` to confirm the `--list-spacing` option
-   description is clear and understandable
+1. **Help text clarity** - Review `flowmark --help` to confirm the `--list-spacing`
+   option description is clear and understandable
 
-2. **Breaking change communication** - Confirm the breaking change (default behavior changed
-   from `loose` to `preserve`) is adequately documented in:
+2. **Breaking change communication** - Confirm the breaking change (default behavior
+   changed from `loose` to `preserve`) is adequately documented in:
    - The commit message
    - The PR description
    - The plan spec

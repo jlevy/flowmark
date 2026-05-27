@@ -136,7 +136,8 @@ Use the flowmark-rs case-study structure and naming where possible:
 
 1. Import fixtures and scenario split from `../flowmark-rs/tests/tryscript`.
 2. Reuse existing Python fixture docs and content files where equivalent.
-3. Borrow quality-gate concepts from `attic/blobsy/packages/blobsy/scripts/check-golden-coverage.sh`.
+3. Borrow quality-gate concepts from
+   `attic/blobsy/packages/blobsy/scripts/check-golden-coverage.sh`.
 
 ### Key improvements over current Python setup
 

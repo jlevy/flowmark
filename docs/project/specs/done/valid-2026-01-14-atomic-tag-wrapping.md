@@ -5,7 +5,8 @@
 This is a validation spec for the `--tags` CLI option that controls how template tags
 (Markdoc/Jinja/HTML comments) are handled during line wrapping.
 
-**Feature Plan:** [plan-2026-01-14-atomic-tag-wrapping.md](plan-2026-01-14-atomic-tag-wrapping.md)
+**Feature Plan:**
+[plan-2026-01-14-atomic-tag-wrapping.md](plan-2026-01-14-atomic-tag-wrapping.md)
 
 ## Stage 4: Validation Stage
 
@@ -95,7 +96,8 @@ flowmark -s tests/testdocs/testdoc.orig.md > /tmp/output.md
 sed -n '1700,1720p' /tmp/output.md
 ```
 
-Expected with atomic mode (default): Long tags like `{% field ... %}{% /field %}` should:
+Expected with atomic mode (default): Long tags like `{% field ... %}{% /field %}`
+should:
 - Stay on a single line (may exceed target width)
 - Opening and closing tags remain together (not split)
 

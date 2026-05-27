@@ -2,10 +2,10 @@
 
 ## Purpose
 
-This is a technical design doc for converting Flowmark into a self-installable agent skill
-for Claude Code and other coding agents (Codex, Cursor), following the pattern established
-in repren v2.0.0. This will make Flowmark easily installable and self-documenting for
-agent environments.
+This is a technical design doc for converting Flowmark into a self-installable agent
+skill for Claude Code and other coding agents (Codex, Cursor), following the pattern
+established in repren v2.0.0. This will make Flowmark easily installable and
+self-documenting for agent environments.
 
 ## Background
 
@@ -47,7 +47,7 @@ Convert Flowmark into a self-installable agent skill following the repren patter
 2. Create `src/flowmark/skill.py` for skill installation and retrieval
 3. Add CLI flags: `--skill`, `--install-skill`, `--agent-base`
 4. Add `--docs` flag for full documentation output
-5. Update README with "Agent Use" section
+5. Update README with “Agent Use” section
 
 ### Phase 2: Agent Configuration Files
 
@@ -70,8 +70,8 @@ Convert Flowmark into a self-installable agent skill following the repren patter
 
 ## Backward Compatibility
 
-**Code types, methods, and function signatures**: NO BREAKING CHANGES - new functionality
-is purely additive
+**Code types, methods, and function signatures**: NO BREAKING CHANGES - new
+functionality is purely additive
 
 **CLI behavior**: NO BREAKING CHANGES - new flags are optional additions
 
@@ -122,7 +122,7 @@ Full parity with repren:
 **Key Files in repren:**
 
 | File | Purpose | Map to Flowmark |
-|------|---------|-----------------|
+| --- | --- | --- |
 | `repren/skills/SKILL.md` | Skill definition | `src/flowmark/skills/SKILL.md` |
 | `repren/claude_skill.py` | Install/retrieve skill | `src/flowmark/skill.py` |
 | `repren/markdown_renderer.py` | ANSI help rendering | `src/flowmark/markdown_renderer.py` |
@@ -268,7 +268,7 @@ if args.docs:
 
 **Existing infrastructure to leverage:**
 
-1. `cli.py` argument parsing structure - extend, don't replace
+1. `cli.py` argument parsing structure - extend, don’t replace
 2. `pyproject.toml` package data pattern - already supports hatch
 3. `docs/` directory structure - add flowmark-docs.md
 4. Test infrastructure in `tests/` - add skill tests
@@ -314,7 +314,7 @@ if args.docs:
 
 ### Phase 4: Documentation and Testing
 
-- [ ] Update README.md with "Agent Use" section
+- [ ] Update README.md with “Agent Use” section
 - [ ] Update Makefile with format target
 - [ ] Add golden tests for `--skill` and `--install-skill`
 - [ ] Ensure `make lint` and `make test` pass
@@ -366,7 +366,7 @@ def test_install_skill_custom_base(tmp_path):
 
 ## Appendix: SKILL.md Content Draft
 
-```markdown
+````markdown
 ---
 name: flowmark
 description: Auto-format Markdown with semantic line breaks, smart quotes, and diff-friendly output. Use for formatting Markdown files, normalizing LLM outputs, or when user mentions flowmark, markdown formatting, or semantic line breaks.
@@ -383,7 +383,7 @@ Auto-format Markdown with semantic line breaks for clean git diffs and consisten
 **Format a file in place with all auto-formatting:**
 ```bash
 uvx flowmark@latest --auto README.md
-```
+````
 
 **Preview formatted output to stdout:**
 ```bash
@@ -399,7 +399,7 @@ uvx flowmark@latest README.md
 - Converting straight quotes to typographic quotes
 - Consistent Markdown styling across a project
 
-**Don't use flowmark for:**
+**Don’t use flowmark for:**
 - Syntax highlighting or rendering (use a Markdown viewer)
 - Converting between formats (use pandoc)
 - Linting without auto-fix (use markdownlint)
@@ -407,7 +407,7 @@ uvx flowmark@latest README.md
 ## Key Options
 
 | Flag | Purpose |
-|------|---------|
+| --- | --- |
 | `--auto` | Format in-place with all improvements (semantic, smartquotes, ellipses) |
 | `--inplace`, `-i` | Edit file in place |
 | `--semantic`, `-s` | Use semantic (sentence-based) line breaks |
@@ -454,3 +454,4 @@ find . -name "*.md" -exec uvx flowmark@latest --auto {} \;
 - `pyproject.toml` - add package data
 - `Makefile` - add format target
 - `README.md` - add Agent Use section
+```

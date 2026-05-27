@@ -20,10 +20,9 @@
 
 This research examines how eight modern auto-formatters handle file discovery, globbing,
 and exclusion patterns: **Ruff**, **Prettier**, **Biome**, **dprint**, **Black**,
-**mdformat**, **markdownlint-cli2**, **taplo**, and **shfmt**.
-The goal is to identify best practices for building a file discovery system for
-Flowmark (a Markdown formatter) that is fast, safe by default, and flexible enough for
-any build system.
+**mdformat**, **markdownlint-cli2**, **taplo**, and **shfmt**. The goal is to identify
+best practices for building a file discovery system for Flowmark (a Markdown formatter)
+that is fast, safe by default, and flexible enough for any build system.
 
 Currently, Flowmark has **zero built-in file discovery** — it relies entirely on shell
 glob expansion, processing only explicitly named files.
@@ -88,36 +87,33 @@ ruff format foo.py bar.py        # Format specific files
 echo "x=1" | ruff format -      # Format stdin
 ```
 
-**Default exclusions** (the `exclude` setting):
-`.bzr`, `.direnv`, `.eggs`, `.git`, `.git-rewrite`, `.hg`, `.ipynb_checkpoints`,
-`.mypy_cache`, `.nox`, `.pants.d`, `.pyenv`, `.pytest_cache`, `.pytype`,
-`.ruff_cache`, `.svn`, `.tox`, `.venv`, `.vscode`, `__pypackages__`, `_build`,
-`buck-out`, `build`, `dist`, `node_modules`, `site-packages`, `venv`
+**Default exclusions** (the `exclude` setting): `.bzr`, `.direnv`, `.eggs`, `.git`,
+`.git-rewrite`, `.hg`, `.ipynb_checkpoints`, `.mypy_cache`, `.nox`, `.pants.d`,
+`.pyenv`, `.pytest_cache`, `.pytype`, `.ruff_cache`, `.svn`, `.tox`, `.venv`, `.vscode`,
+`__pypackages__`, `_build`, `buck-out`, `build`, `dist`, `node_modules`,
+`site-packages`, `venv`
 
 **Key design decisions**:
 
-- **`.gitignore` is respected by default** (`respect-gitignore = true`).
-  Also reads `.ignore`, `.git/info/exclude`, and global gitignore.
+- **`.gitignore` is respected by default** (`respect-gitignore = true`). Also reads
+  `.ignore`, `.git/info/exclude`, and global gitignore.
 
-- **`exclude` replaces defaults; `extend-exclude` adds to them.**
-  This is a critical UX pattern — users who want to add one exclusion don't lose the
-  26 default exclusions.
+- **`exclude` replaces defaults; `extend-exclude` adds to them.** This is a critical UX
+  pattern — users who want to add one exclusion don’t lose the 26 default exclusions.
 
-- **Explicitly-named files bypass exclusions** unless `force-exclude = true`.
-  This is important for pre-commit hooks and editor integrations that pass explicit
-  file paths.
+- **Explicitly-named files bypass exclusions** unless `force-exclude = true`. This is
+  important for pre-commit hooks and editor integrations that pass explicit file paths.
 
-- **Hierarchical configuration** — each file uses the closest config file
-  (`.ruff.toml` > `ruff.toml` > `pyproject.toml`).
-  Settings are NOT merged; closest wins.
+- **Hierarchical configuration** — each file uses the closest config file (`.ruff.toml`
+  \> `ruff.toml` > `pyproject.toml`). Settings are NOT merged; closest wins.
 
 - **Glob syntax**: Uses the Rust `globset` crate — `**` for recursive, `*` for
   single-level, `{a,b}` for alternation, `[!ab]` for negation.
 
-- **Linter vs formatter can have separate exclusions**:
-  `[tool.ruff.format].exclude` and `[tool.ruff.lint].exclude` are independent.
+- **Linter vs formatter can have separate exclusions**: `[tool.ruff.format].exclude` and
+  `[tool.ruff.lint].exclude` are independent.
 
-**Assessment**: Ruff's approach is the most comprehensive and well-designed.
+**Assessment**: Ruff’s approach is the most comprehensive and well-designed.
 The `exclude` / `extend-exclude` / `force-exclude` trio is elegant.
 Automatic `.gitignore` respect with override capability is the right default.
 
@@ -154,8 +150,8 @@ prettier --check src/            # Check without modifying
 
 - `.prettierignore` — uses gitignore syntax
 - `.gitignore` — read by default since v3.0
-- `--ignore-path` — customize which ignore files are read
-  (default: `./.gitignore` and `./.prettierignore`)
+- `--ignore-path` — customize which ignore files are read (default: `./.gitignore` and
+  `./.prettierignore`)
 - No `--no-ignore` flag exists; workaround: `--ignore-path ''`
 
 **Key design decisions**:
@@ -165,10 +161,10 @@ prettier --check src/            # Check without modifying
 
 - Inline negation patterns: `prettier . "!**/*.js" --write`
 
-- `overrides` array in config allows per-file-pattern options, but controls
-  **formatting options**, not whether files are included.
+- `overrides` array in config allows per-file-pattern options, but controls **formatting
+  options**, not whether files are included.
 
-**Assessment**: Prettier's approach is mature but shows some legacy complexity.
+**Assessment**: Prettier’s approach is mature but shows some legacy complexity.
 The v3.0 change to auto-read `.gitignore` was a major improvement.
 The lack of `--no-ignore` is a notable gap (workaround exists).
 
@@ -224,9 +220,9 @@ The team explicitly discourages CLI globs.
 
 **`.gitignore`**: **Opt-in** — requires `vcs.useIgnoreFile: true`
 
-**Assessment**: Biome's layered system is powerful but more complex than necessary for
-most use cases.
-The `!` vs `!!` distinction is unique and handles the import-graph-analysis use case.
+**Assessment**: Biome’s layered system is powerful but more complex than necessary for
+most use cases. The `!` vs `!!` distinction is unique and handles the
+import-graph-analysis use case.
 The `.gitignore` opt-in default is surprising — most other tools default to respecting
 it.
 
@@ -268,7 +264,7 @@ dprint fmt --staged              # Only git-staged files
 dprint output-file-paths         # Debug: show resolved files
 ```
 
-**Assessment**: dprint's approach is clean and config-driven.
+**Assessment**: dprint’s approach is clean and config-driven.
 The `output-file-paths` debug command is an excellent UX feature.
 Relying on `.gitignore` integration for defaults keeps the config minimal.
 
@@ -327,17 +323,16 @@ mdformat --exclude "node_modules/**" .  # Python 3.13+ only
 **Key findings**:
 
 - Directory recursion uses `pathlib.Path.glob("**/*.md")` — only `.md` files
-- `--exclude PATTERN` exists but **requires Python 3.13+**
-  (uses `Path.full_match()`)
+- `--exclude PATTERN` exists but **requires Python 3.13+** (uses `Path.full_match()`)
 - **No default exclusions** — `mdformat .` walks into `node_modules/`, `.git/`, etc.
 - **No `.gitignore` support**
-- Config via `.mdformat.toml` (hierarchical search), but `exclude` key also needs
-  Python 3.13+
+- Config via `.mdformat.toml` (hierarchical search), but `exclude` key also needs Python
+  3.13+
 - Pre-commit integration sidesteps the problem — pre-commit handles file discovery
 
-**Assessment**: mdformat's file discovery is minimal and has significant gaps.
+**Assessment**: mdformat’s file discovery is minimal and has significant gaps.
 No default exclusions is a real usability problem — running `mdformat .` in a project
-with `node_modules/` is painfully slow and formats files you don't want touched.
+with `node_modules/` is painfully slow and formats files you don’t want touched.
 This is a key area where Flowmark can differentiate.
 
 * * *
@@ -372,8 +367,8 @@ markdownlint-cli2 "**/*.md" "#node_modules"  # '#' negates
 - Settings cascade from parent to child directories
 - Uses `globby` library (Node.js) for glob expansion
 
-**Assessment**: Rich configuration with cascading config files, but no sensible
-defaults out of the box.
+**Assessment**: Rich configuration with cascading config files, but no sensible defaults
+out of the box.
 
 * * *
 
@@ -413,73 +408,66 @@ defaults out of the box.
 
 ### Key Takeaways from the Comparison
 
-1. **All mature formatters have substantial default exclusions.**
-   mdformat is the outlier with zero defaults, and this is widely seen as a usability
-   problem.
+1. **All mature formatters have substantial default exclusions.** mdformat is the
+   outlier with zero defaults, and this is widely seen as a usability problem.
 
-2. **`.gitignore` respect is the modern default.**
-   Ruff, Prettier (v3+), dprint, and Black all respect `.gitignore` by default.
-   Biome's opt-in approach is the exception and is less convenient.
+2. **`.gitignore` respect is the modern default.** Ruff, Prettier (v3+), dprint, and
+   Black all respect `.gitignore` by default.
+   Biome’s opt-in approach is the exception and is less convenient.
 
-3. **The `extend-exclude` pattern is essential.**
-   Without it, users must duplicate the entire default exclusion list to add one entry.
+3. **The `extend-exclude` pattern is essential.** Without it, users must duplicate the
+   entire default exclusion list to add one entry.
    Ruff and Black both offer this; Prettier works around it with `.prettierignore`.
 
-4. **`force-exclude` solves the pre-commit/editor problem.**
-   When tools pass explicit file paths, exclusion patterns are normally bypassed.
+4. **`force-exclude` solves the pre-commit/editor problem.** When tools pass explicit
+   file paths, exclusion patterns are normally bypassed.
    `force-exclude` provides a safety net.
 
-5. **Glob syntax is strongly preferred over regex.**
-   Only Black uses regex; all newer tools use glob patterns.
+5. **Glob syntax is strongly preferred over regex.** Only Black uses regex; all newer
+   tools use glob patterns.
    Globs are more intuitive for file matching and align with `.gitignore` syntax.
 
 * * *
 
 ## Best Practices
 
-Based on this research, these are the established best practices for auto-formatter
-file discovery:
+Based on this research, these are the established best practices for auto-formatter file
+discovery:
 
-1. **Respect `.gitignore` by default.**
-   This is the single most important default.
-   It automatically excludes `node_modules/`, `dist/`, `build/`, `.venv/`, and any
-   other project-specific generated/vendored content without configuration.
+1. **Respect `.gitignore` by default.** This is the single most important default.
+   It automatically excludes `node_modules/`, `dist/`, `build/`, `.venv/`, and any other
+   project-specific generated/vendored content without configuration.
    Provide a flag like `--no-respect-gitignore` to override.
 
-2. **Hardcode a sensible set of always-excluded directories.**
-   Even outside of git repos (or for files not in `.gitignore`), certain directories
-   should essentially never be auto-formatted: `.git`, `.hg`, `.svn`, `node_modules`,
-   `.venv`, `__pycache__`, etc.
+2. **Hardcode a sensible set of always-excluded directories.** Even outside of git repos
+   (or for files not in `.gitignore`), certain directories should essentially never be
+   auto-formatted: `.git`, `.hg`, `.svn`, `node_modules`, `.venv`, `__pycache__`, etc.
    These should be excluded by default regardless of `.gitignore` status.
 
-3. **Provide `exclude` AND `extend-exclude`.**
-   `exclude` replaces defaults (for full control); `extend-exclude` adds to defaults
-   (for the common case of adding one or two patterns).
-   This distinction prevents the most common footgun.
+3. **Provide `exclude` AND `extend-exclude`.** `exclude` replaces defaults (for full
+   control); `extend-exclude` adds to defaults (for the common case of adding one or two
+   patterns). This distinction prevents the most common footgun.
 
-4. **Provide `force-exclude` for tool integrations.**
-   Explicitly-named files should normally bypass exclusions (principle of least
-   surprise when a user names a specific file).
-   But integrations (pre-commit, editors, CI) need a way to enforce exclusions even
-   for explicit paths.
+4. **Provide `force-exclude` for tool integrations.** Explicitly-named files should
+   normally bypass exclusions (principle of least surprise when a user names a specific
+   file). But integrations (pre-commit, editors, CI) need a way to enforce exclusions
+   even for explicit paths.
 
-5. **Use glob syntax, not regex.**
-   Globs are more intuitive, align with `.gitignore` syntax, and are sufficient for
-   file matching. Use the `globset` crate (Rust) or `pathspec` library (Python).
+5. **Use glob syntax, not regex.** Globs are more intuitive, align with `.gitignore`
+   syntax, and are sufficient for file matching.
+   Use the `globset` crate (Rust) or `pathspec` library (Python).
 
-6. **Support a tool-specific ignore file.**
-   A `.flowmarkignore` file using gitignore syntax provides a familiar, composable
-   exclusion mechanism.
+6. **Support a tool-specific ignore file.** A `.flowmarkignore` file using gitignore
+   syntax provides a familiar, composable exclusion mechanism.
    It can be used alongside `.gitignore` for formatter-specific exclusions.
 
-7. **Provide a "dry run" or "list files" command.**
-   dprint's `output-file-paths` is excellent — it shows exactly which files would be
-   processed without formatting them.
+7. **Provide a “dry run” or “list files” command.** dprint’s `output-file-paths` is
+   excellent — it shows exactly which files would be processed without formatting them.
    This is invaluable for debugging unexpected behavior.
 
-8. **Support stdin with filename context.**
-   `--stdin-filename` enables editor integrations that pipe content via stdin while
-   still applying per-file configuration and exclusion rules.
+8. **Support stdin with filename context.** `--stdin-filename` enables editor
+   integrations that pipe content via stdin while still applying per-file configuration
+   and exclusion rules.
 
 * * *
 
@@ -487,7 +475,7 @@ file discovery:
 
 ### Summary
 
-Flowmark should adopt a file discovery system modeled primarily on **Ruff's approach**
+Flowmark should adopt a file discovery system modeled primarily on **Ruff’s approach**
 (the most complete and well-designed), adapted for Markdown files.
 The guiding principle: **defaults are clean and unsurprising; overrides are possible.**
 
@@ -623,13 +611,13 @@ force-exclude = true
 flowmark --force-exclude generated/api-docs.md
 ```
 
-When `force-exclude = true`, exclusion patterns apply even to files passed directly
-on the command line.
+When `force-exclude = true`, exclusion patterns apply even to files passed directly on
+the command line.
 
 #### 7. `.flowmarkignore` File
 
-A `.flowmarkignore` file using gitignore syntax, searched in the current directory
-and parent directories:
+A `.flowmarkignore` file using gitignore syntax, searched in the current directory and
+parent directories:
 
 ```gitignore
 # .flowmarkignore
@@ -674,19 +662,17 @@ From highest to lowest priority:
 For a Python implementation, the recommended libraries are:
 
 - **`pathspec`** — Python library for gitignore-style pattern matching
-  (`pip install pathspec`).
-  Reads `.gitignore` files and matches paths against them.
+  (`pip install pathspec`). Reads `.gitignore` files and matches paths against them.
 
 - **`pathlib`** — Standard library for path manipulation and `glob()`.
 
-- **`os.walk()`** or `pathlib.Path.rglob()`** — For directory traversal with
-  early pruning of excluded directories (important for performance).
+- **`os.walk()`** or `pathlib.Path.rglob()`** — For directory traversal with early
+  pruning of excluded directories (important for performance).
 
 The key performance optimization is **early directory pruning**: when walking a
 directory tree, skip excluded directories entirely rather than entering them and
-checking each file.
-This is what makes the difference between "instant" and "painfully slow" when
-`node_modules/` with thousands of files exists.
+checking each file. This is what makes the difference between “instant” and “painfully
+slow” when `node_modules/` with thousands of files exists.
 
 ### Alternative Approaches
 
@@ -695,30 +681,27 @@ This is what makes the difference between "instant" and "painfully slow" when
    Cons: no `.gitignore` respect, no default exclusions, poor UX for directory
    formatting.
 
-2. **Minimal approach**: Only add directory recursion with `.gitignore` respect
-   and hardcoded exclusions.
+2. **Minimal approach**: Only add directory recursion with `.gitignore` respect and
+   hardcoded exclusions.
    No config file support.
    Suitable as a first step.
 
 3. **Full approach** (recommended): Complete file discovery with all the features
-   described above.
-   Provides the best user experience and tool integration.
+   described above. Provides the best user experience and tool integration.
 
 * * *
 
 ## Open Research Questions
 
-1. **Should Flowmark support nested configuration files?**
-   Ruff supports hierarchical configs (closest-wins), which is useful for monorepos.
+1. **Should Flowmark support nested configuration files?** Ruff supports hierarchical
+   configs (closest-wins), which is useful for monorepos.
    This adds complexity and may not be needed for a Markdown formatter.
 
-2. **Should there be a maximum file size limit?**
-   Biome has `--files-max-size`.
-   Very large Markdown files (e.g., generated API docs) might cause performance issues.
+2. **Should there be a maximum file size limit?** Biome has `--files-max-size`. Very
+   large Markdown files (e.g., generated API docs) might cause performance issues.
 
-3. **Should Flowmark support `--staged` for git-staged files?**
-   dprint and Biome offer this.
-   It's valuable for pre-commit workflows but adds a git dependency.
+3. **Should Flowmark support `--staged` for git-staged files?** dprint and Biome offer
+   this. It’s valuable for pre-commit workflows but adds a git dependency.
 
 * * *
 
@@ -747,32 +730,28 @@ This is what makes the difference between "instant" and "painfully slow" when
 
 ### Appendix A: Default Exclusion Lists by Tool
 
-**Ruff** (26 patterns):
-`.bzr`, `.direnv`, `.eggs`, `.git`, `.git-rewrite`, `.hg`, `.ipynb_checkpoints`,
-`.mypy_cache`, `.nox`, `.pants.d`, `.pyenv`, `.pytest_cache`, `.pytype`,
-`.ruff_cache`, `.svn`, `.tox`, `.venv`, `.vscode`, `__pypackages__`, `_build`,
-`buck-out`, `build`, `dist`, `node_modules`, `site-packages`, `venv`
+**Ruff** (26 patterns): `.bzr`, `.direnv`, `.eggs`, `.git`, `.git-rewrite`, `.hg`,
+`.ipynb_checkpoints`, `.mypy_cache`, `.nox`, `.pants.d`, `.pyenv`, `.pytest_cache`,
+`.pytype`, `.ruff_cache`, `.svn`, `.tox`, `.venv`, `.vscode`, `__pypackages__`,
+`_build`, `buck-out`, `build`, `dist`, `node_modules`, `site-packages`, `venv`
 
-**Black** (20 patterns):
-`.direnv`, `.eggs`, `.git`, `.hg`, `.ipynb_checkpoints`, `.mypy_cache`, `.nox`,
-`.pytest_cache`, `.ruff_cache`, `.tox`, `.svn`, `.venv`, `.vscode`,
-`__pypackages__`, `_build`, `buck-out`, `build`, `dist`, `venv`
+**Black** (20 patterns): `.direnv`, `.eggs`, `.git`, `.hg`, `.ipynb_checkpoints`,
+`.mypy_cache`, `.nox`, `.pytest_cache`, `.ruff_cache`, `.tox`, `.svn`, `.venv`,
+`.vscode`, `__pypackages__`, `_build`, `buck-out`, `build`, `dist`, `venv`
 
-**Prettier** (hardcoded):
-`.git`, `.svn`, `.hg`, `.jj`, `.sl`, `node_modules`
+**Prettier** (hardcoded): `.git`, `.svn`, `.hg`, `.jj`, `.sl`, `node_modules`
 
-**Biome** (hardcoded):
-`node_modules`, `composer.lock`, `npm-shrinkwrap.json`, `package-lock.json`,
-`yarn.lock`
+**Biome** (hardcoded): `node_modules`, `composer.lock`, `npm-shrinkwrap.json`,
+`package-lock.json`, `yarn.lock`
 
 **shfmt** (hardcoded): `.git`, `.svn`, `.hg`, hidden files
 
-**mdformat, markdownlint-cli2, taplo, dprint**: No hardcoded defaults
-(dprint auto-excludes `node_modules` and gitignored files)
+**mdformat, markdownlint-cli2, taplo, dprint**: No hardcoded defaults (dprint
+auto-excludes `node_modules` and gitignored files)
 
 ### Appendix B: Recommended Flowmark Default Exclusion List
 
-These directories should be excluded by default during Flowmark's directory traversal.
+These directories should be excluded by default during Flowmark’s directory traversal.
 They are ordered by category.
 
 ```python
@@ -825,6 +804,6 @@ DEFAULT_EXCLUDES = [
 ]
 ```
 
-This list covers the union of Ruff's and Black's defaults plus common
-JavaScript/TypeScript build directories, ensuring Flowmark never accidentally
-formats content in dependency or build directories.
+This list covers the union of Ruff’s and Black’s defaults plus common
+JavaScript/TypeScript build directories, ensuring Flowmark never accidentally formats
+content in dependency or build directories.

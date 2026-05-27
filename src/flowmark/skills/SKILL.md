@@ -141,3 +141,6 @@ With `--smartquotes` and `--ellipses`:
 - Code blocks and inline code are never modified
 - Works with stdin/stdout for pipeline integration
 - Creates `.bak` backup files with `--inplace` (use `--nobackup` to disable)
+- `flowmark --auto .` respects `.gitignore` and a `.flowmarkignore` file.
+  Best practice: add generated, vendored, or test-fixture Markdown to `.flowmarkignore`
+  so batch formatting only touches files you own.

@@ -18,12 +18,13 @@ affected scenarios. All 202 project tests pass.
 **Table cell tests (Issue 1 \u2014 missing container types):**
 
 - `test_smart_quotes_in_table_cells` \u2014 Basic double quotes inside table cells
-- `test_smart_quotes_apostrophes_in_table_cells` \u2014 Apostrophes/contractions in cells
-- `test_smart_quotes_in_table_preserve_code_spans` \u2014 Code spans inside table cells are
-  NOT modified while prose quotes in the same row ARE converted
+- `test_smart_quotes_apostrophes_in_table_cells` \u2014 Apostrophes/contractions in
+  cells
+- `test_smart_quotes_in_table_preserve_code_spans` \u2014 Code spans inside table cells
+  are NOT modified while prose quotes in the same row ARE converted
 - `test_smart_quotes_in_table_with_bold` \u2014 Quotes in cells containing bold text
-- `test_smart_quotes_complex_table` \u2014 The exact table from the bug report (prose quotes
-  converted, code span quotes preserved)
+- `test_smart_quotes_complex_table` \u2014 The exact table from the bug report (prose
+  quotes converted, code span quotes preserved)
 
 **Strikethrough tests (Issue 1):**
 
@@ -39,13 +40,14 @@ affected scenarios. All 202 project tests pass.
 - `test_smart_quotes_not_modifying_code_content` \u2014 Code span containing quotes
   (`\`x="value"\``) is NEVER modified
 - `test_smart_quotes_apostrophe_spanning_code_span` \u2014 Apostrophes around code spans
-- `test_smart_quotes_blockquote_multiline_with_code_span` \u2014 The exact blockquote from
-  the bug report (multi-line, with bold, code span, and apostrophes)
+- `test_smart_quotes_blockquote_multiline_with_code_span` \u2014 The exact blockquote
+  from the bug report (multi-line, with bold, code span, and apostrophes)
 
 **Safety / no-false-positives tests (pre-existing, all still pass):**
 
 - `test_technical_content_unchanged` \u2014 `function("param")`, `array['key']`, etc.
-- `test_complex_cases_unchanged` \u2014 Nested quotes, doubled quotes, code-like patterns
+- `test_complex_cases_unchanged` \u2014 Nested quotes, doubled quotes, code-like
+  patterns
 - `test_patterns_left_unchanged` \u2014 `x="foo"`, escaped quotes, etc.
 - All 17 template tag tests in `test_tag_formatting.py` still pass
 
@@ -53,8 +55,8 @@ affected scenarios. All 202 project tests pass.
 
 **Reference document tests (`test_ref_docs.py`):**
 
-- The reference test document (`testdoc.orig.md`) was updated with a new
-  "Smart Quoting in Containers" section containing:
+- The reference test document (`testdoc.orig.md`) was updated with a new “Smart Quoting
+  in Containers” section containing:
   - Table cells with quotes and code spans
   - Blockquote with quotes spanning code spans
   - Strikethrough with quotes
@@ -66,9 +68,10 @@ affected scenarios. All 202 project tests pass.
 **Changes to expected reference output (`testdoc.expected.auto.md`):**
 
 The only changes to previously-expected output are 5 lines where quotes spanning across
-`[link](url)` elements are now correctly converted. These were previously left as straight
-quotes because the old per-node approach couldn't see across inline boundaries. The new
-output is correct.
+`[link](url)` elements are now correctly converted.
+These were previously left as straight quotes because the old per-node approach couldn’t
+see across inline boundaries.
+The new output is correct.
 
 ### Manual Testing Needed
 
@@ -81,8 +84,8 @@ output is correct.
    > calls. I'\''ll install it globally so we can use the `markform` command."' | flowmark --auto
    ```
 
-   Expected: outer `"..."` converted to \u201c\u2026\u201d, apostrophes in `I'll` converted, code
-   span `\`markform\`` preserved.
+   Expected: outer `"..."` converted to \u201c\u2026\u201d, apostrophes in `I'll`
+   converted, code span `\`markform\`` preserved.
 
    ```bash
    echo '| User Says | You (the Agent) Run |
