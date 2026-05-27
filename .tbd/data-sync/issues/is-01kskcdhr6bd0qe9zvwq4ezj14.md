@@ -5,7 +5,7 @@ title: "Phase B: split_sentences_with_spans (atomic-aware, offset-preserving)"
 kind: task
 status: open
 priority: 2
-version: 2
+version: 3
 spec_path: docs/project/specs/active/plan-2026-05-26-public-inline-api.md
 labels: []
 dependencies:
@@ -13,6 +13,6 @@ dependencies:
     target: is-01kskcdjgxdyx2rwyw8nkabwh7
 parent_id: is-01kskcc95bk93gn9mz8x57c13z
 created_at: 2026-05-27T00:12:43.654Z
-updated_at: 2026-05-27T00:12:55.192Z
+updated_at: 2026-05-27T00:42:35.630Z
 ---
-Spec Phase B: apply heuristic_end_of_sentence only at boundaries between atomic tokens; never split inside one; preserve original whitespace/offsets (verbatim spans). Keep lossy split_sentences_regex unchanged.
+Spec Phase B: split_sentences_with_spans(text) -> list[SentenceSpan]. Apply heuristic_end_of_sentence only at boundaries between atomic spans; never split inside one; preserve original whitespace/offsets (verbatim spans). Keep lossy split_sentences_regex unchanged.
