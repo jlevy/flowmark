@@ -130,6 +130,15 @@ def render_skill_file(version: str | None = None) -> str:
     return f"{marker}\n\n{composed}"
 
 
+def discovery_skill_text() -> str:
+    """
+    The committed repo-root discovery copy (`skills/flowmark/SKILL.md`) used by
+    `npx skills add` and skill indexers. Pinned to the stable `<version>` placeholder so
+    it never churns across releases; install-time copies pin the real installed version.
+    """
+    return render_skill_file(DOC_VERSION_PIN)
+
+
 def _existing_format(path: Path) -> int | None:
     """Format number stamped on an existing generated file; 0 if unmarked; None if absent."""
     if not path.is_file():
@@ -138,11 +147,71 @@ def _existing_format(path: Path) -> int | None:
     return int(match.group(1)) if match else 0
 
 
+AGENTS_BEGIN_PREFIX = "<!-- BEGIN FLOWMARK INTEGRATION"
+AGENTS_END_MARKER = "<!-- END FLOWMARK INTEGRATION -->"
+_AGENTS_BLOCK_RE = re.compile(
+    re.escape(AGENTS_BEGIN_PREFIX) + r".*?" + re.escape(AGENTS_END_MARKER), re.DOTALL
+)
+_AGENTS_FORMAT_RE = re.compile(re.escape(AGENTS_BEGIN_PREFIX) + r"\s+format=f(\d+)")
+
+
+def agents_md_block(version: str | None = None) -> str:
+    """
+    The compact, marker-bounded flowmark block for a project's `AGENTS.md`.
+
+    Short lines and no mid-document frontmatter, so a `flowmark --auto` pass over the
+    host `AGENTS.md` leaves it unchanged. The format version lives on the begin-marker
+    line so a later flowmark can upgrade or refuse it.
+    """
+    pin = flowmark_version() if version is None else version
+    return (
+        f"{AGENTS_BEGIN_PREFIX} format={SKILL_FORMAT} surface=agents-md -->\n"
+        "## flowmark\n"
+        "\n"
+        "Auto-format Markdown with `flowmark` for clean, semantic git diffs.\n"
+        "\n"
+        "- Run `flowmark --auto <files>` on Markdown you create or edit.\n"
+        "- Run `flowmark --docs` for full usage and `flowmark --skill` for the skill.\n"
+        f"- If `flowmark` is not on `PATH`, run `uvx --from flowmark=={pin} flowmark`.\n"
+        "\n"
+        f"{AGENTS_END_MARKER}"
+    )
+
+
 class InstallResult(NamedTuple):
     surface: str
     path: Path
     # "installed" | "updated" | "unchanged" | "blocked-newer"
     action: str
+
+
+def update_agents_md(path: Path, version: str | None = None) -> InstallResult:
+    """
+    Insert or refresh the flowmark block in `AGENTS.md`, preserving all content outside
+    the markers. Idempotent; honors the forward-compatibility guard.
+    """
+    surface = "AGENTS.md (flowmark block)"
+    existing = path.read_text(encoding="utf-8") if path.is_file() else None
+
+    if existing is not None and (m := _AGENTS_FORMAT_RE.search(existing)):
+        if int(m.group(1)) > _format_num():
+            return InstallResult(surface, path, "blocked-newer")
+
+    block = agents_md_block(version)
+    if existing is None or AGENTS_BEGIN_PREFIX not in existing:
+        if not existing:
+            new_content = block + "\n"
+        else:
+            sep = "\n" if existing.endswith("\n") else "\n\n"
+            new_content = existing + sep + block + "\n"
+    else:
+        new_content = _AGENTS_BLOCK_RE.sub(lambda _: block, existing, count=1)
+
+    if existing == new_content:
+        return InstallResult(surface, path, "unchanged")
+    action = "updated" if existing is not None else "installed"
+    path.write_text(new_content, encoding="utf-8")
+    return InstallResult(surface, path, action)
 
 
 def _write_surface(skill_dir: Path, surface: str, content: str) -> InstallResult:
@@ -196,6 +265,7 @@ def install_skill(
                 results.append(
                     _write_surface(root / PORTABLE_SKILL_REL, ".agents/skills (portable)", content)
                 )
+                results.append(update_agents_md(root / "AGENTS.md"))
             if claude:
                 results.append(
                     _write_surface(root / CLAUDE_SKILL_REL, ".claude/skills (Claude Code)", content)

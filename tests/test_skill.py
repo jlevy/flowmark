@@ -2,13 +2,18 @@
 
 from pathlib import Path
 
+from flowmark import reformat_text
 from flowmark.skill import (
+    AGENTS_BEGIN_PREFIX,
+    AGENTS_END_MARKER,
     DOC_VERSION_PIN,
+    agents_md_block,
     compose_skill,
     flowmark_version,
     get_docs_content,
     get_skill_content,
     install_skill,
+    update_agents_md,
 )
 
 
@@ -133,6 +138,62 @@ class TestInstallSkill:
 
         assert [r.action for r in results] == ["blocked-newer"]
         assert target.read_text() == "<!-- skill-format=f99 -->\nnewer"
+
+
+class TestAgentsMdBlock:
+    """Tests for the AGENTS.md integration block."""
+
+    def test_block_is_marker_bounded_with_format(self) -> None:
+        block = agents_md_block("1.2.3")
+        assert block.startswith(AGENTS_BEGIN_PREFIX)
+        assert "format=f01" in block
+        assert block.rstrip().endswith(AGENTS_END_MARKER)
+        assert "flowmark==1.2.3" in block
+
+    def test_block_is_flowmark_auto_stable(self) -> None:
+        """A flowmark format pass over a host AGENTS.md must leave the block unchanged."""
+        block = agents_md_block("0.7.0")
+        doc = f"# Project\n\nUser-authored notes.\n\n{block}\n"
+        assert block in reformat_text(doc)
+
+    def test_update_creates_and_preserves_user_content(self, tmp_path: Path) -> None:
+        path = tmp_path / "AGENTS.md"
+        path.write_text("# My Project\n\nHand-written guidance.\n", encoding="utf-8")
+
+        update_agents_md(path, version="0.7.0")
+
+        content = path.read_text()
+        assert "Hand-written guidance." in content  # user content preserved
+        assert AGENTS_BEGIN_PREFIX in content
+
+    def test_update_replaces_only_the_marked_region(self, tmp_path: Path) -> None:
+        path = tmp_path / "AGENTS.md"
+        update_agents_md(path, version="0.7.0")
+        # Add user content after the block, then re-run with a different version.
+        path.write_text(path.read_text() + "\n## User Section\n\nKeep me.\n", encoding="utf-8")
+
+        update_agents_md(path, version="9.9.9")
+
+        content = path.read_text()
+        assert "Keep me." in content
+        assert "flowmark==9.9.9" in content
+        assert "flowmark==0.7.0" not in content
+        assert content.count(AGENTS_BEGIN_PREFIX) == 1  # no duplicate block
+
+    def test_update_is_idempotent(self, tmp_path: Path) -> None:
+        path = tmp_path / "AGENTS.md"
+        assert update_agents_md(path, version="0.7.0").action == "installed"
+        assert update_agents_md(path, version="0.7.0").action == "unchanged"
+
+    def test_update_guard_blocks_newer_format(self, tmp_path: Path) -> None:
+        path = tmp_path / "AGENTS.md"
+        path.write_text(
+            f"{AGENTS_BEGIN_PREFIX} format=f99 surface=agents-md -->\nnewer\n{AGENTS_END_MARKER}\n",
+            encoding="utf-8",
+        )
+        result = update_agents_md(path, version="0.7.0")
+        assert result.action == "blocked-newer"
+        assert "format=f99" in path.read_text()
 
     def test_install_skill_custom_base(self, tmp_path: Path) -> None:
         """Skill installs to custom agent base directory."""

@@ -4,11 +4,20 @@
 
 .DEFAULT_GOAL := default
 
-.PHONY: default install lint test test-golden test-golden-coverage upgrade build clean format format-docs benchmark profile
+.PHONY: default install lint test test-golden test-golden-coverage upgrade build clean format format-docs gen-skill validate-skill benchmark profile
 
 default: format install lint test
 
-format: format-docs
+format: format-docs gen-skill
+
+# Regenerate the committed repo-root skill discovery copy from the authored SKILL.md.
+# The drift test (tests/test_skill_artifacts.py) fails if this is out of date.
+gen-skill:
+	uv run python -c "from pathlib import Path; from flowmark.skill import discovery_skill_text; Path('skills/flowmark/SKILL.md').write_text(discovery_skill_text(), encoding='utf-8')"
+
+# Validate the published skill against the Agent Skills spec (needs network/npx).
+validate-skill:
+	npx skills-ref validate skills/flowmark
 
 install:
 	uv sync --all-extras
