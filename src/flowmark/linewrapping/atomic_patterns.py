@@ -225,9 +225,10 @@ MARKDOWN_INLINE_PATTERNS: tuple[AtomicPattern, ...] = (
 
 class AtomicSpan(NamedTuple):
     """
-    A contiguous span of source text with its exact `[start, end)` offsets. `is_atomic`
-    marks the spans that match an atomic construct (must not be split); the rest are the
-    plain-text gaps between them.
+    A span (a slice of source text plus its half-open `[start, end)` character offsets,
+    so `text == source[start:end]`) produced by `iter_atomic_spans`. `is_atomic` is True
+    when the span is an atomic construct — a link, code span, autolink, URL, or tag that
+    must not be split mid-construct — and False for the plain-text gaps between them.
     """
 
     text: str
@@ -245,10 +246,12 @@ def iter_atomic_spans(
     text: str, patterns: tuple[AtomicPattern, ...] = ATOMIC_PATTERNS
 ) -> Iterator[AtomicSpan]:
     """
-    Split `text` into contiguous spans covering it exactly, each flagged `is_atomic`.
+    Split `text` into contiguous spans (each a slice of `text` with its `[start, end)`
+    offsets) that cover it exactly, each flagged `is_atomic`.
 
-    Atomic spans match one of `patterns` (a construct that must not be broken); non-atomic
-    spans are the gaps between them. Round-trips: `"".join(s.text ...) == text` and
+    Atomic spans match one of `patterns` — a Markdown/templating construct that must not
+    be broken mid-construct (code span, link, autolink, URL, tag); non-atomic spans are
+    the plain-text gaps between them. Round-trips: `"".join(s.text ...) == text` and
     `text[s.start:s.end] == s.text` for every span.
     """
     regex = _combined_pattern(patterns)
@@ -266,6 +269,12 @@ _WHITESPACE_OR_WORD = re.compile(r"\S+|\s+")
 
 
 class AtomicWord(NamedTuple):
+    """
+    A word (a whitespace-delimited token, with any atomic construct kept whole) plus its
+    half-open `[start, end)` character offsets, so `text == source[start:end]`. Produced
+    by `iter_atomic_words`.
+    """
+
     text: str
     start: int
     end: int
@@ -275,9 +284,10 @@ def iter_atomic_words(
     text: str, patterns: tuple[AtomicPattern, ...] = ATOMIC_PATTERNS
 ) -> Iterator[AtomicWord]:
     """
-    Yield whitespace-delimited words with their exact offsets, treating each atomic
-    construct as indivisible: a construct's internal whitespace never splits a word, and a
-    construct glues to adjacent non-space characters (e.g. `foo[a](b)bar` is one word).
+    Yield the whitespace-delimited words of `text` with their `[start, end)` offsets,
+    treating each atomic construct (link, code span, URL, tag) as indivisible: a
+    construct's internal whitespace never splits a word, and a construct glues to adjacent
+    non-space characters (e.g. `foo[a](b)bar` and `[click here](u)` are each one word).
 
     This is the offset-carrying basis for both the wrapping word splitter and
     `split_sentences_with_spans`.

@@ -6,9 +6,10 @@ Parse documents with :func:`flowmark.flowmark_markdown` (GFM + footnote), then u
 helpers instead of re-implementing marko tree walks that must track GFM/footnote element
 types.
 
-**Identity, not spans.** marko does not record source offsets for inline elements, so
-:func:`extract_links` returns link *text/url/title* but no source span. Recovering a span
-is a source-mapping problem the consumer owns: duplicate link text, reference links,
+**Identity, not spans.** A *span* here means a slice of source text plus its
+`[start, end)` character offsets. marko does not record source offsets for inline
+elements, so :func:`extract_links` returns link *text/url/title* but no span. Recovering
+one is a source-mapping problem the consumer owns: duplicate link text, reference links,
 escaped text, and nested inline markup mean it is not simply "find the link text" — it
 must be reconciled against the original source.
 """
@@ -28,8 +29,9 @@ class Link(NamedTuple):
     A link found in a Markdown document.
 
     `text` is the rendered link text (empty for autolinks/bare URLs, where the URL is the
-    text). `url` is the destination. `title` is the optional link title. No source span:
-    marko does not position inline elements (see module docstring).
+    text). `url` is the destination. `title` is the optional link title. There is no
+    source span (no `[start, end)` offsets): marko does not position inline elements, so a
+    consumer that needs offsets recovers them itself (see module docstring).
     """
 
     text: str

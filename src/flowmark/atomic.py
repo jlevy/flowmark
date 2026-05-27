@@ -1,6 +1,20 @@
 """
-Public API for Markdown/templating *atomic constructs* — spans of text that must not
-be broken in the middle (code spans, links, HTML/Jinja tags and comments).
+Public API for Markdown *atomic constructs* and the offset-preserving tokenizers built on
+them.
+
+Terminology used throughout this module:
+
+- **offsets** — 0-based character indices into the source string. Ranges are half-open
+  `[start, end)`, so `source[start:end]` is exactly the referenced text.
+- **span** — a slice of source text together with its `[start, end)` offsets; its `text`
+  always equals `source[start:end]`. (Contrast a bare *range*, which is offsets with no
+  text — not used in this module's return types.)
+- **atomic construct** — a Markdown or templating inline construct that must be kept whole
+  and never broken in the middle: a code span, link, autolink, bare URL, or HTML/Jinja
+  tag or comment. `ATOMIC_PATTERNS` is the full set used for line wrapping;
+  `MARKDOWN_INLINE_PATTERNS` is the Markdown-only prose subset.
+- **word** — a whitespace-delimited token, except that an atomic construct is kept whole
+  (its internal spaces never split it, and it glues to adjacent non-space characters).
 
 These are the same patterns flowmark uses internally for line wrapping, exposed here as a
 stable, intentional surface so downstream tools can reuse them instead of copying
