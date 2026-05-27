@@ -20,17 +20,12 @@ from flowmark.linewrapping.line_wrappers import (
     line_wrap_to_width,
 )
 from flowmark.linewrapping.protocols import LineWrapper
-from flowmark.linewrapping.sentence_split_regex import split_sentences_regex
 from flowmark.linewrapping.tag_handling import preprocess_tag_block_spacing
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 from flowmark.transforms.doc_cleanups import doc_cleanups
 from flowmark.transforms.doc_transforms import rewrite_text_across_inlines, rewrite_text_content
 from flowmark.typography.ellipses import ellipses as apply_ellipses
 from flowmark.typography.smartquotes import smart_quotes
-
-
-def split_sentences_no_min_length(text: str) -> list[str]:
-    return split_sentences_regex(text, min_length=0)
 
 
 def fill_markdown(

@@ -5,7 +5,7 @@ from collections.abc import Callable
 from functools import cache
 from typing import Protocol
 
-from flowmark.linewrapping.atomic_patterns import ATOMIC_CONSTRUCT_PATTERN
+from flowmark.linewrapping.atomic_patterns import ATOMIC_PATTERNS, iter_atomic_words
 from flowmark.linewrapping.tag_handling import (
     denormalize_adjacent_tags,
     normalize_adjacent_tags,
@@ -30,50 +30,6 @@ def simple_word_splitter(text: str) -> list[str]:
     return text.split()
 
 
-# Placeholder format for atomic construct extraction. Uses null byte prefix/suffix
-# to avoid conflicts with real content.
-_PLACEHOLDER_PREFIX = "\x00AC"
-_PLACEHOLDER_SUFFIX = "\x00"
-
-
-def _extract_atomic_constructs(text: str) -> tuple[dict[int, str], str]:
-    """
-    Extract all atomic constructs from text, replacing them with placeholders.
-
-    This uses a single regex pass to find all constructs that should be treated
-    as indivisible tokens (template tags, code spans, markdown links, HTML tags).
-
-    Returns (construct_map, text_with_placeholders) where construct_map maps
-    placeholder indices to original strings.
-    """
-    construct_map: dict[int, str] = {}
-    placeholder_idx = 0
-
-    def replace_construct(match: re.Match[str]) -> str:
-        nonlocal placeholder_idx
-        construct = match.group(0)
-        construct_map[placeholder_idx] = construct
-        placeholder = f"{_PLACEHOLDER_PREFIX}{placeholder_idx}{_PLACEHOLDER_SUFFIX}"
-        placeholder_idx += 1
-        return placeholder
-
-    text_with_placeholders = ATOMIC_CONSTRUCT_PATTERN.sub(replace_construct, text)
-    return construct_map, text_with_placeholders
-
-
-def _restore_atomic_constructs(tokens: list[str], construct_map: dict[int, str]) -> list[str]:
-    """
-    Restore original constructs from placeholders in token list.
-    """
-    result: list[str] = []
-    for token in tokens:
-        for idx, construct in construct_map.items():
-            placeholder = f"{_PLACEHOLDER_PREFIX}{idx}{_PLACEHOLDER_SUFFIX}"
-            token = token.replace(placeholder, construct)
-        result.append(token)
-    return result
-
-
 class _HtmlMdWordSplitter:
     """
     Word splitter for Markdown/HTML that keeps certain constructs together.
@@ -83,25 +39,15 @@ class _HtmlMdWordSplitter:
       rules, converts line breaks to spaces per CommonMark spec
     - Line wrapping (this code): Decides where to break lines in source text
 
-    Uses a single-pass regex extraction approach:
-    1. Extract all atomic constructs (tags, code spans, links) with placeholders
-    2. Split on whitespace (placeholders become single "words")
-    3. Restore original constructs
-
-    All atomic constructs (template tags, code spans, markdown links, HTML tags)
-    are treated as indivisible tokens and never broken across lines.
+    Splits on whitespace via `iter_atomic_words`, which treats all atomic constructs
+    (template tags, code spans, markdown links, HTML tags) as indivisible tokens that are
+    never broken across lines.
     """
 
     def __call__(self, text: str) -> list[str]:
-        # Normalize adjacent tags to ensure proper tokenization
+        # Normalize adjacent tags so paired tags tokenize as separate words.
         text = normalize_adjacent_tags(text)
-
-        # Extract all atomic constructs and replace with placeholders
-        construct_map, text_with_placeholders = _extract_atomic_constructs(text)
-        # Split on whitespace (placeholders are single tokens)
-        tokens = text_with_placeholders.split()
-        # Restore original constructs
-        return _restore_atomic_constructs(tokens, construct_map)
+        return [word.text for word in iter_atomic_words(text, ATOMIC_PATTERNS)]
 
 
 @cache

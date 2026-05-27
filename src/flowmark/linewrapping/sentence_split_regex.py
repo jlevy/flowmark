@@ -1,6 +1,15 @@
+from __future__ import annotations
+
 from collections.abc import Callable
+from typing import NamedTuple
 
 import regex
+
+from flowmark.linewrapping.atomic_patterns import (
+    MARKDOWN_INLINE_PATTERNS,
+    AtomicPattern,
+    iter_atomic_words,
+)
 
 # XXX: Could also handle rare cases with both quotes and parentheses at sentence end
 # but may not be worth it. Also does not detect sentences ending in numerals, which
@@ -84,3 +93,74 @@ def first_sentence(
     """
     sentences = split_sentences_regex(text, min_length=min_length, heuristic=heuristic)
     return sentences[0] if sentences else text
+
+
+class SentenceSpan(NamedTuple):
+    """
+    A sentence and its exact `[start, end)` character offsets into the original Markdown
+    source, such that `text == source[start:end]` (verbatim, including any Markdown markup
+    the sentence contains).
+    """
+
+    text: str
+    start: int
+    end: int
+
+
+def split_sentences_with_spans(
+    text: str,
+    min_length: int = SENTENCE_MIN_LENGTH,
+    heuristic: Callable[[str], bool] = heuristic_end_of_sentence,
+    patterns: tuple[AtomicPattern, ...] = MARKDOWN_INLINE_PATTERNS,
+) -> list[SentenceSpan]:
+    """
+    Split Markdown `text` into sentences, each returned as a `SentenceSpan`: the sentence
+    text plus its exact `[start, end)` offsets into the original Markdown source (so
+    `span.text == text[start:end]`, verbatim).
+
+    This is the offset-preserving, Markdown-aware counterpart to `split_sentences_regex`
+    (which normalizes whitespace via `split()`/`join()` and so loses offsets). It is
+    "atomic-aware" with respect to Markdown inline constructs in `patterns` — links, code
+    spans, autolinks, and bare URLs — keeping each one whole so a sentence boundary is
+    never placed inside it (e.g. a link whose text contains spaces or a `.` is not
+    bisected). The end-of-sentence heuristic is applied only at word boundaries between
+    these constructs.
+    """
+    sentences: list[SentenceSpan] = []
+    s_start = -1
+    s_end = -1
+    char_count = 0
+    word_count = 0
+    for word in iter_atomic_words(text, patterns):
+        if s_start < 0:
+            s_start = word.start
+        s_end = word.end
+        char_count += len(word.text)
+        word_count += 1
+        # Mirror split_sentences_regex's length accounting (words plus single spaces).
+        sentence_len = char_count + word_count - 1
+        if heuristic(word.text) and sentence_len >= min_length:
+            sentences.append(SentenceSpan(text[s_start:s_end], s_start, s_end))
+            s_start = -1
+            s_end = -1
+            char_count = 0
+            word_count = 0
+    if s_start >= 0:
+        sentences.append(SentenceSpan(text[s_start:s_end], s_start, s_end))
+    return sentences
+
+
+def split_sentences_atomic(
+    text: str,
+    min_length: int = SENTENCE_MIN_LENGTH,
+    heuristic: Callable[[str], bool] = heuristic_end_of_sentence,
+) -> list[str]:
+    """
+    Atomic-aware sentence splitter returning sentence strings (a drop-in
+    `SentenceSplitter`). Like `split_sentences_regex` but never splits inside a link,
+    code span, or URL. Suitable as the `split_sentences` argument to
+    `line_wrap_by_sentence`.
+    """
+    return [
+        s.text for s in split_sentences_with_spans(text, min_length=min_length, heuristic=heuristic)
+    ]
