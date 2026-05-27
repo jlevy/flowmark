@@ -1,4 +1,16 @@
-# Plan Spec: Public Markdown-Inline API (atomic tokens, spans, AST/link extraction)
+# Plan Spec: Public Markdown-Inline API (atomic spans, sentence spans, AST/link extraction)
+
+## Terminology
+
+- **span** — a contiguous region of source text at a known location: `text` plus
+  `[start, end)`. `AtomicSpan` (carries `is_atomic`) and `SentenceSpan`
+  are both spans and share the same field order (`text, start, end, ...`).
+- **range** — a bare `[start, end)` offset pair with no attached text (e.g. an
+  offset-lookup result). Reserved term; flowmark's current surface returns spans, not bare
+  ranges.
+- "token"/"word" is avoided as a noun for these regions (it collides with LLM token
+  counting and word-tokenization); it is kept only where it genuinely means token/word
+  counts.
 
 ## Purpose
 
@@ -59,7 +71,7 @@ time. But a consumer that wants sentence *spans* (chopdiff) is exposed to it dir
    source span for one from the AST alone. The division of labor that keeps the API
    general: **flowmark owns inline identity + sentence/atomic heuristics; the consumer
    maps to spans against its own source.** (Where a consumer works on raw text rather than
-   an AST, `iter_atomic_tokens` and `split_sentences_with_spans` *do* carry offsets — see
+   an AST, `iter_atomic_spans` and `split_sentences_with_spans` *do* carry offsets — see
    Phase B — so flowmark still serves span-based consumers; it just can't synthesize spans
    for AST nodes marko never positioned.)
 
@@ -76,8 +88,8 @@ time. But a consumer that wants sentence *spans* (chopdiff) is exposed to it dir
 Add two public submodules, strictly additively:
 
 - **`flowmark.atomic`** — publish the atomic-construct patterns and a new
-  offset-preserving tokenizer `iter_atomic_tokens(text, patterns=...)` that yields
-  `(text, start, end, is_atomic)`. Make this the single tokenization primitive and
+  offset-preserving span splitter `iter_atomic_spans(text, patterns=...)` that yields
+  `(text, start, end, is_atomic)`. Make this the single atomic-span primitive and
   reimplement the wrapping word splitter on top of it. Add an offset-preserving,
   atomic-aware `split_sentences_with_spans(text)` built on the same primitive.
 - **`flowmark.ast`** — publish a read-only `iter_inline(element)` and a convenience
@@ -101,14 +113,14 @@ unavoidably part of the contract.
 
 ### Acceptance criteria
 
-- `from flowmark.atomic import ATOMIC_PATTERNS, ATOMIC_CONSTRUCT_PATTERN, iter_atomic_tokens, split_sentences_with_spans`
+- `from flowmark.atomic import ATOMIC_PATTERNS, ATOMIC_CONSTRUCT_PATTERN, iter_atomic_spans, split_sentences_with_spans`
   works and is covered by `__all__`.
 - `from flowmark.ast import iter_inline, extract_links, Link` works and is in `__all__`.
-- `iter_atomic_tokens` round-trips: `"".join(t.text for t in iter_atomic_tokens(s)) == s`
-  and every token's `s[start:end] == text`.
-- `split_sentences_with_spans(s)` never returns a span that bisects an atomic token; for
+- `iter_atomic_spans` round-trips: `"".join(sp.text for sp in iter_atomic_spans(s)) == s`
+  and every span's `s[start:end] == text`.
+- `split_sentences_with_spans(s)` never returns a span that bisects an atomic span; for
   verbatim input each returned span satisfies `s[start:end] == text`.
-- The wrapping word splitter, reimplemented on `iter_atomic_tokens`, produces byte-identical
+- The wrapping word splitter, reimplemented on `iter_atomic_spans`, produces byte-identical
   output across the existing golden corpus (no wrapping regression).
 - `extract_links` agrees with marko on link identity for reference links, autolinks, and
   images-excluded cases in tests.
@@ -134,7 +146,7 @@ The work splits into three phases, smallest/lowest-risk first.
 
 - **Phase A — publish patterns + AST helpers (pure additions).** Lets any consumer stop
   copying flowmark's regexes and re-walking the AST. No behavior change.
-- **Phase B — offset-preserving, atomic-aware tokenizer + sentence spans; refactor the
+- **Phase B — offset-preserving, atomic-aware span splitter + sentence spans; refactor the
   wrapping word splitter onto the new primitive.** Collapses flowmark's two atomic
   mechanisms into one and gives any text-based consumer exact, link-safe spans. Wrapping
   output must not change.
@@ -146,7 +158,7 @@ The work splits into three phases, smallest/lowest-risk first.
 flowmark's `ATOMIC_PATTERNS` is tuned for wrapping and includes Jinja/Markdoc tags and
 HTML. Different consumers want different sets: a prose/sentence consumer wants only the
 Markdown-inline subset (code spans, links, autolinks); a template-aware tool wants the
-full set; a custom tool may supply its own `AtomicPattern`s. So `iter_atomic_tokens` takes
+full set; a custom tool may supply its own `AtomicPattern`s. So `iter_atomic_spans` takes
 a `patterns` argument (the unit of flexibility) and flowmark ships named sets as
 convenient defaults, not as the only options:
 
@@ -160,31 +172,31 @@ convenient defaults, not as the only options:
 
 Re-export from `atomic_patterns.py`: `AtomicPattern`, `INLINE_CODE_SPAN`,
 `MARKDOWN_LINK`, the tag/comment patterns, `ATOMIC_PATTERNS`, `ATOMIC_CONSTRUCT_PATTERN`.
-Add the new tokenizer and the prose subset:
+Add the new span splitter and the prose subset:
 
 ```python
-class AtomicToken(NamedTuple):
+class AtomicSpan(NamedTuple):
     text: str
     start: int
     end: int
     is_atomic: bool
 
-def iter_atomic_tokens(
+def iter_atomic_spans(
     text: str,
     patterns: tuple[AtomicPattern, ...] = ATOMIC_PATTERNS,
-) -> Iterator[AtomicToken]:
-    """Yield contiguous atomic and non-atomic spans covering `text` exactly.
+) -> Iterator[AtomicSpan]:
+    """Yield contiguous spans covering `text` exactly, each flagged `is_atomic`.
 
-    Atomic tokens match a construct that must not be split; non-atomic tokens are
-    the gaps between them. Round-trips: "".join(t.text ...) == text.
+    Atomic spans match a construct that must not be split; non-atomic spans are
+    the gaps between them. Round-trips: "".join(s.text ...) == text.
     """
 ```
 
 Implementation: one `re.finditer` over the combined alternation built from `patterns`
 (reuse the `ATOMIC_CONSTRUCT_PATTERN` construction), emitting the gaps between matches as
-non-atomic tokens. This is the single source of truth; `_extract_atomic_constructs` in
+non-atomic spans. This is the single source of truth; `_extract_atomic_constructs` in
 `text_wrapping.py` is reimplemented to consume it (placeholder substitution becomes
-"join non-atomic tokens, keep atomic tokens whole").
+"join non-atomic spans, keep atomic spans whole").
 
 Warning to document on `MARKDOWN_LINK` / the module: these patterns identify *unbreakable
 spans for wrapping*, not links. To enumerate links, use `flowmark.ast.extract_links`.
@@ -204,7 +216,7 @@ def split_sentences_with_spans(
     patterns: tuple[AtomicPattern, ...] = MARKDOWN_INLINE_PATTERNS,
 ) -> list[SentenceSpan]:
     """Offset-preserving sentence split. Applies the end-of-sentence heuristic only
-    at boundaries between atomic tokens; never splits inside one. Preserves original
+    at boundaries between atomic spans; never splits inside one. Preserves original
     whitespace and offsets (verbatim spans)."""
 ```
 
@@ -240,7 +252,7 @@ appropriate), reading `dest`/`title` and rendering child `RawText` for `text`.
 - **`ATOMIC_CONSTRUCT_PATTERN` construction** (`atomic_patterns.py:186`) — reused to build
   the combined regex per pattern set.
 - **`_extract_atomic_constructs`** (`text_wrapping.py:39`) — reimplemented on
-  `iter_atomic_tokens` rather than duplicated; removes one of flowmark's two atomic paths.
+  `iter_atomic_spans` rather than duplicated; removes one of flowmark's two atomic paths.
 - **`heuristic_end_of_sentence`** (`sentence_split_regex.py:17`) — reused by
   `split_sentences_with_spans`; one heuristic, two splitters.
 
@@ -256,10 +268,10 @@ appropriate), reading `dest`/`title` and rendering child `RawText` for `text`.
       image-excluded); `iter_inline` ordering.
 - [ ] Add the new names to `flowmark/__init__.py` `__all__` (or document submodule imports).
 
-### Phase B — offset-preserving tokenizer + sentence spans
+### Phase B — offset-preserving span splitter + sentence spans
 
-- [ ] `iter_atomic_tokens` with round-trip + atomic-boundary tests; selectable `patterns`.
-- [ ] Reimplement `_extract_atomic_constructs` on `iter_atomic_tokens`; confirm wrapping
+- [ ] `iter_atomic_spans` with round-trip + atomic-boundary tests; selectable `patterns`.
+- [ ] Reimplement `_extract_atomic_constructs` on `iter_atomic_spans`; confirm wrapping
       golden corpus is byte-identical.
 - [ ] `split_sentences_with_spans` with verbatim-span + never-bisect-atomic tests.
 
