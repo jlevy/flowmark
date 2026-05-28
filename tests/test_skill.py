@@ -118,7 +118,7 @@ class TestInstallSkill:
         install_skill(project_root=tmp_path)
         content = (tmp_path / ".claude" / "skills" / "flowmark" / "SKILL.md").read_text()
         assert "DO NOT EDIT" in content
-        assert "skill-format=f01" in content
+        assert "format=f02 surface=skill-md" in content
         # Frontmatter must still come first for the skill to parse.
         assert content.startswith("---\nname: flowmark\n")
 
@@ -132,12 +132,12 @@ class TestInstallSkill:
         """A surface stamped with a newer format is not clobbered."""
         target = tmp_path / ".claude" / "skills" / "flowmark" / "SKILL.md"
         target.parent.mkdir(parents=True)
-        target.write_text("<!-- skill-format=f99 -->\nnewer", encoding="utf-8")
+        target.write_text("<!-- format=f99 surface=skill-md -->\nnewer", encoding="utf-8")
 
         results = install_skill(project_root=tmp_path, codex=False, claude=True)
 
         assert [r.action for r in results] == ["blocked-newer"]
-        assert target.read_text() == "<!-- skill-format=f99 -->\nnewer"
+        assert target.read_text() == "<!-- format=f99 surface=skill-md -->\nnewer"
 
 
 class TestAgentsMdBlock:
