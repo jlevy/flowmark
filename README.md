@@ -58,7 +58,7 @@ You can use Flowmark as a CLI, as an autoformatter in your IDE, or as a Python l
 
 Flowmark comes in two flavors: this Python reference implementation and an auto-synced
 [Rust port (flowmark-rs)](https://github.com/jlevy/flowmark-rs).
-For CLI auto-formatting either works and produces the same output — the Rust port is a
+For CLI auto-formatting either works and produces the same output: the Rust port is a
 fast single native binary, while the Python version is the reference and is sometimes
 ahead on the newest features.
 Pick whichever fits your environment; for heavy or latency-sensitive formatting the Rust
@@ -435,9 +435,9 @@ for link in extract_links(doc):   # -> list[Link(text, url, title)], reference l
     print(link.text, link.url)
 ```
 
-- `flowmark.markdown_ast` — `walk_elements`, `extract_links`, and the `Link` type for
+- `flowmark.markdown_ast`: `walk_elements`, `extract_links`, and the `Link` type for
   AST-aware inspection of a parsed document.
-- `flowmark.atomic_spans` — the atomic-construct patterns Flowmark uses internally (code
+- `flowmark.atomic_spans`: the atomic-construct patterns Flowmark uses internally (code
   spans, links, autolinks, bare URLs, HTML/Jinja tags), the offset-preserving tokenizers
   `iter_atomic_spans` / `iter_atomic_words`, and the atomic-aware sentence splitter
   `split_sentences_with_spans` / `split_sentences_atomic`.
@@ -472,7 +472,7 @@ The same pattern works whether you reach for the Python build or the Rust port.
 
 ### 1. Pick a pinned invocation
 
-Avoid unpinned `flowmark@latest` — different contributors then silently run different
+Avoid unpinned `flowmark@latest`: different contributors then silently run different
 versions and produce noisy diffs.
 
 - **Rust port (fastest)**: install the
@@ -486,7 +486,7 @@ versions and produce noisy diffs.
 
 ### 2. Add one project entry point
 
-A single command everyone — and CI — runs.
+A single command everyone (and CI) runs.
 Makefile target:
 
 ```makefile
@@ -572,8 +572,9 @@ npx skills add jlevy/flowmark
 ```
 
 **2. Direct install via the flowmark CLI (recommended once you have flowmark).** Run
-from the repo root. By default this writes all three project-local surfaces — the
-portable `.agents/skills/flowmark/` (read by Codex, Gemini CLI, pi, and others), the
+from the repo root.
+By default this writes all three project-local surfaces: the portable
+`.agents/skills/flowmark/` (read by Codex, Gemini CLI, pi, and others), the
 `.claude/skills/flowmark/` mirror (Claude Code reads only that path), and a compact
 marker-bounded block in `AGENTS.md`:
 
@@ -594,12 +595,12 @@ newer format than this build understands.
 spec-compliant `SKILL.md` at the repo root:
 [`skills/flowmark/SKILL.md`](https://github.com/jlevy/flowmark/blob/main/skills/flowmark/SKILL.md).
 You can drop it into your project at `.agents/skills/flowmark/SKILL.md` (and mirror to
-`.claude/skills/flowmark/SKILL.md` for Claude Code) — useful in air-gapped or
-no-Node-no-Python environments.
+`.claude/skills/flowmark/SKILL.md` for Claude Code).
+Useful in air-gapped or no-Node-no-Python environments.
 
 Flowmark is also indexed automatically by GitHub-scraping skill discoverers (SkillsMP,
 ClaudeSkills.info, LobeHub, claudemarketplaces) just by being a public repo with a
-`SKILL.md` — no extra setup.
+`SKILL.md`, with no extra setup.
 
 ### Agent Skill Options
 
@@ -613,7 +614,7 @@ ClaudeSkills.info, LobeHub, claudemarketplaces) just by being a public repo with
 
 ### Manual Usage in Agents
 
-Any agent with a shell can call Flowmark directly — no skill required:
+Any agent with a shell can call Flowmark directly, no skill required:
 
 ```bash
 # Format with all auto-formatting options
@@ -669,8 +670,8 @@ found most useful.
 
 On speed, Flowmark’s auto-synced
 [Rust port (flowmark-rs)](https://github.com/jlevy/flowmark-rs) compiles to a single
-native binary and is among the fastest Markdown formatters available — in the same
-performance class as Rust-based tools like dprint — while keeping the same formatting
+native binary and is among the fastest Markdown formatters available, in the same
+performance class as Rust-based tools like dprint, while keeping the same formatting
 behavior as the Python reference implementation.
 So you get Flowmark’s formatting either way: the Python library/CLI for flexibility and
 embedding, or the Rust binary when you want maximum CLI speed (large repos, hot paths,
@@ -679,3 +680,7 @@ latency-sensitive agent loops).
 ## Project Docs
 
 For development workflows, see [development.md](docs/development.md).
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

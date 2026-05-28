@@ -109,7 +109,7 @@ Follow this checklist for each new release.
    The repo-root `skills/flowmark/SKILL.md` is shipped to users of
    `npx skills add jlevy/flowmark`, who do *not* have flowmark pre-installed.
    Its `uvx --from flowmark==<X.Y.Z>` bootstrap line must therefore reference a real,
-   PyPI-installable release — never a `<version>` placeholder or a `.dev`/ local-suffix
+   PyPI-installable release, never a `<version>` placeholder or a `.dev`/ local-suffix
    string. Bump the `DISCOVERY_VERSION` constant in `src/flowmark/skill.py` to the
    about-to-be-released version, then re-run `make format` to regenerate the discovery
    copy, and commit before tagging:
@@ -194,16 +194,16 @@ how to migrate.
 
 **Short title of behavior change**
 
-A change to default *output* or runtime behavior that is not an API break — e.g. the
-formatter now produces different (but valid) Markdown for some input, line breaks land
-differently, or default option values changed. Say exactly which inputs are affected and
-whether the result is rendering-equivalent.
+A change to default *output* or runtime behavior that is not an API break. For example,
+the formatter now produces different (but valid) Markdown for some input, line breaks
+land differently, or default option values changed. Say exactly which inputs are
+affected and whether the result is rendering-equivalent.
 
 ### New Features and API
 
 **Short title of feature or new public API**
 
-New capabilities, new CLI flags, and new public functions/types. Additive only — anything
+New capabilities, new CLI flags, and new public functions/types. Additive only: anything
 that *changes* existing behavior belongs above, not here.
 
 ### Bug Fixes
@@ -234,22 +234,22 @@ Guidelines:
      formatter whose output drifts between versions is a compatibility concern (diffs,
      golden tests, re-flowed files) even when nothing is strictly “broken”.
 
-  3. Is it purely additive — new flag, new public function/type, new capability, with no
-     change to existing behavior?
+  3. Is it purely additive (new flag, new public function/type, new capability, with no
+     change to existing behavior)?
      → **New Features and API**.
 
   4. Did it correct previously-wrong or broken output?
      → **Bug Fixes** (and state plainly when output changes as a result).
 
 - When in doubt between *Behavior and Compatibility* and *Bug Fixes*, prefer **Behavior
-  and Compatibility** and explain — readers diffing reformatted files care about *any*
-  output change regardless of intent.
+  and Compatibility** and explain why: readers diffing reformatted files care about
+  *any* output change regardless of intent.
 
 - Describe the **aggregate delta** between the previous release and this one, not
   individual commits. If a feature was added and then fixed before release, describe the
   feature as it now works rather than listing the intermediate fix separately.
 
-- Skip **internal-only** changes that users never see — CI/tooling, pure refactors,
+- Skip **internal-only** changes that users never see: CI/tooling, pure refactors,
   test-only work, and dependency or doc housekeeping.
 
 - Use `**bold**` for short titles of individual changes.
@@ -258,9 +258,8 @@ Guidelines:
 
 - Always include the Full Changelog compare link at the end.
 
-- For small releases, a simple bullet list is acceptable — but still group it under
-  these headings so behavior/compatibility changes are never buried among features or
-  fixes.
+- For small releases, a simple bullet list is acceptable, but still group it under these
+  headings so behavior/compatibility changes are never buried among features or fixes.
 
 * * *
 

@@ -139,7 +139,7 @@ $ printf 'drafts/\n' > project/.flowmarkignore && flowmark --list-files project 
 $ flowmark --skill | head -3
 ---
 name: flowmark
-description: Fast, consistent Markdown auto-formatter — typographic cleanup (smart quotes, ellipses), normalized formatting, and optional clean line wrapping for small, readable git diffs. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM-generated Markdown, or when the user mentions flowmark or formatting Markdown.
+description: Fast, consistent Markdown auto-formatter for typographic cleanup (smart quotes, ellipses), normalized formatting, and optional clean line wrapping for small, readable git diffs. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM-generated Markdown, or when the user mentions flowmark or formatting Markdown.
 ```
 
 ## Docs: print documentation

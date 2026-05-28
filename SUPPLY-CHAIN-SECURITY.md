@@ -24,7 +24,7 @@ uv lock --upgrade                   # re-resolve under the cool-off
 ```
 
 The friendly duration needs **uv ≥ 0.9** (0.8.x rejects it and wants an absolute
-`YYYY-MM-DD` date instead — one more reason to keep uv current).
+`YYYY-MM-DD` date instead, one more reason to keep uv current).
 This repo pins uv in CI, and that pin should track a recent-but-cooled-off uv release.
 
 To check one version’s publish time before pinning it:
@@ -41,7 +41,7 @@ planned upgrade.
 **The cool-off applies to the whole resolved set, not just the package you name.**
 Adding one dependency can pull in many transitive packages, any of which may be
 brand-new. Always review the **full `uv.lock` diff** and confirm every *added* package
-clears the window — not only the direct dependency.
+clears the window, not only the direct dependency.
 If the gate was not active when you locked (so the lock captured too-new packages),
 retrofit just those without re-resolving the rest of the graph:
 
@@ -60,13 +60,13 @@ uv lock --upgrade-package "certifi==<pre-cutoff>" --upgrade-package "idna==<pre-
    `setup.py`/build-backend code at install time.
    Prefer binary wheels, and review any package that must build from source.
    `UV_NO_BUILD=true` / `PIP_ONLY_BINARY=:all:` forbid source builds, but **do not set
-   `UV_NO_BUILD` for `uv sync` here** — it also blocks building this project’s own
+   `UV_NO_BUILD` for `uv sync` here**: it also blocks building this project’s own
    editable package and breaks the sync.
    Apply it to third-party installs instead.
 3. **Commit the lockfile; install frozen.** `uv.lock` is committed and CI runs
-   `uv sync --frozen`. Never let an upgrade slip in unreviewed — treat a `uv.lock` diff
+   `uv sync --frozen`. Never let an upgrade slip in unreviewed: treat a `uv.lock` diff
    like a code diff.
-4. **Audit after changes — with a pinned, isolated scanner.** Audit the locked deps, but
+4. **Audit after changes, with a pinned, isolated scanner.** Audit the locked deps, but
    do **not** add the scanner to this project (it drags a large transitive tree into
    `uv.lock` and under our own cool-off/audit surface).
    Run it isolated and pinned:
@@ -87,13 +87,13 @@ uv lock --upgrade-package "certifi==<pre-cutoff>" --upgrade-package "idna==<pre-
 When a version inside the 14-day window is genuinely needed (e.g. a same-week CVE
 patch):
 
-- State the reason in the commit/PR — the CVE ID or vulnerability description and a
+- State the reason in the commit/PR: the CVE ID or vulnerability description and a
   `Reviewed-by:` sign-off.
 - Pin the exact `package==version` (not a range) and verify it against OSV / GHSA / the
   maintainer postmortem.
 - Leave a marker next to the pin and a follow-up to confirm the version was not yanked.
 
-**Agents never self-approve an exception** — prepare the record and a human signs off.
+**Agents never self-approve an exception:** prepare the record and a human signs off.
 
 ## What This Does and Doesn’t Cover
 

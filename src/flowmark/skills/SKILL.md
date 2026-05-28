@@ -1,6 +1,6 @@
 ---
 name: flowmark
-description: Fast, consistent Markdown auto-formatter — typographic cleanup (smart quotes, ellipses), normalized formatting, and optional clean line wrapping for small, readable git diffs. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM-generated Markdown, or when the user mentions flowmark or formatting Markdown.
+description: Fast, consistent Markdown auto-formatter for typographic cleanup (smart quotes, ellipses), normalized formatting, and optional clean line wrapping for small, readable git diffs. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM-generated Markdown, or when the user mentions flowmark or formatting Markdown.
 allowed-tools: Bash(flowmark:*), Bash(uvx:*), Read, Write
 ---
 # Flowmark - Markdown Auto-Formatter
@@ -127,9 +127,9 @@ Project Setup* section of the docs):
 
 1. **Pin the version.** Use the [Rust port](https://github.com/jlevy/flowmark-rs) binary
    at a pinned release for fast hooks/CI, or invoke Python via
-   `uvx --from flowmark==<X.Y.Z> flowmark`. Never `flowmark@latest` — unpinned runners
-   silently drift between contributors.
-2. **Add one project entry point** — a `make format-docs` target or an
+   `uvx --from flowmark==<X.Y.Z> flowmark`. Never `flowmark@latest`, since unpinned
+   runners silently drift between contributors.
+2. **Add one project entry point:** a `make format-docs` target or an
    `npm run format:docs` script that runs `flowmark --auto .`.
 3. **Run on pre-commit** via lefthook/pre-commit/husky on `*.{md,mdc,markdown}`.
 4. **CI check**: run the same entry point and `git diff --exit-code` on the Markdown
@@ -176,3 +176,7 @@ The rest of the paragraph stays exactly the same.
 - `flowmark --auto .` respects `.gitignore` and a `.flowmarkignore` file.
   Best practice: add generated, vendored, or test-fixture Markdown to `.flowmarkignore`
   so batch formatting only touches files you own.
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->
