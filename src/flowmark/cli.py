@@ -57,6 +57,9 @@ class Options:
     install_skill: bool
     agent_base: str | None
     docs: bool
+    # Cross-agent install targeting (used with --install-skill); comma-separated list
+    # of: portable, claude, agents-md, all (default = all three when omitted).
+    surfaces: str | None
 
 
 def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]:
@@ -213,20 +216,31 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
         "--skill",
         action="store_true",
         dest="skill_instructions",
-        help="Print skill instructions (SKILL.md content) for Claude Code",
+        help="Print the flowmark agent skill (SKILL.md content) to stdout",
     )
     parser.add_argument(
         "--install-skill",
         action="store_true",
         dest="install_skill",
-        help="Install Claude Code skill for flowmark",
+        help="Install the flowmark agent skill (project-local .agents/skills + .claude/skills by default)",
     )
     parser.add_argument(
         "--agent-base",
         type=str,
         dest="agent_base",
         metavar="DIR",
-        help="Agent config directory for skill installation (default: ~/.claude)",
+        help="Install the skill to a single explicit base dir (e.g. ~/.claude); for global/custom installs",
+    )
+    parser.add_argument(
+        "--surfaces",
+        default=None,
+        metavar="LIST",
+        help=(
+            "With --install-skill: comma-separated subset of skill surfaces to install. "
+            "Values: 'portable' (.agents/skills/flowmark/), 'claude' (.claude/skills/flowmark/), "
+            "'agents-md' (block in AGENTS.md), or 'all' (default if omitted). "
+            "Example: --surfaces=portable,agents-md"
+        ),
     )
     parser.add_argument(
         "--docs",
@@ -325,6 +339,7 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
             install_skill=opts.install_skill,
             agent_base=opts.agent_base,
             docs=opts.docs,
+            surfaces=opts.surfaces,
         ),
         explicit_flags,
         is_auto,
@@ -396,15 +411,51 @@ def main(args: list[str] | None = None) -> int:
 
     # Handle skill-related options (early exit)
     if options.install_skill:
-        from flowmark.skill import install_skill
+        from flowmark.skill import ALL_SURFACES, install_skill
 
-        install_skill(agent_base=options.agent_base)
-        return 0
+        if options.agent_base is not None:
+            if options.surfaces is not None:
+                print(
+                    "Error: --surfaces is incompatible with --agent-base (the latter is "
+                    "an explicit single-base install and writes one skill location).",
+                    file=sys.stderr,
+                )
+                return 2
+            results = install_skill(agent_base=options.agent_base)
+        else:
+            if options.surfaces is None:
+                selected = ALL_SURFACES
+            else:
+                tokens = [t.strip() for t in options.surfaces.split(",") if t.strip()]
+                if not tokens:
+                    print(
+                        "Error: --surfaces given an empty value; pass a comma-separated "
+                        "list of: portable, claude, agents-md, all.",
+                        file=sys.stderr,
+                    )
+                    return 2
+                expanded: set[str] = set()
+                for tok in tokens:
+                    if tok == "all":
+                        expanded |= ALL_SURFACES
+                    elif tok in ALL_SURFACES:
+                        expanded.add(tok)
+                    else:
+                        print(
+                            f"Error: unknown surface {tok!r}; "
+                            "valid values: portable, claude, agents-md, all.",
+                            file=sys.stderr,
+                        )
+                        return 2
+                selected = frozenset(expanded)
+            results = install_skill(surfaces=selected)
+        # Forward-compat guard: fail if any surface was newer than this build understands.
+        return 1 if any(r.action == "blocked-newer" for r in results) else 0
 
     if options.skill_instructions:
-        from flowmark.skill import get_skill_content
+        from flowmark.skill import compose_skill
 
-        print(get_skill_content())
+        print(compose_skill())
         return 0
 
     if options.docs:
