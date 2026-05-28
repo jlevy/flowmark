@@ -196,13 +196,14 @@ def test_footnote_definition_has_span():
     assert text[s:e].lstrip().startswith("[^a]:")
 
 
-def test_html_block_has_span():
+def test_html_block_input_falls_back_to_paragraph_with_a_span():
+    # CustomHTMLBlock.match() always returns False, so flowmark never produces an
+    # HTMLBlock — HTML-shaped input is parsed as a Paragraph instead. Either way the
+    # span contract must hold: a single block covering the HTML lines.
     text = "<div>\nraw html\n</div>\n\nAfter.\n"
     doc = _parse(text)
-    # CustomHTMLBlock.match() returns False, so HTMLBlock is never matched — flowmark
-    # currently lets HTML fall back to a Paragraph. Verify either way the first block
-    # has a valid span covering the HTML lines.
     blocks = [c for c in doc.children if not isinstance(c, BlankLine)]
+    assert isinstance(blocks[0], Paragraph)
     s, e = block_span(blocks[0])
     assert "<div>" in text[s:e]
 
@@ -238,12 +239,13 @@ def test_blank_only_document_has_full_span():
 
 def test_crlf_input_normalized_to_lf_for_spans():
     # marko's Source preprocesses CRLF → LF before parsing; spans index into that
-    # preprocessed buffer. Verify spans are valid (no off-by-CR) and slice yields
-    # well-formed Markdown.
+    # preprocessed buffer. Verify the root span and every descendant span sit in the
+    # same (normalized) coordinate space.
     text = "# Heading\r\n\r\nParagraph.\r\n"
-    doc = _parse(text)
-    blocks = [c for c in doc.children if not isinstance(c, BlankLine)]
     normalized_len = len(text.replace("\r\n", "\n"))
+    doc = _parse(text)
+    assert block_span(doc) == (0, normalized_len)
+    blocks = [c for c in doc.children if not isinstance(c, BlankLine)]
     for b in blocks:
         s, e = block_span(b)
         assert 0 <= s < e <= normalized_len
@@ -352,6 +354,27 @@ def test_inline_elements_do_not_have_spans():
                 f"inline element {type(el).__name__} should not carry a span"
             )
     assert inline_count > 0
+
+
+def test_nested_block_spans_include_container_markers():
+    # Documented contract: a child span covers the source slice marko's parser
+    # consumed, which means it includes the container's leading marker on each line
+    # (e.g. `- ` for a list item, `> ` for a quote). Verified explicitly here so the
+    # contract does not silently change.
+    list_text = "- a list item paragraph\n"
+    doc = _parse(list_text)
+    lst = next(c for c in doc.children if isinstance(c, List))
+    item = next(c for c in lst.children if isinstance(c, ListItem))
+    para = next(c for c in item.children if isinstance(c, Paragraph))
+    ps, pe = block_span(para)
+    assert list_text[ps:pe].startswith("- ")
+
+    quote_text = "> # Quoted heading\n"
+    doc = _parse(quote_text)
+    quote = next(c for c in doc.children if isinstance(c, Quote))
+    head = next(c for c in quote.children if isinstance(c, Heading))
+    hs, he = block_span(head)
+    assert quote_text[hs:he].startswith("> ")
 
 
 def test_spans_are_idempotent_under_repeated_parsing():

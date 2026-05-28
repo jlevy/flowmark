@@ -444,17 +444,19 @@ for link in extract_links(doc):   # -> list[Link(text, url, title)], reference l
 
 **Map parsed blocks back to source.** Every block element produced by
 `flowmark_markdown().parse(text)` carries an authoritative `element.span = (start, end)`
-half-open offset pair into the source, recorded straight from marko's parser state — no
-regex, no heuristic — at every nesting level:
+half-open offset pair, recorded straight from marko's parser state — no regex, no
+heuristic — at every nesting level. Offsets index the source after marko's `\r\n -> \n`
+normalization, so slice against an LF-normalized copy of the input:
 
 ```python
 from flowmark import flowmark_markdown
 from flowmark.markdown_ast import block_span
 
-doc = flowmark_markdown().parse(markdown_text)
+source = markdown_text.replace("\r\n", "\n")
+doc = flowmark_markdown().parse(source)
 for block in doc.children:
     start, end = block_span(block)
-    print(type(block).__name__, markdown_text[start:end])
+    print(type(block).__name__, source[start:end])
 ```
 
 ## Use in VSCode/Cursor

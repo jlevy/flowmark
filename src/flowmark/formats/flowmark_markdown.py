@@ -334,11 +334,16 @@ class CustomParser(Parser):
     @override
     def parse(self, text: str) -> block.Document:
         """
-        Parse `text` and attach a `span = (0, len)` to the returned `Document` so the
-        invariant "every parsed block element has a `.span`" holds at the top level too.
+        Parse `text` and attach `span = (0, len(preprocessed_buffer))` to the returned
+        `Document` so the root's coordinates match every descendant's (whose spans come
+        from `Source.pos`, an offset into the buffer after marko's `\\r\\n -> \\n`
+        normalization). Without the same normalization here, the root span would
+        out-range the preprocessed buffer on CRLF input and be inconsistent with all
+        child spans.
         """
         doc = super().parse(text)
-        doc.span = (0, len(text))  # pyright: ignore[reportAttributeAccessIssue]
+        normalized_len = len(text.replace("\r\n", "\n"))
+        doc.span = (0, normalized_len)  # pyright: ignore[reportAttributeAccessIssue]
         return doc
 
 

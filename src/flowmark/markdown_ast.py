@@ -15,10 +15,19 @@ blocks). See :func:`block_span`.
 
 The covered set includes ``Document``, ``Heading`` / ``SetextHeading``, ``Paragraph``,
 ``FencedCode`` / ``CodeBlock``, ``ThematicBreak``, ``Quote``, ``List``, ``ListItem``,
-``HTMLBlock``, ``FootnoteDef``, and GFM ``Table``. The internal cells of a table
-(``TableRow``, ``TableCell``) are constructed by ``Table.parse`` outside the main parse
-loop and do not yet carry spans; consumers should use the enclosing ``Table.span`` for
-table-level mapping.
+``FootnoteDef``, and GFM ``Table``. (Flowmark currently disables marko's
+``HTMLBlock`` — ``CustomHTMLBlock.match()`` always returns ``False`` — so block-level
+HTML falls back to a regular ``Paragraph`` and is covered under that.) The internal
+cells of a table (``TableRow``, ``TableCell``) are constructed by ``Table.parse``
+outside the main parse loop and do not yet carry spans; consumers should use the
+enclosing ``Table.span`` for table-level mapping.
+
+**Nested spans include container markers.** A child span is the slice marko's parser
+actually consumed, which means it covers the container's leading marker on each line —
+a paragraph inside ``- a`` spans the line including ``- ``, and a heading inside ``> ``
+spans the line including ``> ``. This is the right tradeoff for source mapping and
+round-tripping, but consumers that want content-only views should strip prefixes after
+slicing.
 
 **Inline elements don't.** marko does not record source offsets for inline elements, so
 :func:`extract_links` returns link *text/url/title* but no span. Recovering an inline
