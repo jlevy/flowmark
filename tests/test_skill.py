@@ -10,6 +10,8 @@ from flowmark.skill import (
     AGENTS_BEGIN_PREFIX,
     AGENTS_END_MARKER,
     DISCOVERY_VERSION,
+    SURFACE_CLAUDE,
+    SURFACE_PORTABLE,
     agents_md_block,
     compose_skill,
     flowmark_version,
@@ -112,10 +114,11 @@ class TestInstallSkill:
         assert "name: flowmark" in claude.read_text()
 
     def test_install_target_selection(self, tmp_path: Path) -> None:
-        """codex/claude flags select which surfaces are written."""
-        install_skill(project_root=tmp_path, claude=False, codex=True)
+        """The `surfaces` set selects which surfaces are written."""
+        install_skill(project_root=tmp_path, surfaces=frozenset({SURFACE_PORTABLE}))
         assert (tmp_path / ".agents" / "skills" / "flowmark" / "SKILL.md").exists()
         assert not (tmp_path / ".claude").exists()
+        assert not (tmp_path / "AGENTS.md").exists()
 
     def test_installed_file_has_do_not_edit_and_format_stamp(self, tmp_path: Path) -> None:
         install_skill(project_root=tmp_path)
@@ -137,7 +140,7 @@ class TestInstallSkill:
         target.parent.mkdir(parents=True)
         target.write_text("<!-- format=f99 surface=skill-md -->\nnewer", encoding="utf-8")
 
-        results = install_skill(project_root=tmp_path, codex=False, claude=True)
+        results = install_skill(project_root=tmp_path, surfaces=frozenset({SURFACE_CLAUDE}))
 
         assert [r.action for r in results] == ["blocked-newer"]
         assert target.read_text() == "<!-- format=f99 surface=skill-md -->\nnewer"
@@ -254,35 +257,70 @@ class TestAgentsMdBlock:
 
 
 class TestInstallSkillCli:
-    """CLI-level tests for `flowmark --install-skill` target-set resolution."""
+    """CLI-level tests for `flowmark --install-skill --surfaces` parsing."""
 
-    def test_empty_target_set_errors_out(
+    def test_default_writes_all_three_surfaces(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        assert cli_main(["--install-skill"]) == 0
+        assert (tmp_path / ".agents" / "skills" / "flowmark" / "SKILL.md").exists()
+        assert (tmp_path / ".claude" / "skills" / "flowmark" / "SKILL.md").exists()
+        assert (tmp_path / "AGENTS.md").exists()
+
+    def test_surfaces_subset(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        assert cli_main(["--install-skill", "--surfaces=portable,agents-md"]) == 0
+        assert (tmp_path / ".agents" / "skills" / "flowmark" / "SKILL.md").exists()
+        assert (tmp_path / "AGENTS.md").exists()
+        assert not (tmp_path / ".claude").exists()
+
+    def test_surfaces_all_alias(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        assert cli_main(["--install-skill", "--surfaces=all"]) == 0
+        assert (tmp_path / ".agents" / "skills" / "flowmark" / "SKILL.md").exists()
+        assert (tmp_path / ".claude" / "skills" / "flowmark" / "SKILL.md").exists()
+        assert (tmp_path / "AGENTS.md").exists()
+
+    def test_unknown_surface_errors_out(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """--install-skill with every target skipped must fail with a clear error,
-        not silently exit 0 with no files written."""
         monkeypatch.chdir(tmp_path)
-        rc = cli_main(["--install-skill", "--skip-claude", "--skip-codex"])
-        assert rc != 0
+        rc = cli_main(["--install-skill", "--surfaces=cursor"])
+        assert rc == 2
         err = capsys.readouterr().err
-        assert "at least one target surface" in err
-        # And nothing was written:
+        assert "unknown surface 'cursor'" in err
         assert not (tmp_path / ".claude").exists()
         assert not (tmp_path / ".agents").exists()
-        assert not (tmp_path / "AGENTS.md").exists()
 
-    def test_self_cancelling_flag_pair_errors_out(
+    def test_empty_surfaces_value_errors_out(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """`--claude --skip-claude` (with no --codex) resolves to an empty target set."""
         monkeypatch.chdir(tmp_path)
-        rc = cli_main(["--install-skill", "--claude", "--skip-claude"])
-        assert rc != 0
+        rc = cli_main(["--install-skill", "--surfaces="])
+        assert rc == 2
         err = capsys.readouterr().err
-        assert "at least one target surface" in err
+        assert "empty value" in err
+
+    def test_surfaces_with_agent_base_errors_out(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        rc = cli_main(
+            [
+                "--install-skill",
+                "--agent-base",
+                str(tmp_path / "base"),
+                "--surfaces=portable",
+            ]
+        )
+        assert rc == 2
+        err = capsys.readouterr().err
+        assert "incompatible with --agent-base" in err

@@ -67,44 +67,44 @@ $ mkdir v6 && cd v6 && flowmark --install-skill >/dev/null && test -f .agents/sk
 all surfaces installed
 ```
 
-## V7: Install skill --claude-only skips the portable surface
+## V7: --surfaces=claude writes only the Claude mirror
 
 ```console
-$ mkdir v7 && cd v7 && flowmark --install-skill --claude >/dev/null && test -f .claude/skills/flowmark/SKILL.md && test ! -e .agents && test ! -e AGENTS.md && echo "claude-only"
+$ mkdir v7 && cd v7 && flowmark --install-skill --surfaces=claude >/dev/null && test -f .claude/skills/flowmark/SKILL.md && test ! -e .agents && test ! -e AGENTS.md && echo "claude-only"
 claude-only
 ```
 
-## V7b: Install skill --codex writes only the portable surface and AGENTS.md
+## V8: --surfaces=portable writes only the portable surface
 
 ```console
-$ mkdir v7b && cd v7b && flowmark --install-skill --codex >/dev/null && test -f .agents/skills/flowmark/SKILL.md && test -f AGENTS.md && test ! -e .claude && echo "codex-only"
-codex-only
+$ mkdir v8 && cd v8 && flowmark --install-skill --surfaces=portable >/dev/null && test -f .agents/skills/flowmark/SKILL.md && test ! -e .claude && test ! -e AGENTS.md && echo "portable-only"
+portable-only
 ```
 
-## V8: Install skill --all writes every surface
+## V9: --surfaces=agents-md writes only the AGENTS.md block
 
 ```console
-$ mkdir v8 && cd v8 && flowmark --install-skill --all >/dev/null && test -f .agents/skills/flowmark/SKILL.md && test -f .claude/skills/flowmark/SKILL.md && test -f AGENTS.md && echo "all surfaces installed"
+$ mkdir v9 && cd v9 && flowmark --install-skill --surfaces=agents-md >/dev/null && test -f AGENTS.md && test ! -e .agents && test ! -e .claude && echo "agents-md-only"
+agents-md-only
+```
+
+## V10: --surfaces=all is an alias for the default
+
+```console
+$ mkdir v10 && cd v10 && flowmark --install-skill --surfaces=all >/dev/null && test -f .agents/skills/flowmark/SKILL.md && test -f .claude/skills/flowmark/SKILL.md && test -f AGENTS.md && echo "all surfaces installed"
 all surfaces installed
 ```
 
-## V9: Install skill --skip-claude skips only the Claude mirror
+## V11: --surfaces=portable,agents-md writes a subset
 
 ```console
-$ mkdir v9 && cd v9 && flowmark --install-skill --skip-claude >/dev/null && test -f .agents/skills/flowmark/SKILL.md && test -f AGENTS.md && test ! -e .claude && echo "skipped claude"
-skipped claude
+$ mkdir v11 && cd v11 && flowmark --install-skill --surfaces=portable,agents-md >/dev/null && test -f .agents/skills/flowmark/SKILL.md && test -f AGENTS.md && test ! -e .claude && echo "subset"
+subset
 ```
 
-## V10: Install skill --skip-codex skips only the portable surface
-
-```console
-$ mkdir v10 && cd v10 && flowmark --install-skill --skip-codex >/dev/null && test -f .claude/skills/flowmark/SKILL.md && test ! -e .agents && test ! -e AGENTS.md && echo "skipped codex"
-skipped codex
-```
-
-## V11: Install skill with every target skipped exits non-zero
+## V12: --surfaces with an unknown value exits non-zero
 
 ```console (exit-code=2)
-$ mkdir v11 && cd v11 && flowmark --install-skill --skip-claude --skip-codex 2>&1 1>/dev/null | grep -o "at least one target surface"
-at least one target surface
+$ mkdir v12 && cd v12 && flowmark --install-skill --surfaces=cursor 2>&1 1>/dev/null | grep -o "unknown surface"
+unknown surface
 ```

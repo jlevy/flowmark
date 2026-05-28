@@ -512,36 +512,51 @@ It works with any agent that can run a shell command, and ships a
 [SKILL.md](https://agentskills.io) so capable agents discover when to use it on their
 own.
 
-### Install the Skill
+### How to Install the Skill
 
-By default `flowmark --install-skill` installs the skill **project-locally** into both
-the portable `.agents/skills/flowmark/` location (read by Codex, Gemini CLI, pi, and
-others) and the `.claude/skills/flowmark/` mirror (Claude Code reads only that path),
-and adds a small marker-bounded block to the project’s `AGENTS.md`:
+There are three install paths, ordered by what most users want first:
 
-```bash
-# Project-local cross-agent install (run from the repo root)
-flowmark --install-skill
-
-# Pick specific surfaces (tri-state: --all / --claude / --codex / --skip-*)
-flowmark --install-skill --claude        # only the .claude surface
-flowmark --install-skill --skip-codex    # everything except the portable surface
-
-# Install to a single explicit base, e.g. a global Claude config
-flowmark --install-skill --agent-base ~/.claude
-```
-
-Installs are idempotent (re-running an up-to-date install changes nothing) and
-version-pinned to the installed flowmark.
-Generated files are marked `DO NOT EDIT`.
-
-You can also install the published skill into any supported agent with the cross-agent
-package manager — no flowmark install required first, since the skill bootstraps its own
-pinned CLI:
+**1. Cross-agent package manager (no flowmark prerequisite).** If you just want the
+skill on disk for any supported agent and don’t already have flowmark, use the
+`skills.sh` installer.
+It copies the published discovery copy into `.agents/skills/` and symlinks it into each
+agent’s native location (Claude Code, Codex, Cursor, Copilot, Gemini, …). The discovery
+copy bootstraps its own pinned `uvx` invocation, so no prior flowmark install is
+required:
 
 ```bash
 npx skills add jlevy/flowmark
 ```
+
+**2. Direct install via the flowmark CLI (recommended once you have flowmark).** Run
+from the repo root. By default this writes all three project-local surfaces — the
+portable `.agents/skills/flowmark/` (read by Codex, Gemini CLI, pi, and others), the
+`.claude/skills/flowmark/` mirror (Claude Code reads only that path), and a compact
+marker-bounded block in `AGENTS.md`:
+
+```bash
+flowmark --install-skill                              # all three surfaces (default)
+flowmark --install-skill --surfaces=portable,agents-md  # skip the Claude mirror
+flowmark --install-skill --surfaces=claude            # only the Claude mirror
+flowmark --install-skill --agent-base ~/.claude       # single explicit base (global)
+```
+
+The `--surfaces` flag is a comma-separated subset of `portable`, `claude`, `agents-md`,
+or the `all` alias. Installs are idempotent (re-running an up-to-date install changes
+nothing), version-pinned to the installed flowmark, and generated files are marked
+`DO NOT EDIT`. A forward-compat guard refuses to clobber any artifact stamped with a
+newer format than this build understands.
+
+**3. Manual copy from the public discovery copy.** Every release publishes a
+spec-compliant `SKILL.md` at the repo root:
+[`skills/flowmark/SKILL.md`](https://github.com/jlevy/flowmark/blob/main/skills/flowmark/SKILL.md).
+You can drop it into your project at `.agents/skills/flowmark/SKILL.md` (and mirror to
+`.claude/skills/flowmark/SKILL.md` for Claude Code) — useful in air-gapped or
+no-Node-no-Python environments.
+
+Flowmark is also indexed automatically by GitHub-scraping skill discoverers (SkillsMP,
+ClaudeSkills.info, LobeHub, claudemarketplaces) just by being a public repo with a
+`SKILL.md` — no extra setup.
 
 ### Agent Skill Options
 
@@ -549,9 +564,8 @@ npx skills add jlevy/flowmark
 | --- | --- |
 | `--skill` | Print the composed skill (SKILL.md content) |
 | `--install-skill` | Install the flowmark skill (project-local cross-agent by default) |
-| `--all` / `--claude` / `--codex` | Select which project-local surfaces to install |
-| `--skip-claude` / `--skip-codex` | Skip a surface that would otherwise be installed |
-| `--agent-base DIR` | Install to a single explicit base dir (e.g. `~/.claude`) |
+| `--surfaces LIST` | Subset of `portable`, `claude`, `agents-md`, or `all` (default) |
+| `--agent-base DIR` | Install to a single explicit base dir (e.g. `~/.claude`); incompatible with `--surfaces` |
 | `--docs` | Print full documentation |
 
 ### Manual Usage in Agents

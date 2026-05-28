@@ -57,12 +57,9 @@ class Options:
     install_skill: bool
     agent_base: str | None
     docs: bool
-    # Cross-agent install targeting (used with --install-skill)
-    skill_all: bool
-    skill_claude: bool
-    skill_codex: bool
-    skill_skip_claude: bool
-    skill_skip_codex: bool
+    # Cross-agent install targeting (used with --install-skill); comma-separated list
+    # of: portable, claude, agents-md, all (default = all three when omitted).
+    surfaces: str | None
 
 
 def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]:
@@ -235,34 +232,15 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
         help="Install the skill to a single explicit base dir (e.g. ~/.claude); for global/custom installs",
     )
     parser.add_argument(
-        "--all",
-        action="store_true",
-        dest="skill_all",
-        help="With --install-skill: install all project-local skill surfaces",
-    )
-    parser.add_argument(
-        "--claude",
-        action="store_true",
-        dest="skill_claude",
-        help="With --install-skill: install the Claude Code surface (.claude/skills)",
-    )
-    parser.add_argument(
-        "--codex",
-        action="store_true",
-        dest="skill_codex",
-        help="With --install-skill: install the portable surface (.agents/skills; Codex, Gemini, pi)",
-    )
-    parser.add_argument(
-        "--skip-claude",
-        action="store_true",
-        dest="skill_skip_claude",
-        help="With --install-skill: skip the Claude Code surface",
-    )
-    parser.add_argument(
-        "--skip-codex",
-        action="store_true",
-        dest="skill_skip_codex",
-        help="With --install-skill: skip the portable surface",
+        "--surfaces",
+        default=None,
+        metavar="LIST",
+        help=(
+            "With --install-skill: comma-separated subset of skill surfaces to install. "
+            "Values: 'portable' (.agents/skills/flowmark/), 'claude' (.claude/skills/flowmark/), "
+            "'agents-md' (block in AGENTS.md), or 'all' (default if omitted). "
+            "Example: --surfaces=portable,agents-md"
+        ),
     )
     parser.add_argument(
         "--docs",
@@ -361,11 +339,7 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
             install_skill=opts.install_skill,
             agent_base=opts.agent_base,
             docs=opts.docs,
-            skill_all=opts.skill_all,
-            skill_claude=opts.skill_claude,
-            skill_codex=opts.skill_codex,
-            skill_skip_claude=opts.skill_skip_claude,
-            skill_skip_codex=opts.skill_skip_codex,
+            surfaces=opts.surfaces,
         ),
         explicit_flags,
         is_auto,
@@ -437,31 +411,44 @@ def main(args: list[str] | None = None) -> int:
 
     # Handle skill-related options (early exit)
     if options.install_skill:
-        from flowmark.skill import install_skill
+        from flowmark.skill import ALL_SURFACES, install_skill
 
         if options.agent_base is not None:
-            results = install_skill(agent_base=options.agent_base)
-        else:
-            # Tri-state targeting: a positive flag forces that surface on (and suppresses
-            # untargeted ones); with no positive flag both are on; --skip-* forces off.
-            if options.skill_all or options.skill_claude or options.skill_codex:
-                claude = options.skill_all or options.skill_claude
-                codex = options.skill_all or options.skill_codex
-            else:
-                claude = codex = True
-            if options.skill_skip_claude:
-                claude = False
-            if options.skill_skip_codex:
-                codex = False
-            if not claude and not codex:
+            if options.surfaces is not None:
                 print(
-                    "Error: --install-skill needs at least one target surface; "
-                    "the combination of flags resolved to none (every surface was "
-                    "skipped). Pass --all, --claude, --codex, or omit --skip-* flags.",
+                    "Error: --surfaces is incompatible with --agent-base (the latter is "
+                    "an explicit single-base install and writes one skill location).",
                     file=sys.stderr,
                 )
                 return 2
-            results = install_skill(claude=claude, codex=codex)
+            results = install_skill(agent_base=options.agent_base)
+        else:
+            if options.surfaces is None:
+                selected = ALL_SURFACES
+            else:
+                tokens = [t.strip() for t in options.surfaces.split(",") if t.strip()]
+                if not tokens:
+                    print(
+                        "Error: --surfaces given an empty value; pass a comma-separated "
+                        "list of: portable, claude, agents-md, all.",
+                        file=sys.stderr,
+                    )
+                    return 2
+                expanded: set[str] = set()
+                for tok in tokens:
+                    if tok == "all":
+                        expanded |= ALL_SURFACES
+                    elif tok in ALL_SURFACES:
+                        expanded.add(tok)
+                    else:
+                        print(
+                            f"Error: unknown surface {tok!r}; "
+                            "valid values: portable, claude, agents-md, all.",
+                            file=sys.stderr,
+                        )
+                        return 2
+                selected = frozenset(expanded)
+            results = install_skill(surfaces=selected)
         # Forward-compat guard: fail if any surface was newer than this build understands.
         return 1 if any(r.action == "blocked-newer" for r in results) else 0
 

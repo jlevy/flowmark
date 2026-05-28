@@ -114,11 +114,10 @@ check_cmd_pattern "skill flag (--skill)" '^\$ .*--skill([[:space:]]|$)'
 check_cmd_pattern "install skill flag (--install-skill)" '^\$ .*--install-skill([[:space:]]|$)'
 check_cmd_pattern "agent base flag (--agent-base)" '^\$ .*--agent-base([[:space:]]|$)'
 check_cmd_pattern "docs flag (--docs)" '^\$ .*--docs([[:space:]]|$)'
-check_cmd_pattern "install-skill all (--all)" '^\$ .*--install-skill .*--all([[:space:]]|$)'
-check_cmd_pattern "install-skill claude (--claude)" '^\$ .*--install-skill .*--claude([[:space:]]|$)'
-check_cmd_pattern "install-skill codex (--codex)" '^\$ .*--install-skill .*--codex([[:space:]]|$)'
-check_cmd_pattern "install-skill skip-claude (--skip-claude)" '^\$ .*--install-skill .*--skip-claude([[:space:]]|$)'
-check_cmd_pattern "install-skill skip-codex (--skip-codex)" '^\$ .*--install-skill .*--skip-codex([[:space:]]|$)'
+check_cmd_pattern "install-skill --surfaces=portable" '^\$ .*--install-skill .*--surfaces=portable'
+check_cmd_pattern "install-skill --surfaces=claude" '^\$ .*--install-skill .*--surfaces=claude'
+check_cmd_pattern "install-skill --surfaces=agents-md" '^\$ .*--install-skill .*--surfaces=agents-md'
+check_cmd_pattern "install-skill --surfaces=all" '^\$ .*--install-skill .*--surfaces=all'
 
 echo ""
 echo "Checking wildcard discipline..."

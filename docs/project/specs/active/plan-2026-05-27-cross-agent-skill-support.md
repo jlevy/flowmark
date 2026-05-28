@@ -35,9 +35,10 @@ formatter-stable output.
 - **Self-documenting**: the installed `SKILL.md` is portable (standard frontmatter +
   `allowed-tools`), states *what it does* and *when to use it*, and points to
   `flowmark --docs` for the full reference (progressive disclosure, §3.1).
-- **Self-installing and idempotent**: tri-state targeting flags (`--all`, `--claude`,
-  `--codex`, `--skip-*`); project-local by default; re-running makes no change when
-  already current; user content outside markers is preserved.
+- **Self-installing and idempotent**: surface-oriented `--surfaces` flag (values:
+  `portable`, `claude`, `agents-md`, or the `all` alias); project-local by default;
+  re-running makes no change when already current; user content outside markers is
+  preserved.
 - **Supply-chain-correct invocation**: the skill references a **pinned** flowmark
   version with a local-first fallback (`flowmark` on PATH →
   `uvx --from flowmark==<version>`), never an unpinned `@latest` (§6.7, §9; aligns with
@@ -92,7 +93,8 @@ formatter-stable output.
 
 Introduce a single **compose step** that renders all install surfaces from one authored
 source, then broaden the installer to write the portable location, the Claude mirror,
-and the `AGENTS.md` block under tri-state targeting flags.
+and the `AGENTS.md` block under a single surface-oriented `--surfaces` flag whose values
+match the `surface=` field on every generated artifact’s format stamp.
 
 ### Components
 
@@ -122,15 +124,20 @@ and the `AGENTS.md` block under tri-state targeting flags.
   `npx skills add` / indexers, produced from `compose_skill` at build/lint time; opens
   with a pinned bootstrap line so a registry install (Markdown only, no binary) still
   works.
-- **CLI (`src/flowmark/cli.py`)** — add tri-state targeting: `--all`, `--claude`,
-  `--codex`, `--skip-claude`, `--skip-codex` (avoid Commander-style `--no-*`). Keep
-  `--install-skill`, `--skill`, `--docs`, and `--agent-base` working; `--agent-base`
-  continues to scope a custom/global base.
+- **CLI (`src/flowmark/cli.py`)** — add `--surfaces=<list>`, a comma-separated subset of
+  {`portable`, `claude`, `agents-md`} plus an `all` alias (default when omitted is all
+  three). The values match the `surface=` field on every generated artifact’s format
+  stamp, so the same vocabulary covers user-facing flags, on-disk metadata, and library
+  calls. Reject unknown surfaces and `--surfaces` combined with `--agent-base` with exit
+  code 2. Keep `--install-skill`, `--skill`, `--docs`, and `--agent-base` working;
+  `--agent-base` continues to scope a custom/global base.
 
 ### API Changes
 
-- New CLI flags (additive): `--all`, `--claude`, `--codex`, `--skip-claude`,
-  `--skip-codex`. Existing flags unchanged in meaning.
+- New CLI flag (additive): `--surfaces` (values: `portable`, `claude`, `agents-md`,
+  `all`; default = all three).
+  Existing flags (`--install-skill`, `--skill`, `--docs`, `--agent-base`) unchanged in
+  meaning.
 - `skill.py` gains `compose_skill`, `agents_md_block`, and a richer `install_skill`
   signature (target set + project root).
   The old single-base behavior remains the `--agent-base` path.
@@ -161,8 +168,9 @@ Output must be byte-deterministic and flowmark-stable.
   payload to both (no symlinks).
   Mark each `DO NOT EDIT` with the unified `format=fNN surface=skill-md` stamp (the same
   single `fNN` used on the AGENTS.md block).
-- [x] Add tri-state CLI flags (`--all`, `--claude`, `--codex`, `--skip-*`); default to
-  detection-based, project-local; keep `--agent-base` for custom/global.
+- [x] Add `--surfaces` flag (values: `portable`, `claude`, `agents-md`, `all`; default =
+  all three); reject unknown values and combination with `--agent-base`; keep
+  `--agent-base` for custom/global installs.
 - [x] Idempotency + itemized summary; forward-compat guard for too-new format stamps.
 - [x] Tests: install paths, idempotent re-run, pinned-version substitution, summary.
 
@@ -186,9 +194,10 @@ Output must be byte-deterministic and flowmark-stable.
 
 ## Testing Strategy
 
-- **Unit**: target resolution (tri-state), portable + mirror write paths, marker-bounded
-  `AGENTS.md` update preserves surrounding content, format-stamp parsing, forward-compat
-  guard triggers on a too-new stamp.
+- **Unit**: `--surfaces` parsing (subset, alias, unknown, empty, mutually-exclusive with
+  `--agent-base`), portable + mirror write paths, marker-bounded `AGENTS.md` update
+  preserves surrounding content, format-stamp parsing, forward-compat guard triggers on
+  a too-new stamp.
 - **Golden**: `flowmark --skill` output (pinned invocation present, no `@latest`);
   generated `skills/flowmark/SKILL.md`. Extend the existing `verbose-docs.tryscript.md`
   suite.

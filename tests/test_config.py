@@ -162,11 +162,7 @@ def _make_options(  # pyright: ignore[reportUnusedParameter]
         install_skill=install_skill,
         agent_base=agent_base,
         docs=docs,
-        skill_all=False,
-        skill_claude=False,
-        skill_codex=False,
-        skill_skip_claude=False,
-        skill_skip_codex=False,
+        surfaces=None,
     )
 
 

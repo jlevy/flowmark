@@ -109,6 +109,14 @@ SKILL_DIRNAME = "flowmark"
 PORTABLE_SKILL_REL = Path(".agents") / "skills" / SKILL_DIRNAME
 CLAUDE_SKILL_REL = Path(".claude") / "skills" / SKILL_DIRNAME
 
+# Surface identifiers. These match the `surface=` field on every generated artifact's
+# format stamp (see FLOWMARK_FORMAT above) and the CLI's `--surfaces` flag values, so
+# one vocabulary covers user-facing flags, on-disk metadata, and library calls.
+SURFACE_PORTABLE = "portable"  # .agents/skills/flowmark/SKILL.md — Codex, Gemini CLI, pi
+SURFACE_CLAUDE = "claude"  # .claude/skills/flowmark/SKILL.md — Claude Code mirror
+SURFACE_AGENTS_MD = "agents-md"  # marker-bounded block in AGENTS.md
+ALL_SURFACES = frozenset({SURFACE_PORTABLE, SURFACE_CLAUDE, SURFACE_AGENTS_MD})
+
 _FORMAT_RE = re.compile(r"format=f(\d+)")
 
 
@@ -265,16 +273,18 @@ def install_skill(
     agent_base: str | None = None,
     *,
     project_root: Path | str | None = None,
-    claude: bool = True,
-    codex: bool = True,
+    surfaces: frozenset[str] | None = None,
 ) -> list[InstallResult]:
     """
     Install the flowmark skill, version-pinned to the installed flowmark.
 
     With `agent_base` set, does a single-base install to `{agent_base}/skills/flowmark/`
-    (explicit/global, e.g. `~/.claude`). Otherwise installs project-locally under
-    `project_root` (default: cwd): the portable `.agents/skills/flowmark/` surface when
-    `codex` is set and the `.claude/skills/flowmark/` mirror when `claude` is set.
+    (explicit/global, e.g. `~/.claude`) and `surfaces` is ignored.
+
+    Otherwise installs project-locally under `project_root` (default: cwd). `surfaces`
+    selects which of the three project-local surfaces to write — any subset of
+    {`SURFACE_PORTABLE`, `SURFACE_CLAUDE`, `SURFACE_AGENTS_MD`}. Pass `None` (default)
+    for all three.
 
     Idempotent (re-running an up-to-date install reports "unchanged") and returns a
     per-surface result list.
@@ -287,6 +297,8 @@ def install_skill(
         print("Install with: uv tool install flowmark", file=sys.stderr)
         sys.exit(1)
 
+    selected = ALL_SURFACES if surfaces is None else frozenset(surfaces)
+
     results: list[InstallResult] = []
     try:
         if agent_base is not None:
@@ -294,12 +306,13 @@ def install_skill(
             results.append(_write_surface(base / "skills" / SKILL_DIRNAME, str(base), content))
         else:
             root = Path(project_root).resolve() if project_root is not None else Path.cwd()
-            if codex:
+            if SURFACE_PORTABLE in selected:
                 results.append(
                     _write_surface(root / PORTABLE_SKILL_REL, ".agents/skills (portable)", content)
                 )
+            if SURFACE_AGENTS_MD in selected:
                 results.append(update_agents_md(root / "AGENTS.md"))
-            if claude:
+            if SURFACE_CLAUDE in selected:
                 results.append(
                     _write_surface(root / CLAUDE_SKILL_REL, ".claude/skills (Claude Code)", content)
                 )
