@@ -6,12 +6,18 @@ Parse documents with :func:`flowmark.flowmark_markdown` (GFM + footnote), then u
 helpers instead of re-implementing marko tree walks that must track GFM/footnote element
 types.
 
-**Identity, not spans.** A *span* here means a slice of source text plus its
-`[start, end)` character offsets. marko does not record source offsets for inline
-elements, so :func:`extract_links` returns link *text/url/title* but no span. Recovering
-one is a source-mapping problem the consumer owns: duplicate link text, reference links,
-escaped text, and nested inline markup mean it is not simply "find the link text" — it
-must be reconciled against the original source.
+**Block elements have spans.** Every block element produced by
+:func:`flowmark.flowmark_markdown` carries an authoritative ``element.span = (start,
+end)`` half-open offset pair into the source (after marko's ``\\r\\n -> \\n``
+normalization). Spans are recorded straight from marko's own parser state — no regex,
+no heuristic — and propagate to every nesting level (containers, list items, nested
+lists, blockquoted blocks). See :func:`block_span`.
+
+**Inline elements don't.** marko does not record source offsets for inline elements, so
+:func:`extract_links` returns link *text/url/title* but no span. Recovering an inline
+span is a source-mapping problem the consumer owns: duplicate link text, reference
+links, escaped text, and nested inline markup mean it is not simply "find the link
+text" — it must be reconciled against the original source.
 """
 
 from __future__ import annotations
@@ -98,8 +104,20 @@ def extract_links(
     return links
 
 
+def block_span(element: Element) -> tuple[int, int]:
+    """
+    Read the ``(start, end)`` source span of a block element parsed by
+    :func:`flowmark.flowmark_markdown`. Half-open offsets into the preprocessed source
+    (after marko's ``\\r\\n -> \\n`` normalization). Raises :class:`AttributeError` for
+    elements that were not produced by flowmark's parser (e.g. tree fragments built by
+    hand, or elements from a vanilla marko parser).
+    """
+    return cast("tuple[int, int]", element.span)  # pyright: ignore[reportAttributeAccessIssue]
+
+
 __all__ = (
     "Link",
     "walk_elements",
     "extract_links",
+    "block_span",
 )

@@ -268,11 +268,72 @@ class CustomFencedCode(block.FencedCode):
         )
 
 
+class CustomListItem(block.ListItem):
+    """
+    A `ListItem` that records its own source span. `List.parse` creates items by
+    calling `parser.block_elements["ListItem"].parse(source)` directly (bypassing the
+    parser's main `parse_source` loop), so the span needs to be captured here, not in
+    the override above. The `override` class flag is set after the class body to keep
+    marko's renderer dispatch on the `list_item` name; it is set outside the body to
+    avoid shadowing `typing_extensions.override` inside it.
+    """
+
+    @classmethod
+    @override
+    def parse(cls, source: Source) -> block.ListItem:
+        start = source.pos
+        result = super().parse(source)
+        end = source.pos
+        result.span = (start, end)  # pyright: ignore[reportAttributeAccessIssue]
+        return result
+
+
+CustomListItem.override = True
+
+
 class CustomParser(Parser):
     def __init__(self) -> None:
         super().__init__()
         self.block_elements["HTMLBlock"] = CustomHTMLBlock
         self.block_elements["FencedCode"] = CustomFencedCode
+        self.block_elements["ListItem"] = CustomListItem
+
+    @override
+    def parse_source(self, source: Source) -> list[block.BlockElement]:
+        """
+        Override marko's block-element loop to record each element's exact source span
+        as `element.span = (start, end)` (half-open offsets into the preprocessed
+        source). Marko's container blocks (`Quote`, `ListItem`, `List`) recurse through
+        `source.parser.parse_source(source)`, so this single override attaches spans to
+        every block element at every nesting level. Authoritative — `source.pos` is
+        marko's own parser state, not a derived heuristic.
+        """
+        element_list = self._build_block_element_list()
+        ast: list[block.BlockElement] = []
+        while not source.exhausted:
+            for ele_type in element_list:
+                if ele_type.match(source):
+                    start = source.pos
+                    result = ele_type.parse(source)
+                    end = source.pos
+                    if not hasattr(result, "priority"):
+                        result = ele_type(result)  # pyright: ignore[reportCallIssue]
+                    result.span = (start, end)  # pyright: ignore[reportAttributeAccessIssue]
+                    ast.append(result)
+                    break
+            else:
+                break
+        return ast
+
+    @override
+    def parse(self, text: str) -> block.Document:
+        """
+        Parse `text` and attach a `span = (0, len)` to the returned `Document` so the
+        invariant "every parsed block element has a `.span`" holds at the top level too.
+        """
+        doc = super().parse(text)
+        doc.span = (0, len(text))  # pyright: ignore[reportAttributeAccessIssue]
+        return doc
 
 
 class MarkdownNormalizer(Renderer):
