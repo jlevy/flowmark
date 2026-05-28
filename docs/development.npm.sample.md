@@ -38,3 +38,7 @@ npm run test:integration # Integration tests only
 npm run test:e2e         # End-to-end tests
 npm run test:coverage    # Run with coverage report
 ```
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

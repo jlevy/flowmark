@@ -3,6 +3,8 @@ name: flowmark
 description: Fast, consistent Markdown auto-formatter for typographic cleanup (smart quotes, ellipses), normalized formatting, and optional clean line wrapping for small, readable git diffs. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM-generated Markdown, or when the user mentions flowmark or formatting Markdown.
 allowed-tools: Bash(flowmark:*), Bash(uvx:*), Read, Write
 ---
+<!-- DO NOT EDIT — `flowmark --install-skill` (format=f02 surface=skill-md) -->
+
 # Flowmark - Markdown Auto-Formatter
 
 > **Full documentation: run `flowmark --docs` for all options and usage.**
@@ -26,7 +28,7 @@ If `flowmark` is not installed, use a version-pinned zero-install runner (never
 `@latest`, so the agent can’t silently pull a newer release):
 
 ```bash
-uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --auto FILE
+uvx --from flowmark==0.7.0 flowmark --auto FILE
 ```
 
 ## Quick Start

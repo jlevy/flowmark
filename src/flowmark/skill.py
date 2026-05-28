@@ -1,21 +1,49 @@
 """
-Claude Code skill installation for flowmark.
+Agent skill installation for flowmark.
 
-This module provides functionality to install the flowmark skill for Claude Code,
-making it available either globally across all projects or within a specific project.
+Installs the flowmark `SKILL.md` so AI coding agents can discover and use it. By default
+this installs project-locally into both the portable `.agents/skills/flowmark/` location
+(read by Codex, Gemini CLI, pi) and the `.claude/skills/flowmark/` mirror (Claude Code
+reads only that path). A legacy single-base install (`agent_base`, e.g. `~/.claude`) is
+kept for explicit/global installs.
 """
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
+from typing import NamedTuple
+
+from strif import atomic_output_file
+
+# Format version for all flowmark-generated artifacts (skill SKILL.md mirrors and
+# the AGENTS.md block). One monotonically-increasing `fNN` across the project: every
+# artifact stamps with the same current value; the `surface=` field distinguishes
+# which artifact. Bump this whenever the shape of any generated artifact changes —
+# a future flowmark uses the stamp to detect older shapes and safely upgrade them
+# (and refuses to clobber a newer format it doesn't understand).
+FLOWMARK_FORMAT = "f02"
+
+# Placeholder in the authored SKILL.md, replaced by `compose_skill` with a concrete
+# version pin for the local-first runner fallback (see SKILL.md).
+_VERSION_PLACEHOLDER = "__FLOWMARK_VERSION__"
+
+# Concrete released-version pin baked into the committed repo-root discovery copy
+# (`skills/flowmark/SKILL.md`), the artifact `npx skills add jlevy/flowmark` and
+# skill indexers consume without flowmark needing to be pre-installed. Must be a
+# real, PyPI-installable version — never a `<version>` placeholder or a `.dev`/
+# local-suffix string — so the bootstrap `uvx --from flowmark==<X.Y.Z>` example
+# in the discovery copy actually runs. Bump this together with the published
+# version (see docs/publishing.md release checklist) and re-run `make format`.
+DISCOVERY_VERSION = "0.7.0"
 
 
 def get_skill_content() -> str:
-    """Read SKILL.md from package data.
+    """Read the authored SKILL.md template from package data.
 
-    Returns:
-        The content of the SKILL.md file as a string.
+    The returned text still contains the version placeholder; use `compose_skill` to
+    render an installable/publishable copy.
 
     Raises:
         ImportError: If package resources cannot be accessed.
@@ -27,6 +55,30 @@ def get_skill_content() -> str:
 
     skill_file = files("flowmark").joinpath("skills/SKILL.md")
     return skill_file.read_text(encoding="utf-8")
+
+
+def flowmark_version() -> str:
+    """The installed flowmark version, or the discovery-pin fallback if unknown."""
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("flowmark")
+    except PackageNotFoundError:
+        return DISCOVERY_VERSION
+
+
+def compose_skill(version: str | None = None) -> str:
+    """
+    Render the SKILL.md template into a final skill document.
+
+    `version` is substituted into the pinned-runner fallback. Pass an explicit string
+    (e.g. `DISCOVERY_VERSION` for the committed discovery copy) for a stable, drift-free
+    artifact; pass `None` to pin to the installed flowmark version (used when installing
+    into an agent on a user's machine). Deterministic: same inputs always yield identical
+    output.
+    """
+    pin = flowmark_version() if version is None else version
+    return get_skill_content().replace(_VERSION_PLACEHOLDER, pin)
 
 
 def get_docs_content() -> str:
@@ -52,73 +104,238 @@ For full documentation, visit: https://github.com/jlevy/flowmark
 """
 
 
-def install_skill(agent_base: str | None = None) -> None:
-    """Install flowmark skill for Claude Code.
+SKILL_DIRNAME = "flowmark"
+# Project-local skill surfaces, relative to the project root.
+PORTABLE_SKILL_REL = Path(".agents") / "skills" / SKILL_DIRNAME
+CLAUDE_SKILL_REL = Path(".claude") / "skills" / SKILL_DIRNAME
 
-    Args:
-        agent_base: The agent's configuration directory where skills are stored.
-            The skill will be installed to {agent_base}/skills/flowmark/SKILL.md
-            - None (default): Install globally to ~/.claude/skills/flowmark
-            - './.claude': Install to current project's .claude/skills/flowmark
-            - Any path: Install to that agent base directory
+# Surface identifiers. These match the `surface=` field on every generated artifact's
+# format stamp (see FLOWMARK_FORMAT above) and the CLI's `--surfaces` flag values, so
+# one vocabulary covers user-facing flags, on-disk metadata, and library calls.
+SURFACE_PORTABLE = "portable"  # .agents/skills/flowmark/SKILL.md — Codex, Gemini CLI, pi
+SURFACE_CLAUDE = "claude"  # .claude/skills/flowmark/SKILL.md — Claude Code mirror
+SURFACE_AGENTS_MD = "agents-md"  # marker-bounded block in AGENTS.md
+ALL_SURFACES = frozenset({SURFACE_PORTABLE, SURFACE_CLAUDE, SURFACE_AGENTS_MD})
 
-    The skill will be installed as SKILL.md in the appropriate directory,
-    making it automatically available to Claude Code.
+_FORMAT_RE = re.compile(r"format=f(\d+)")
+
+
+def _format_num() -> int:
+    return int(FLOWMARK_FORMAT.lstrip("f"))
+
+
+def _generated_marker() -> str:
+    # No internal `.` so flowmark’s sentence-wrap leaves the line intact.
+    return f"<!-- DO NOT EDIT — `flowmark --install-skill` (format={FLOWMARK_FORMAT} surface=skill-md) -->"
+
+
+def render_skill_file(version: str | None = None) -> str:
     """
-    # Determine installation directory
-    if agent_base is None:
-        # Default: global install to ~/.claude
-        base_dir = Path.home() / ".claude"
-        location_desc = "globally"
-        location_path = "~/.claude/skills/flowmark"
+    The skill document to write to disk: `compose_skill` plus a `DO NOT EDIT` +
+    format-version marker inserted after the YAML frontmatter (so frontmatter stays
+    first and the marker survives a `flowmark --auto` pass).
+    """
+    composed = compose_skill(version)
+    marker = _generated_marker()
+    delimiter = "\n---\n"
+    if composed.startswith("---\n") and (end := composed.find(delimiter, 4)) != -1:
+        head = composed[: end + len(delimiter)]
+        body = composed[end + len(delimiter) :]
+        return f"{head}{marker}\n\n{body}"
+    return f"{marker}\n\n{composed}"
+
+
+def discovery_skill_text() -> str:
+    """
+    The committed repo-root discovery copy (`skills/flowmark/SKILL.md`) used by
+    `npx skills add` and skill indexers. Pinned to `DISCOVERY_VERSION` (a real
+    PyPI-installable release) so the `uvx --from flowmark==<X.Y.Z>` bootstrap line
+    in the published copy is directly runnable without flowmark pre-installed.
+    Install-time copies, by contrast, pin to the actually-installed version.
+    """
+    return render_skill_file(DISCOVERY_VERSION)
+
+
+def _existing_format(path: Path) -> int | None:
+    """Format number stamped on an existing generated file; 0 if unmarked; None if absent."""
+    if not path.is_file():
+        return None
+    match = _FORMAT_RE.search(path.read_text(encoding="utf-8"))
+    return int(match.group(1)) if match else 0
+
+
+AGENTS_BEGIN_PREFIX = "<!-- BEGIN FLOWMARK INTEGRATION"
+AGENTS_END_MARKER = "<!-- END FLOWMARK INTEGRATION -->"
+_AGENTS_BLOCK_RE = re.compile(
+    re.escape(AGENTS_BEGIN_PREFIX) + r".*?" + re.escape(AGENTS_END_MARKER), re.DOTALL
+)
+# Regex for the format stamp parsed off the AGENTS.md BEGIN marker line — anchored
+# on the BEGIN prefix so a stray `format=fXX` elsewhere in the file can't fool the
+# forward-compat guard. Same `format=fNN` shape as on every other surface.
+_AGENTS_BEGIN_STAMP_RE = re.compile(re.escape(AGENTS_BEGIN_PREFIX) + r"\s+format=f(\d+)")
+
+
+def agents_md_block(version: str | None = None) -> str:
+    """
+    The compact, marker-bounded flowmark block for a project's `AGENTS.md`.
+
+    Short lines and no mid-document frontmatter, so a `flowmark --auto` pass over the
+    host `AGENTS.md` leaves it unchanged. The format version lives on the begin-marker
+    line so a later flowmark can upgrade or refuse it.
+    """
+    pin = flowmark_version() if version is None else version
+    return (
+        f"{AGENTS_BEGIN_PREFIX} format={FLOWMARK_FORMAT} surface=agents-md -->\n"
+        "## flowmark\n"
+        "\n"
+        "Auto-format Markdown with `flowmark` for clean, semantic git diffs.\n"
+        "\n"
+        "- Run `flowmark --auto <files>` on Markdown you create or edit.\n"
+        "- Run `flowmark --docs` for full usage and `flowmark --skill` for the skill.\n"
+        f"- If `flowmark` is not on `PATH`, run `uvx --from flowmark=={pin} flowmark`.\n"
+        "\n"
+        f"{AGENTS_END_MARKER}"
+    )
+
+
+class InstallResult(NamedTuple):
+    surface: str
+    path: Path
+    # "installed" | "updated" | "unchanged" | "blocked-newer"
+    action: str
+
+
+def _replace_all_flowmark_blocks(existing: str, block: str) -> str:
+    """Replace every flowmark BEGIN/END region in `existing` with a single fresh block.
+
+    Preserves user-authored content outside the markers; collapses duplicate or stale
+    blocks (e.g. left behind by an older install) to exactly one current block at the
+    location of the first removed region.
+    """
+    matches = list(_AGENTS_BLOCK_RE.finditer(existing))
+    if not matches:
+        return existing
+    head = existing[: matches[0].start()]
+    tail_parts = [
+        existing[matches[i - 1].end() : matches[i].start()] for i in range(1, len(matches))
+    ]
+    tail_parts.append(existing[matches[-1].end() :])
+    tail = "".join(tail_parts)
+    return head + block + tail
+
+
+def update_agents_md(path: Path, version: str | None = None) -> InstallResult:
+    """
+    Insert or refresh the flowmark block in `AGENTS.md`, preserving all content outside
+    the markers. Idempotent; honors the forward-compatibility guard; collapses duplicate
+    or stale flowmark blocks to one current block.
+    """
+    surface = "AGENTS.md (flowmark block)"
+    existing = path.read_text(encoding="utf-8") if path.is_file() else None
+
+    if existing is not None and (m := _AGENTS_BEGIN_STAMP_RE.search(existing)):
+        if int(m.group(1)) > _format_num():
+            return InstallResult(surface, path, "blocked-newer")
+
+    block = agents_md_block(version)
+    if existing is None or AGENTS_BEGIN_PREFIX not in existing:
+        if not existing:
+            new_content = block + "\n"
+        else:
+            sep = "\n" if existing.endswith("\n") else "\n\n"
+            new_content = existing + sep + block + "\n"
     else:
-        # User-specified agent base directory
-        base_dir = Path(agent_base).resolve()
-        location_desc = f"to {base_dir}"
-        location_path = str(base_dir / "skills" / "flowmark")
+        new_content = _replace_all_flowmark_blocks(existing, block)
 
-    skill_dir = base_dir / "skills" / "flowmark"
+    if existing == new_content:
+        return InstallResult(surface, path, "unchanged")
+    action = "updated" if existing is not None else "installed"
+    with atomic_output_file(path, make_parents=True) as tmp:
+        Path(tmp).write_text(new_content, encoding="utf-8")
+    return InstallResult(surface, path, action)
 
-    # Load skill content from package data
+
+def _write_surface(skill_dir: Path, surface: str, content: str) -> InstallResult:
+    target = skill_dir / "SKILL.md"
+    existing = _existing_format(target)
+    # Forward-compatibility guard: never clobber an artifact stamped with a newer format.
+    if existing is not None and existing > _format_num():
+        return InstallResult(surface, target, "blocked-newer")
+    if target.is_file() and target.read_text(encoding="utf-8") == content:
+        return InstallResult(surface, target, "unchanged")
+    action = "updated" if target.exists() else "installed"
+    with atomic_output_file(target, make_parents=True) as tmp:
+        Path(tmp).write_text(content, encoding="utf-8")
+    return InstallResult(surface, target, action)
+
+
+def install_skill(
+    agent_base: str | None = None,
+    *,
+    project_root: Path | str | None = None,
+    surfaces: frozenset[str] | None = None,
+) -> list[InstallResult]:
+    """
+    Install the flowmark skill, version-pinned to the installed flowmark.
+
+    With `agent_base` set, does a single-base install to `{agent_base}/skills/flowmark/`
+    (explicit/global, e.g. `~/.claude`) and `surfaces` is ignored.
+
+    Otherwise installs project-locally under `project_root` (default: cwd). `surfaces`
+    selects which of the three project-local surfaces to write — any subset of
+    {`SURFACE_PORTABLE`, `SURFACE_CLAUDE`, `SURFACE_AGENTS_MD`}. Pass `None` (default)
+    for all three.
+
+    Idempotent (re-running an up-to-date install reports "unchanged") and returns a
+    per-surface result list.
+    """
     try:
-        skill_content = get_skill_content()
+        content = render_skill_file()
     except (ImportError, FileNotFoundError) as e:
         print(f"\n✗ Error: Could not load skill content: {e}", file=sys.stderr)
         print("\nThis command requires flowmark to be installed as a package.", file=sys.stderr)
         print("Install with: uv tool install flowmark", file=sys.stderr)
         sys.exit(1)
 
-    # Create directory and install
+    selected = ALL_SURFACES if surfaces is None else frozenset(surfaces)
+
+    results: list[InstallResult] = []
     try:
-        skill_dir.mkdir(parents=True, exist_ok=True)
-        skill_file = skill_dir / "SKILL.md"
-
-        skill_file.write_text(skill_content, encoding="utf-8")
-
-        print("\n" + "=" * 70)
-        print(f"✓ Flowmark skill installed {location_desc}")
-        print("=" * 70)
-        print(f"\nLocation: {skill_file}")
-        print(f"          ({location_path})")
-        print("\nClaude Code will now automatically use flowmark for Markdown formatting.")
-        print(f"To uninstall, remove this directory: {skill_dir}")
-
-        # Show tip for project installs (when not using default global location)
         if agent_base is not None:
-            print("\n" + "-" * 70)
-            print("Tip: Commit .claude/skills/ to share this skill with your team.")
-            print("-" * 70)
-
-        print()  # Blank line for clean output
-
+            base = Path(agent_base).resolve()
+            results.append(_write_surface(base / "skills" / SKILL_DIRNAME, str(base), content))
+        else:
+            root = Path(project_root).resolve() if project_root is not None else Path.cwd()
+            if SURFACE_PORTABLE in selected:
+                results.append(
+                    _write_surface(root / PORTABLE_SKILL_REL, ".agents/skills (portable)", content)
+                )
+            if SURFACE_AGENTS_MD in selected:
+                results.append(update_agents_md(root / "AGENTS.md"))
+            if SURFACE_CLAUDE in selected:
+                results.append(
+                    _write_surface(root / CLAUDE_SKILL_REL, ".claude/skills (Claude Code)", content)
+                )
     except PermissionError as e:
         print(f"\n✗ Permission denied: {e}", file=sys.stderr)
-        print(f"\nCould not write to {skill_dir}", file=sys.stderr)
-        print("Check directory permissions and try again.", file=sys.stderr)
         sys.exit(1)
     except OSError as e:
         print(f"\n✗ Installation failed: {e}", file=sys.stderr)
         sys.exit(1)
+
+    _print_install_summary(results)
+    return results
+
+
+def _print_install_summary(results: list[InstallResult]) -> None:
+    print("\nFlowmark skill installation:")
+    for r in results:
+        if r.action == "blocked-newer":
+            print(f"  ‼️  {r.surface}: {r.path} was generated by a NEWER flowmark.")
+            print("      Upgrade flowmark (e.g. `uv tool install --upgrade flowmark`) and retry.")
+        else:
+            print(f"  ✅ {r.action:<9} {r.surface}: {r.path}")
+    print()
 
 
 def main() -> None:
@@ -131,13 +348,12 @@ def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Install flowmark Claude Code skill",
+        description="Install the cross-agent flowmark skill",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s                        # Install globally (~/.claude/skills)
-  %(prog)s --agent-base ./.claude # Install in current project (./.claude/skills)
-  %(prog)s --agent-base /path     # Install to /path/skills
+  %(prog)s                        # Project-local: .agents/skills + .claude/skills + AGENTS.md
+  %(prog)s --agent-base ~/.claude # Single explicit base (global): ~/.claude/skills
         """,
     )
 
@@ -145,7 +361,7 @@ Examples:
         "--agent-base",
         dest="agent_base",
         metavar="DIR",
-        help="agent config directory (defaults to ~/.claude)",
+        help="explicit single-base install (e.g. ~/.claude); bypasses project-local default",
     )
 
     args = parser.parse_args()

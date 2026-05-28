@@ -406,3 +406,7 @@ Document as a known limitation if issues arise.
 - Nunjucks Templates: https://mozilla.github.io/nunjucks/templating.html
 
 - Current Flowmark XML handling: `src/flowmark/linewrapping/text_wrapping.py`
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

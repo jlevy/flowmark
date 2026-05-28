@@ -104,9 +104,29 @@ Follow this checklist for each new release.
 
    - **Major** (e.g., `v0.6.0` → `v1.0.0`): Breaking changes
 
+5. **Bump the committed discovery-copy version pin:**
+
+   The repo-root `skills/flowmark/SKILL.md` is shipped to users of
+   `npx skills add jlevy/flowmark`, who do *not* have flowmark pre-installed.
+   Its `uvx --from flowmark==<X.Y.Z>` bootstrap line must therefore reference a real,
+   PyPI-installable release, never a `<version>` placeholder or a `.dev`/ local-suffix
+   string. Bump the `DISCOVERY_VERSION` constant in `src/flowmark/skill.py` to the
+   about-to-be-released version, then re-run `make format` to regenerate the discovery
+   copy, and commit before tagging:
+
+   ```shell
+   # In src/flowmark/skill.py: DISCOVERY_VERSION = "<NEW_TAG without leading v>"
+   make format
+   git add src/flowmark/skill.py skills/flowmark/SKILL.md
+   git commit -m "skill: bump DISCOVERY_VERSION to vX.Y.Z"
+   ```
+
+   `tests/test_skill_artifacts.py::test_discovery_copy_has_resolvable_version_pin`
+   guards against shipping a non-resolvable pin.
+
 #### Create the Release
 
-5. **Generate release notes content:**
+6. **Generate release notes content:**
 
    Review changes since the last release:
 
@@ -121,7 +141,7 @@ Follow this checklist for each new release.
    git diff ${LAST_TAG}..HEAD
    ```
 
-6. **Create the release with `gh`:**
+7. **Create the release with `gh`:**
 
    ```shell
    NEW_TAG="vX.Y.Z"  # Replace with actual version
@@ -144,7 +164,7 @@ Follow this checklist for each new release.
    Alternatively, use `--generate-notes` for GitHub’s auto-generated notes, or
    `--notes-file FILENAME` to read from a file.
 
-7. **Verify the release published successfully:**
+8. **Verify the release published successfully:**
 
    ```shell
    # Check the release workflow:
@@ -170,20 +190,20 @@ is empty** (do not pad with “none”):
 What was removed or changed incompatibly (API signature, CLI flag, removed behavior) and
 how to migrate.
 
-### Behavior & Compatibility Changes
+### Behavior and Compatibility Changes
 
 **Short title of behavior change**
 
-A change to default *output* or runtime behavior that is not an API break — e.g. the
-formatter now produces different (but valid) Markdown for some input, line breaks land
-differently, or default option values changed. Say exactly which inputs are affected and
-whether the result is rendering-equivalent.
+A change to default *output* or runtime behavior that is not an API break. For example,
+the formatter now produces different (but valid) Markdown for some input, line breaks
+land differently, or default option values changed. Say exactly which inputs are
+affected and whether the result is rendering-equivalent.
 
-### New Features & API
+### New Features and API
 
 **Short title of feature or new public API**
 
-New capabilities, new CLI flags, and new public functions/types. Additive only — anything
+New capabilities, new CLI flags, and new public functions/types. Additive only: anything
 that *changes* existing behavior belongs above, not here.
 
 ### Bug Fixes
@@ -210,26 +230,26 @@ Guidelines:
 
   2. For the same input, does the tool now produce different output or behave
      differently (even if valid and rendering-equivalent), or did a default change?
-     → **Behavior & Compatibility Changes**. This is the category most often missed: a
+     → **Behavior and Compatibility Changes**. This is the category most often missed: a
      formatter whose output drifts between versions is a compatibility concern (diffs,
      golden tests, re-flowed files) even when nothing is strictly “broken”.
 
-  3. Is it purely additive — new flag, new public function/type, new capability, with no
-     change to existing behavior?
-     → **New Features & API**.
+  3. Is it purely additive (new flag, new public function/type, new capability, with no
+     change to existing behavior)?
+     → **New Features and API**.
 
   4. Did it correct previously-wrong or broken output?
      → **Bug Fixes** (and state plainly when output changes as a result).
 
-- When in doubt between *Behavior & Compatibility* and *Bug Fixes*, prefer **Behavior &
-  Compatibility** and explain — readers diffing reformatted files care about *any*
-  output change regardless of intent.
+- When in doubt between *Behavior and Compatibility* and *Bug Fixes*, prefer **Behavior
+  and Compatibility** and explain why: readers diffing reformatted files care about
+  *any* output change regardless of intent.
 
 - Describe the **aggregate delta** between the previous release and this one, not
   individual commits. If a feature was added and then fixed before release, describe the
   feature as it now works rather than listing the intermediate fix separately.
 
-- Skip **internal-only** changes that users never see — CI/tooling, pure refactors,
+- Skip **internal-only** changes that users never see: CI/tooling, pure refactors,
   test-only work, and dependency or doc housekeeping.
 
 - Use `**bold**` for short titles of individual changes.
@@ -238,11 +258,14 @@ Guidelines:
 
 - Always include the Full Changelog compare link at the end.
 
-- For small releases, a simple bullet list is acceptable — but still group it under
-  these headings so behavior/compatibility changes are never buried among features or
-  fixes.
+- For small releases, a simple bullet list is acceptable, but still group it under these
+  headings so behavior/compatibility changes are never buried among features or fixes.
 
 * * *
 
 *This file was built with
 [simple-modern-uv](https://github.com/jlevy/simple-modern-uv).*
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

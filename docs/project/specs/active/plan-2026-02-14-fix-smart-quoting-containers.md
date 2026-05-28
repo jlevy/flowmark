@@ -29,9 +29,9 @@ Two issues have been identified where smart quotes fail to convert when expected
 
    - Table cell text: `| "Hello" |` stays as straight quotes
    - Strikethrough text: `~~"Hello"~~` stays as straight quotes
-   - Cross-inline quotes in blockquotes:
-     `> "First, ... \`command\`."` stays as straight quotes because the opening and
-     closing `"` are in different `RawText` nodes (separated by the `CodeSpan`)
+   - Cross-inline quotes in blockquotes: `> "First, ... \`command\`."` stays as straight
+     quotes because the opening and closing `"` are in different `RawText` nodes
+     (separated by the `CodeSpan`)
 
 3. **What is the desired behavior?**
 
@@ -60,19 +60,21 @@ Two issues have been identified where smart quotes fail to convert when expected
 
 5. **Could this bug appear in other situations?**
 
-   Yes. Any inline element (emphasis, strong emphasis, links, images, strikethrough)
-   that interrupts a quoted span would trigger issue 2. Issue 1 also affects
-   strikethrough content.
+   Yes. Any inline element (emphasis, strong emphasis, links, images, strikethrough) that
+   interrupts a quoted span would trigger issue 2. Issue 1 also affects strikethrough
+   content.
 
 6. **Should this be a complete, more systematic fix or a faster, lower-risk patch?**
 
-   Complete systematic fix. The root cause is architectural:
+   Complete systematic fix.
+   The root cause is architectural:
    - Issue 1: `ContainerElement` tuple missing table/strikethrough types
    - Issue 2: Smart quotes applied per-`RawText`-node instead of per-inline-scope
 
 7. **Should we make a deployment plan?**
 
-   No special deployment needed. Standard release.
+   No special deployment needed.
+   Standard release.
 
 ## Stage 1: Root Cause Analysis
 
@@ -84,17 +86,18 @@ Two issues have been identified where smart quotes fail to convert when expected
 - `gfm_elements.TableCell`
 - `gfm_elements.Strikethrough`
 
-The `transform_tree()` function only recurses into `ContainerElement` types. Since
-tables and strikethrough are not listed, their children are never visited, and `RawText`
-nodes inside them are never processed.
+The `transform_tree()` function only recurses into `ContainerElement` types.
+Since tables and strikethrough are not listed, their children are never visited, and
+`RawText` nodes inside them are never processed.
 
 ### Issue 2: Per-Node Processing
 
 `rewrite_text_content()` in `doc_transforms.py:97-125` applies the rewrite function to
-each `RawText` node independently. When quotes span across inline elements (e.g.,
-`"text \`code\` more text."`), the opening and closing `"` are in different `RawText`
-nodes. The `QUOTE_PATTERN` regex in `smartquotes.py` needs to see both quotes in the
-same string to match them as a pair.
+each `RawText` node independently.
+When quotes span across inline elements (e.g., `"text \`code\` more text."`), the
+opening and closing `"` are in different `RawText` nodes.
+The `QUOTE_PATTERN` regex in `smartquotes.py` needs to see both quotes in the same
+string to match them as a pair.
 
 ## Stage 2: Fix Design
 
@@ -104,14 +107,13 @@ same string to match them as a pair.
    `gfm_elements.TableRow`, `gfm_elements.TableCell`, and `gfm_elements.Strikethrough`
    so the tree walker visits their children.
 
-2. **Cross-inline rewriting**: Create a new function `rewrite_text_across_inlines()` that:
-   a. Walks the tree looking for "inline scope" nodes (Paragraph, Heading, TableCell)
-   b. For each scope, collects all inline content into segments, tracking which are
-      from `RawText` nodes (mutable) vs other nodes (immutable context)
-   c. Concatenates all segments into a composite string
-   d. Applies `smart_quotes()` to the composite string
-   e. Maps changes back only to `RawText` segments (since smart quotes is
-      length-preserving, this is a simple positional mapping)
+2. **Cross-inline rewriting**: Create a new function `rewrite_text_across_inlines()`
+   that: a. Walks the tree looking for “inline scope” nodes (Paragraph, Heading,
+   TableCell) b. For each scope, collects all inline content into segments, tracking
+   which are from `RawText` nodes (mutable) vs other nodes (immutable context) c.
+   Concatenates all segments into a composite string d. Applies `smart_quotes()` to the
+   composite string e. Maps changes back only to `RawText` segments (since smart quotes
+   is length-preserving, this is a simple positional mapping)
 
 3. **Key invariant**: `smart_quotes()` is length-preserving (each ASCII quote character
    maps to exactly one Unicode character), so the positional mapping from composite text
@@ -121,14 +123,17 @@ same string to match them as a pair.
 
 - `CodeSpan` content is collected for context but marked immutable \u2014 never modified
 - `FencedCode`/`CodeBlock` are not traversed at all (not in `ContainerElement`)
-- Template tags are protected by `smart_quotes()` itself (splits on `TEMPLATE_TAG_PATTERN`)
-- Code-like patterns (`x="foo"`) aren't matched by `QUOTE_PATTERN` (no whitespace before quote)
+- Template tags are protected by `smart_quotes()` itself (splits on
+  `TEMPLATE_TAG_PATTERN`)
+- Code-like patterns (`x="foo"`) aren’t matched by `QUOTE_PATTERN` (no whitespace before
+  quote)
 
 ### Files to Modify
 
-- `src/flowmark/transforms/doc_transforms.py` \u2014 Add container types, add cross-inline
-  rewriting function
-- `src/flowmark/linewrapping/markdown_filling.py` \u2014 Use new function for smart quotes
+- `src/flowmark/transforms/doc_transforms.py` \u2014 Add container types, add
+  cross-inline rewriting function
+- `src/flowmark/linewrapping/markdown_filling.py` \u2014 Use new function for smart
+  quotes
 - `tests/test_smartquotes.py` \u2014 Add unit tests for new scenarios
 - `tests/testdocs/testdoc.orig.md` \u2014 Add table/cross-inline test cases
 - `tests/testdocs/testdoc.expected.auto.md` \u2014 Add expected smart-quoted output
@@ -158,5 +163,9 @@ same string to match them as a pair.
 ## Assumptions
 
 - Smart quotes conversion is always length-preserving (verified by code inspection)
-- `SetextHeading` is converted to `Heading` during parsing and doesn't need separate
+- `SetextHeading` is converted to `Heading` during parsing and doesn’t need separate
   handling in `InlineScope`
+
+<!-- This document follows common-doc-guidelines.md.
+See github.com/jlevy/practical-prose and review guidelines before editing.
+-->

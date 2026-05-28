@@ -5,3 +5,12 @@
 # fence as a setext heading and corrupts the block, so leave these to `tbd setup`.
 AGENTS.md
 CLAUDE.md
+
+# Golden test fixtures: inputs are intentionally messy and expected outputs are
+# fixed snapshots. Auto-formatting them would corrupt the test suite.
+tests/
+
+# Vendored tbd guideline/research copies and the tbd-managed skill mirror: these
+# mirror upstream (with intentional emoji and formatting) and are owned by `tbd`.
+docs/general/
+.claude/
