@@ -170,7 +170,7 @@ is empty** (do not pad with “none”):
 What was removed or changed incompatibly (API signature, CLI flag, removed behavior) and
 how to migrate.
 
-### Behavior & Compatibility Changes
+### Behavior and Compatibility Changes
 
 **Short title of behavior change**
 
@@ -179,7 +179,7 @@ formatter now produces different (but valid) Markdown for some input, line break
 differently, or default option values changed. Say exactly which inputs are affected and
 whether the result is rendering-equivalent.
 
-### New Features & API
+### New Features and API
 
 **Short title of feature or new public API**
 
@@ -210,19 +210,19 @@ Guidelines:
 
   2. For the same input, does the tool now produce different output or behave
      differently (even if valid and rendering-equivalent), or did a default change?
-     → **Behavior & Compatibility Changes**. This is the category most often missed: a
+     → **Behavior and Compatibility Changes**. This is the category most often missed: a
      formatter whose output drifts between versions is a compatibility concern (diffs,
      golden tests, re-flowed files) even when nothing is strictly “broken”.
 
   3. Is it purely additive — new flag, new public function/type, new capability, with no
      change to existing behavior?
-     → **New Features & API**.
+     → **New Features and API**.
 
   4. Did it correct previously-wrong or broken output?
      → **Bug Fixes** (and state plainly when output changes as a result).
 
-- When in doubt between *Behavior & Compatibility* and *Bug Fixes*, prefer **Behavior &
-  Compatibility** and explain — readers diffing reformatted files care about *any*
+- When in doubt between *Behavior and Compatibility* and *Bug Fixes*, prefer **Behavior
+  and Compatibility** and explain — readers diffing reformatted files care about *any*
   output change regardless of intent.
 
 - Describe the **aggregate delta** between the previous release and this one, not

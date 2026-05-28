@@ -34,7 +34,7 @@ formatter-stable output.
 - **Self-documenting**: the installed `SKILL.md` is portable (standard frontmatter +
   `allowed-tools`), states *what it does* and *when to use it*, and points to
   `flowmark --docs` for the full reference (progressive disclosure, §3.1).
-- **Self-installing & idempotent**: tri-state targeting flags (`--all`, `--claude`,
+- **Self-installing and idempotent**: tri-state targeting flags (`--all`, `--claude`,
   `--codex`, `--skip-*`); project-local by default; re-running makes no change when
   already current; user content outside markers is preserved.
 - **Supply-chain-correct invocation**: the skill references a **pinned** flowmark
@@ -131,9 +131,9 @@ and the `AGENTS.md` block under tri-state targeting flags.
   The old single-base behavior remains the `--agent-base` path.
 - **Behavior change (deliberate):** the installed/printed `SKILL.md` switches its
   example invocations from `uvx flowmark@latest` to a pinned local-first form.
-  Call this out in release notes under *Behavior & Compatibility Changes*.
+  Call this out in release notes under *Behavior and Compatibility Changes*.
 
-### Generated-artifact handling
+### Generated-Artifact Handling
 
 Use **commit + drift test** (the tbd mode): the authored source lives in
 `src/flowmark/skills/SKILL.md`; the generated `skills/flowmark/SKILL.md` (and any other
@@ -199,7 +199,7 @@ Output must be byte-deterministic and flowmark-stable.
 
 Ships additively in a minor release.
 The only compatibility note is the pinned-invocation switch in the skill body
-(rendering-equivalent guidance, documented under *Behavior & Compatibility Changes*).
+(rendering-equivalent guidance, documented under *Behavior and Compatibility Changes*).
 Existing `--install-skill`/`--agent-base` usage keeps working.
 
 ## Open Questions

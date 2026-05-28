@@ -85,7 +85,7 @@ rules.
 make agent-rules
 ```
 
-## IDE setup
+## IDE Setup
 
 If you use VSCode or a fork like Cursor or Windsurf, you can install the following
 extensions:
