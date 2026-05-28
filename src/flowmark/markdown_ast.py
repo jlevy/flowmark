@@ -6,12 +6,34 @@ Parse documents with :func:`flowmark.flowmark_markdown` (GFM + footnote), then u
 helpers instead of re-implementing marko tree walks that must track GFM/footnote element
 types.
 
-**Identity, not spans.** A *span* here means a slice of source text plus its
-`[start, end)` character offsets. marko does not record source offsets for inline
-elements, so :func:`extract_links` returns link *text/url/title* but no span. Recovering
-one is a source-mapping problem the consumer owns: duplicate link text, reference links,
-escaped text, and nested inline markup mean it is not simply "find the link text" — it
-must be reconciled against the original source.
+**Block elements have spans.** Every block element produced through marko's
+``parse_source`` loop carries an authoritative ``element.span = (start, end)`` half-open
+offset pair into the source (after marko's ``\\r\\n -> \\n`` normalization). Spans are
+recorded straight from marko's own parser state — no regex, no heuristic — and
+propagate to every nesting level (containers, list items, nested lists, blockquoted
+blocks). See :func:`block_span`.
+
+The covered set includes ``Document``, ``Heading`` / ``SetextHeading``, ``Paragraph``,
+``FencedCode`` / ``CodeBlock``, ``ThematicBreak``, ``Quote``, ``List``, ``ListItem``,
+``FootnoteDef``, and GFM ``Table``. (Flowmark currently disables marko's
+``HTMLBlock`` — ``CustomHTMLBlock.match()`` always returns ``False`` — so block-level
+HTML falls back to a regular ``Paragraph`` and is covered under that.) The internal
+cells of a table (``TableRow``, ``TableCell``) are constructed by ``Table.parse``
+outside the main parse loop and do not yet carry spans; consumers should use the
+enclosing ``Table.span`` for table-level mapping.
+
+**Nested spans include container markers.** A child span is the slice marko's parser
+actually consumed, which means it covers the container's leading marker on each line —
+a paragraph inside ``- a`` spans the line including ``- ``, and a heading inside ``> ``
+spans the line including ``> ``. This is the right tradeoff for source mapping and
+round-tripping, but consumers that want content-only views should strip prefixes after
+slicing.
+
+**Inline elements don't.** marko does not record source offsets for inline elements, so
+:func:`extract_links` returns link *text/url/title* but no span. Recovering an inline
+span is a source-mapping problem the consumer owns: duplicate link text, reference
+links, escaped text, and nested inline markup mean it is not simply "find the link
+text" — it must be reconciled against the original source.
 """
 
 from __future__ import annotations
@@ -98,8 +120,20 @@ def extract_links(
     return links
 
 
+def block_span(element: Element) -> tuple[int, int]:
+    """
+    Read the ``(start, end)`` source span of a block element parsed by
+    :func:`flowmark.flowmark_markdown`. Half-open offsets into the preprocessed source
+    (after marko's ``\\r\\n -> \\n`` normalization). Raises :class:`AttributeError` for
+    elements that were not produced by flowmark's parser (e.g. tree fragments built by
+    hand, or elements from a vanilla marko parser).
+    """
+    return cast("tuple[int, int]", element.span)  # pyright: ignore[reportAttributeAccessIssue]
+
+
 __all__ = (
     "Link",
     "walk_elements",
     "extract_links",
+    "block_span",
 )

@@ -435,12 +435,29 @@ for link in extract_links(doc):   # -> list[Link(text, url, title)], reference l
     print(link.text, link.url)
 ```
 
-- `flowmark.markdown_ast`: `walk_elements`, `extract_links`, and the `Link` type for
-  AST-aware inspection of a parsed document.
+- `flowmark.markdown_ast`: `walk_elements`, `extract_links`, the `Link` type, and
+  `block_span` for AST-aware inspection of a parsed document.
 - `flowmark.atomic_spans`: the atomic-construct patterns Flowmark uses internally (code
   spans, links, autolinks, bare URLs, HTML/Jinja tags), the offset-preserving tokenizers
   `iter_atomic_spans` / `iter_atomic_words`, and the atomic-aware sentence splitter
   `split_sentences_with_spans` / `split_sentences_atomic`.
+
+**Map parsed blocks back to source.** Every block element produced by
+`flowmark_markdown().parse(text)` carries an authoritative `element.span = (start, end)`
+half-open offset pair, recorded straight from marko's parser state — no regex, no
+heuristic — at every nesting level. Offsets index the source after marko's `\r\n -> \n`
+normalization, so slice against an LF-normalized copy of the input:
+
+```python
+from flowmark import flowmark_markdown
+from flowmark.markdown_ast import block_span
+
+source = markdown_text.replace("\r\n", "\n")
+doc = flowmark_markdown().parse(source)
+for block in doc.children:
+    start, end = block_span(block)
+    print(type(block).__name__, source[start:end])
+```
 
 ## Use in VSCode/Cursor
 
@@ -684,3 +701,4 @@ For development workflows, see [development.md](docs/development.md).
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
 -->
+
