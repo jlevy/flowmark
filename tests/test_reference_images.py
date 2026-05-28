@@ -20,7 +20,6 @@ source label was uppercase.
 
 from flowmark.formats.flowmark_markdown import flowmark_markdown
 
-
 # -----------------------------------------------------------------------------
 # Reference images — every syntactic form inlines to ![alt](url).
 # -----------------------------------------------------------------------------
