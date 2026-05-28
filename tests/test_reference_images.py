@@ -65,8 +65,7 @@ def test_full_ref_image_label_with_spaces():
     md = flowmark_markdown()
     src = "![Logo][company logo]\n\n[company logo]: https://example.com/logo.png\n"
     expected = (
-        "![Logo](https://example.com/logo.png)\n\n"
-        "[company logo]: https://example.com/logo.png\n"
+        "![Logo](https://example.com/logo.png)\n\n[company logo]: https://example.com/logo.png\n"
     )
     assert md(src) == expected
 
@@ -112,11 +111,7 @@ def test_badge_full_ref_image_in_full_ref_link():
 def test_badge_collapsed_ref_image_in_full_ref_link():
     """[![alt][]][url] — collapsed-image variant of the badge pattern."""
     md = flowmark_markdown()
-    src = (
-        "[![alt][]][url]\n\n"
-        "[alt]: https://example.com/img.png\n"
-        "[url]: https://example.com/page\n"
-    )
+    src = "[![alt][]][url]\n\n[alt]: https://example.com/img.png\n[url]: https://example.com/page\n"
     expected = (
         "[![alt](https://example.com/img.png)][url]\n\n"
         "[alt]: https://example.com/img.png\n"
@@ -128,11 +123,7 @@ def test_badge_collapsed_ref_image_in_full_ref_link():
 def test_badge_shortcut_ref_image_in_full_ref_link():
     """[![alt]][url] — shortcut-image variant of the badge pattern."""
     md = flowmark_markdown()
-    src = (
-        "[![alt]][url]\n\n"
-        "[alt]: https://example.com/img.png\n"
-        "[url]: https://example.com/page\n"
-    )
+    src = "[![alt]][url]\n\n[alt]: https://example.com/img.png\n[url]: https://example.com/page\n"
     expected = (
         "[![alt](https://example.com/img.png)][url]\n\n"
         "[alt]: https://example.com/img.png\n"
@@ -145,10 +136,7 @@ def test_badge_inline_image_in_full_ref_link():
     """[![alt](url)][label] — fully inlined image inside an outer ref link."""
     md = flowmark_markdown()
     src = "[![alt](https://example.com/img.png)][url]\n\n[url]: https://example.com/page\n"
-    expected = (
-        "[![alt](https://example.com/img.png)][url]\n\n"
-        "[url]: https://example.com/page\n"
-    )
+    expected = "[![alt](https://example.com/img.png)][url]\n\n[url]: https://example.com/page\n"
     assert md(src) == expected
 
 
