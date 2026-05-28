@@ -464,6 +464,87 @@ The `--auto` option is just the same as
 
 For batch formatting an entire project, use `flowmark --auto .` from the terminal.
 
+## Recommended Project Setup
+
+To keep a repo’s Markdown consistently formatted across contributors and CI, **pin a
+flowmark version** and wire it into your existing build/hook plumbing.
+The same pattern works whether you reach for the Python build or the Rust port.
+
+### 1. Pick a pinned invocation
+
+Avoid unpinned `flowmark@latest` — different contributors then silently run different
+versions and produce noisy diffs.
+
+- **Rust port (fastest)**: install the
+  [`flowmark-rs`](https://github.com/jlevy/flowmark-rs) binary at a specific release.
+  Identical formatting to the Python version; great when speed matters in hooks/CI.
+- **Python via `uvx` (zero-install)**: invoke as
+  `uvx --from flowmark==<X.Y.Z> flowmark --auto`. First call caches the wheel;
+  subsequent calls are fast.
+- **Python tool install**: `uv tool install flowmark==<X.Y.Z>` (or
+  `pip install flowmark==<X.Y.Z>` in a venv) puts `flowmark` on `PATH`.
+
+### 2. Add one project entry point
+
+A single command everyone — and CI — runs.
+Makefile target:
+
+```makefile
+FLOWMARK := uvx --from flowmark==0.7.0 flowmark
+
+format-docs:
+	$(FLOWMARK) --auto .
+```
+
+Or as an npm script in `package.json`:
+
+```json
+{
+  "scripts": {
+    "format:docs": "uvx --from flowmark==0.7.0 flowmark --auto ."
+  }
+}
+```
+
+### 3. Run on pre-commit
+
+[lefthook](https://lefthook.dev) example (`lefthook.yml`):
+
+```yaml
+pre-commit:
+  commands:
+    flowmark:
+      glob: "*.{md,mdc,markdown}"
+      run: uvx --from flowmark==0.7.0 flowmark --auto {staged_files}
+      stage_fixed: true
+```
+
+Equivalent setups with [pre-commit](https://pre-commit.com) (via a `local` hook) or
+`husky` work the same way; the key is the pinned invocation.
+
+### 4. Add a CI check
+
+Run the entry point in CI and fail if anything changed:
+
+```yaml
+- run: make format-docs
+- run: git diff --exit-code -- '*.md' '*.mdc' '*.markdown'
+```
+
+### 5. Exclude generated and vendored Markdown
+
+Add a `.flowmarkignore` (same syntax as `.gitignore`) so batch formatting only touches
+files you own:
+
+```
+docs/api/_generated/
+attic/
+third_party/
+```
+
+`flowmark --auto .` always respects `.flowmarkignore` and `.gitignore`. For editor-side
+on-save formatting, see [Use in VSCode/Cursor](#use-in-vscodecursor) above.
+
 ## Agent Use (Claude Code and Other AI Coding Agents)
 
 Flowmark is built to be the **default Markdown auto-formatter for agent workflows**. Its

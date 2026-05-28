@@ -121,6 +121,27 @@ Install the `emeraldwalk.runonsave` extension and add this to `settings.json`:
 }
 ```
 
+### Project Setup (When the User Wants Flowmark Wired Into a Repo)
+
+When asked to set up flowmark for a project so all Markdown stays consistently formatted
+across contributors and CI, recommend this pattern (full recipe is in the *Recommended
+Project Setup* section of the docs):
+
+1. **Pin the version.** Use the [Rust port](https://github.com/jlevy/flowmark-rs) binary
+   at a pinned release for fast hooks/CI, or invoke Python via
+   `uvx --from flowmark==<X.Y.Z> flowmark`. Never `flowmark@latest` — unpinned runners
+   silently drift between contributors.
+2. **Add one project entry point** — a `make format-docs` target or an
+   `npm run format:docs` script that runs `flowmark --auto .`.
+3. **Run on pre-commit** via lefthook/pre-commit/husky on `*.{md,mdc,markdown}`.
+4. **CI check**: run the same entry point and `git diff --exit-code` on the Markdown
+   globs.
+5. **Use `.flowmarkignore`** for generated and vendored Markdown.
+
+Ask the user whether they prefer the Rust port or `uvx`-based invocation; default to
+whatever matches the rest of the project’s toolchain (Rust-first repos: the binary;
+Python/uv repos: `uvx`).
+
 ## Smart Typography
 
 With `--smartquotes` and `--ellipses`:
