@@ -307,13 +307,19 @@ class CustomParser(Parser):
         `source.parser.parse_source(source)`, so this single override attaches spans to
         every block element at every nesting level. Authoritative — `source.pos` is
         marko's own parser state, not a derived heuristic.
+
+        Start is recorded **before** trying any `match()` so elements whose `match()`
+        consumes source (e.g. GFM `Table.match`, which advances past the header +
+        delimiter rows) still get a span covering their full extent. Element `match()`
+        methods that fail are expected to leave `source.pos` unchanged (they use the
+        `anchor()` / `reset()` pattern), so a failed match does not drift the start.
         """
         element_list = self._build_block_element_list()
         ast: list[block.BlockElement] = []
         while not source.exhausted:
+            start = source.pos
             for ele_type in element_list:
                 if ele_type.match(source):
-                    start = source.pos
                     result = ele_type.parse(source)
                     end = source.pos
                     if not hasattr(result, "priority"):

@@ -6,12 +6,19 @@ Parse documents with :func:`flowmark.flowmark_markdown` (GFM + footnote), then u
 helpers instead of re-implementing marko tree walks that must track GFM/footnote element
 types.
 
-**Block elements have spans.** Every block element produced by
-:func:`flowmark.flowmark_markdown` carries an authoritative ``element.span = (start,
-end)`` half-open offset pair into the source (after marko's ``\\r\\n -> \\n``
-normalization). Spans are recorded straight from marko's own parser state — no regex,
-no heuristic — and propagate to every nesting level (containers, list items, nested
-lists, blockquoted blocks). See :func:`block_span`.
+**Block elements have spans.** Every block element produced through marko's
+``parse_source`` loop carries an authoritative ``element.span = (start, end)`` half-open
+offset pair into the source (after marko's ``\\r\\n -> \\n`` normalization). Spans are
+recorded straight from marko's own parser state — no regex, no heuristic — and
+propagate to every nesting level (containers, list items, nested lists, blockquoted
+blocks). See :func:`block_span`.
+
+The covered set includes ``Document``, ``Heading`` / ``SetextHeading``, ``Paragraph``,
+``FencedCode`` / ``CodeBlock``, ``ThematicBreak``, ``Quote``, ``List``, ``ListItem``,
+``HTMLBlock``, ``FootnoteDef``, and GFM ``Table``. The internal cells of a table
+(``TableRow``, ``TableCell``) are constructed by ``Table.parse`` outside the main parse
+loop and do not yet carry spans; consumers should use the enclosing ``Table.span`` for
+table-level mapping.
 
 **Inline elements don't.** marko does not record source offsets for inline elements, so
 :func:`extract_links` returns link *text/url/title* but no span. Recovering an inline
