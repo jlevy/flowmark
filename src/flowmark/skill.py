@@ -15,10 +15,14 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
-# Format version for generated skill artifacts. Stamped onto install artifacts so a
-# future flowmark can detect and safely upgrade older generated files (and refuse to
-# clobber a newer format it doesn't understand).
-SKILL_FORMAT = "f01"
+# Format stamps for generated artifacts. Each distinct artifact shape gets its own
+# unique `fNN` so the token is a recognizable, unambiguous identifier of one format —
+# never the same `fNN` reused for two different shapes. A future flowmark uses the
+# stamp to detect and safely upgrade older generated files (and refuse to clobber a
+# newer format it doesn't understand). Bump the relevant constant when its shape
+# changes.
+SKILL_FORMAT = "f01"  # SKILL.md mirrors (portable, Claude, discovery copy).
+AGENTS_FORMAT = "f02"  # AGENTS.md flowmark block.
 
 # Placeholder in the authored SKILL.md, replaced by `compose_skill` with a concrete
 # version pin for the local-first runner fallback (see SKILL.md).
@@ -103,8 +107,8 @@ CLAUDE_SKILL_REL = Path(".claude") / "skills" / SKILL_DIRNAME
 _FORMAT_RE = re.compile(r"skill-format=f(\d+)")
 
 
-def _format_num() -> int:
-    return int(SKILL_FORMAT.lstrip("f"))
+def _fmt_num(stamp: str) -> int:
+    return int(stamp.lstrip("f"))
 
 
 def _generated_marker() -> str:
@@ -165,7 +169,7 @@ def agents_md_block(version: str | None = None) -> str:
     """
     pin = flowmark_version() if version is None else version
     return (
-        f"{AGENTS_BEGIN_PREFIX} format={SKILL_FORMAT} surface=agents-md -->\n"
+        f"{AGENTS_BEGIN_PREFIX} format={AGENTS_FORMAT} surface=agents-md -->\n"
         "## flowmark\n"
         "\n"
         "Auto-format Markdown with `flowmark` for clean, semantic git diffs.\n"
@@ -194,7 +198,7 @@ def update_agents_md(path: Path, version: str | None = None) -> InstallResult:
     existing = path.read_text(encoding="utf-8") if path.is_file() else None
 
     if existing is not None and (m := _AGENTS_FORMAT_RE.search(existing)):
-        if int(m.group(1)) > _format_num():
+        if int(m.group(1)) > _fmt_num(AGENTS_FORMAT):
             return InstallResult(surface, path, "blocked-newer")
 
     block = agents_md_block(version)
@@ -218,7 +222,7 @@ def _write_surface(skill_dir: Path, surface: str, content: str) -> InstallResult
     target = skill_dir / "SKILL.md"
     existing = _existing_format(target)
     # Forward-compatibility guard: never clobber an artifact stamped with a newer format.
-    if existing is not None and existing > _format_num():
+    if existing is not None and existing > _fmt_num(SKILL_FORMAT):
         return InstallResult(surface, target, "blocked-newer")
     if target.is_file() and target.read_text(encoding="utf-8") == content:
         return InstallResult(surface, target, "unchanged")

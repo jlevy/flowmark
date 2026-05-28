@@ -21,7 +21,7 @@ behavior.
 $ flowmark --skill | sed -n '1,6p'
 ---
 name: flowmark
-description: Auto-format Markdown — semantic line breaks, smart quotes, diff-friendly output. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM Markdown output, or when the user mentions flowmark, markdown formatting, or semantic line breaks.
+description: Fast, consistent Markdown auto-formatter — typographic cleanup (smart quotes, ellipses), normalized formatting, and optional clean line wrapping for small, readable git diffs. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM-generated Markdown, or when the user mentions flowmark or formatting Markdown.
 allowed-tools: Bash(flowmark:*), Bash(uvx:*), Read, Write
 ---
 # Flowmark - Markdown Auto-Formatter

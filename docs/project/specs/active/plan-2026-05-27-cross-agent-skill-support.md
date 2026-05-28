@@ -104,8 +104,10 @@ and the `AGENTS.md` block under tri-state targeting flags.
     pinned version into the invocation examples.
     Deterministic.
   - `agents_md_block(version) -> str`: the compact marker-bounded block
-    (`<!-- BEGIN FLOWMARK INTEGRATION format=f01 surface=agents-md -->` … `END`),
-    emitted in flowmark’s own canonical format so `flowmark --auto` is a no-op on it.
+    (`<!-- BEGIN FLOWMARK INTEGRATION format=f02 surface=agents-md -->` … `END`; `f02`
+    is the AGENTS.md block format, distinct from the `skill-format=f01` stamp on the
+    SKILL.md mirrors — each format shape gets its own unique `fNN`), emitted in
+    flowmark’s own canonical format so `flowmark --auto` is a no-op on it.
   - `install_skill(targets, project_root, agent_base, ...)`: write portable + Claude
     surfaces, update the `AGENTS.md` block in place (preserving content outside
     markers), idempotently; print an itemized summary (installed / upgraded / unchanged
@@ -154,7 +156,8 @@ Output must be byte-deterministic and flowmark-stable.
 - [ ] Extend `install_skill` to write both `.agents/skills/flowmark/SKILL.md` (portable)
   and `.claude/skills/flowmark/SKILL.md` (mirror), project-local by default; copy the
   payload to both (no symlinks).
-  Mark each `DO NOT EDIT` with a `format=f01` stamp.
+  Mark each `DO NOT EDIT` with the existing `skill-format=f01` stamp (same shape as the
+  shipped discovery copy).
 - [ ] Add tri-state CLI flags (`--all`, `--claude`, `--codex`, `--skip-*`); default to
   detection-based, project-local; keep `--agent-base` for custom/global.
 - [ ] Idempotency + itemized summary; forward-compat guard for too-new format stamps.

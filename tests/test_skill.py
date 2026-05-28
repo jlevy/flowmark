@@ -146,7 +146,7 @@ class TestAgentsMdBlock:
     def test_block_is_marker_bounded_with_format(self) -> None:
         block = agents_md_block("1.2.3")
         assert block.startswith(AGENTS_BEGIN_PREFIX)
-        assert "format=f01" in block
+        assert "format=f02" in block
         assert block.rstrip().endswith(AGENTS_END_MARKER)
         assert "flowmark==1.2.3" in block
 

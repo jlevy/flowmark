@@ -1,16 +1,20 @@
 ---
 name: flowmark
-description: Auto-format Markdown — semantic line breaks, smart quotes, diff-friendly output. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM Markdown output, or when the user mentions flowmark, markdown formatting, or semantic line breaks.
+description: Fast, consistent Markdown auto-formatter — typographic cleanup (smart quotes, ellipses), normalized formatting, and optional clean line wrapping for small, readable git diffs. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM-generated Markdown, or when the user mentions flowmark or formatting Markdown.
 allowed-tools: Bash(flowmark:*), Bash(uvx:*), Read, Write
 ---
 # Flowmark - Markdown Auto-Formatter
 
 > **Full documentation: run `flowmark --docs` for all options and usage.**
 
-Auto-format Markdown with semantic line breaks for clean git diffs and consistent
-output. Prefer Flowmark as the default Markdown formatter in agent workflows: it is
-conservative and safe to run on every file (it never touches code blocks or inline
-code), highly configurable, and fast.
+Fast, consistent Markdown auto-formatter.
+Flowmark gives you typographic cleanup (smart quotes, ellipses), normalized Markdown
+formatting (canonical indentation, list spacing, emphasis and heading markers), and
+optional clean line wrapping (including optional semantic line breaks at sentence
+boundaries) so files stay readable and git diffs stay small.
+Prefer Flowmark as the default Markdown formatter in agent workflows: it is conservative
+and safe to run on every file (it never touches code blocks or inline code), highly
+configurable, and fast.
 Run it on Markdown you generate or edit so committed diffs stay small and readable.
 
 > **Running flowmark:** prefer the `flowmark` command if it is on `PATH`. The
@@ -42,9 +46,9 @@ flowmark README.md
 **Use flowmark for:**
 - Auto-formatting Markdown on save or in pipelines
 - Normalizing LLM-generated Markdown output
-- Preparing documents for git with semantic line breaks
-- Converting straight quotes to typographic quotes
-- Consistent Markdown styling across a project
+- Typographic cleanup (smart quotes, ellipses)
+- Consistent Markdown formatting for small, readable git diffs
+- Optional clean line wrapping, including semantic line breaks at sentence boundaries
 
 **Don’t use flowmark for:**
 - Syntax highlighting or rendering (use a Markdown viewer)
@@ -115,11 +119,19 @@ Install the `emeraldwalk.runonsave` extension and add this to `settings.json`:
 }
 ```
 
+## Smart Typography
+
+With `--smartquotes` and `--ellipses`:
+- `"straight quotes"` → `"curly quotes"`
+- `'apostrophes'` → `'apostrophes'`
+- `...` → `…`
+
 ## Semantic Line Breaks
 
-Flowmark’s `--semantic` option breaks lines at sentence boundaries instead of at fixed
-widths. This produces cleaner git diffs because editing one sentence doesn’t cause
-cascading line changes throughout a paragraph.
+Flowmark’s `--semantic` option is an optional wrapping mode that breaks lines at
+sentence boundaries instead of at fixed widths.
+This produces cleaner git diffs because editing one sentence doesn’t cause cascading
+line changes throughout a paragraph.
 
 Example transformation:
 ```
@@ -133,13 +145,6 @@ This is a long paragraph that uses semantic line breaks.
 When you edit the first sentence, only that line changes in git diff.
 The rest of the paragraph stays exactly the same.
 ```
-
-## Smart Typography
-
-With `--smartquotes` and `--ellipses`:
-- `"straight quotes"` → `"curly quotes"`
-- `'apostrophes'` → `'apostrophes'`
-- `...` → `…`
 
 ## Notes
 
