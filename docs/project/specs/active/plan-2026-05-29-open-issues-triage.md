@@ -4,7 +4,8 @@
 
 **Author:** Joshua Levy (with agent assistance)
 
-**Status:** In Review (5 of 7 issues fixed; #21 and #4 triaged, decisions pending)
+**Status:** In Review (5 of 7 issues fixed in PR #56; #21 and #4 triaged with analysis
+posted upstream)
 
 ## Overview
 
@@ -233,11 +234,12 @@ dependencies.
   `tag_handling.py`; unit tests.
   Done. (Interior indentation is stripped by marko’s inline parsing and is not recovered;
   line breaks are preserved, resolving the reported collapse.)
-- [ ] #21: Triaged — the headline cases already pass; no code change made.
-  Decision pending: close upstream as “works as intended” or open a narrow
-  pipe-less-table follow-up.
-- [ ] #4: Triaged — deferred; recommend a `--locale` design in its own spec.
-  Decision pending.
+- [x] #21: Triaged — re-verified the headline cases all pass; no code change made.
+  Analysis posted on the issue recommending it be closed as working-as-intended, with
+  the pipe-less-table detection gap noted as a possible separate follow-up.
+- [x] #4: Triaged — analysis posted on the issue; deferred with a recommended `--locale`
+  design to be scoped in its own spec.
+  Issue stays open as the tracker for that work.
 
 ### Design note: exclude model for explicitly-named files (#43/#24)
 
