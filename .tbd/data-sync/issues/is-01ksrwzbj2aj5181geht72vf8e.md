@@ -3,15 +3,17 @@ type: is
 id: is-01ksrwzbj2aj5181geht72vf8e
 title: "CI: add --check mode to devtools/lint.py and run it in CI (fail on unformatted code)"
 kind: task
-status: in_progress
+status: closed
 priority: 2
-version: 4
+version: 5
 labels: []
 dependencies:
   - type: blocks
     target: is-01ksrx01vtyypaf37nj3tz6tvr
 created_at: 2026-05-29T03:38:16.513Z
-updated_at: 2026-05-29T03:52:14.471Z
+updated_at: 2026-05-29T04:00:31.768Z
+closed_at: 2026-05-29T04:00:31.768Z
+close_reason: "Merged in PR #55: lint.py --check mode + CI uses it + lint-check target"
 ---
 Source: simple-modern-uv template devtools/lint.py + ci.yml.
 flowmark's devtools/lint.py always mutates files (codespell --write-changes, ruff check --fix, ruff format), and CI runs 'uv run python devtools/lint.py' that way -> CI silently reformats and never fails on unformatted/lint-only issues.
