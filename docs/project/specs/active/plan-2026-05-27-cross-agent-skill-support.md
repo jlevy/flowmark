@@ -4,8 +4,9 @@
 
 **Author:** Flowmark maintainers
 
-**Status:** Implemented (in review on PR #49; will move to `docs/project/specs/done/`
-after merge)
+**Status:** Implemented and merged (PR #49); release-pin hardening and in-repo
+dogfooding follow in PR #53. Will move to `docs/project/specs/done/` after the v0.7.1
+release.
 
 ## Overview
 

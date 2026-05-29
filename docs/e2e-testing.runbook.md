@@ -222,7 +222,7 @@ Manual confirmation from a dev checkout:
 SCRATCH=$(mktemp -d)
 ( cd "$SCRATCH" && flowmark --install-skill >/dev/null
   grep -h 'uvx --from flowmark==' .agents/skills/flowmark/SKILL.md AGENTS.md )
-# Expect the released pin (e.g. flowmark==0.7.0), NOT the dev version,
+# Expect the released pin (flowmark==<DISCOVERY_VERSION>), NOT the dev version,
 # even though `flowmark --version` reports the dev version.
 
 # And the single-source consistency + release-match guard:

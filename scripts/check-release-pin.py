@@ -29,7 +29,17 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SKILL_PY = REPO_ROOT / "src" / "flowmark" / "skill.py"
-SHIPPED_ARTIFACTS = [REPO_ROOT / "README.md", REPO_ROOT / "skills" / "flowmark" / "SKILL.md"]
+# Every artifact whose concrete `flowmark==` pin must equal DISCOVERY_VERSION. Kept in
+# sync with tests/test_skill_artifacts.py::_PINNED_ARTIFACTS: the README and the
+# committed discovery copy, plus this repo's dogfooded install surfaces (portable +
+# Claude SKILL.md mirrors and the AGENTS.md flowmark block).
+SHIPPED_ARTIFACTS = [
+    REPO_ROOT / "README.md",
+    REPO_ROOT / "skills" / "flowmark" / "SKILL.md",
+    REPO_ROOT / ".agents" / "skills" / "flowmark" / "SKILL.md",
+    REPO_ROOT / ".claude" / "skills" / "flowmark" / "SKILL.md",
+    REPO_ROOT / "AGENTS.md",
+]
 _CONCRETE_PIN_RE = re.compile(r"flowmark==(\d[^\s`)\"']*)")
 
 

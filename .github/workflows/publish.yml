@@ -4,6 +4,11 @@ on:
   release:
     types: [published]
   workflow_dispatch: # Enable manual trigger.
+    inputs:
+      version:
+        description: "Release version to verify the skill pin against (e.g. 0.7.1). If empty, falls back to the git tag at HEAD, so a manual run must target a tag ref."
+        required: false
+        default: ""
 
 jobs:
   build-and-publish:
@@ -39,9 +44,9 @@ jobs:
       # stale release. See docs/publishing.md and docs/e2e-testing.runbook.md §4.
       - name: Verify skill release pin matches the release
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          if [ -n "$TAG" ]; then
-            uv run python scripts/check-release-pin.py --expected "$TAG"
+          VERSION="${{ github.event.release.tag_name || inputs.version }}"
+          if [ -n "$VERSION" ]; then
+            uv run python scripts/check-release-pin.py --expected "$VERSION"
           else
             uv run python scripts/check-release-pin.py --from-git-tag
           fi
