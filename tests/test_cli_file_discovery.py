@@ -271,3 +271,38 @@ def test_explicit_file_without_exclusions_is_formatted(
     f.write_text(_OVERLONG)
     assert main(["--auto", "plain.md"]) == 0
     assert f.read_text() != _OVERLONG  # reformatted (wrapped)
+
+
+# --- Issue #44: --check mode (no writes; non-zero exit if a file would change) ---
+
+
+def test_check_reports_and_does_not_write(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    f = tmp_path / "needs.md"
+    f.write_text(_OVERLONG)
+    assert main(["--check", str(f)]) == 1
+    assert f.read_text() == _OVERLONG  # not written
+    assert "Would reformat" in capsys.readouterr().err
+
+
+def test_check_clean_file_exits_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    f = tmp_path / "clean.md"
+    f.write_text("# Title\n\nShort clean line.\n")
+    assert main(["--check", str(f)]) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_check_multiple_files_reports_only_dirty(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    clean = tmp_path / "clean.md"
+    clean.write_text("# Title\n\nShort clean line.\n")
+    dirty = tmp_path / "dirty.md"
+    dirty.write_text(_OVERLONG)
+    assert main(["--check", str(clean), str(dirty)]) == 1
+    err = capsys.readouterr().err
+    assert "dirty.md" in err
+    assert "clean.md" not in err

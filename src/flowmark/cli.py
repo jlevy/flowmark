@@ -42,6 +42,7 @@ class Options:
     ellipses: bool
     inplace: bool
     nobackup: bool
+    check: bool
     version: bool
     list_spacing: ListSpacing
     # File discovery options
@@ -150,6 +151,12 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
         "--nobackup",
         action="store_true",
         help="Do not make a backup of the original file when using --inplace",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Don't write any files; exit with a non-zero status if any file would be "
+        "reformatted. Useful for CI and pre-commit validation",
     )
     parser.add_argument(
         "--auto",
@@ -326,6 +333,7 @@ def _parse_args(args: list[str] | None = None) -> tuple[Options, set[str], bool]
             ellipses=opts.ellipses,
             inplace=opts.inplace,
             nobackup=opts.nobackup,
+            check=opts.check,
             version=opts.version,
             list_spacing=ListSpacing(opts.list_spacing),
             extend_include=opts.extend_include,
@@ -529,7 +537,7 @@ def main(args: list[str] | None = None) -> int:
         return 0
 
     try:
-        reformat_files(
+        changed = reformat_files(
             files=resolved_files,
             output=options.output,
             width=options.width,
@@ -542,6 +550,7 @@ def main(args: list[str] | None = None) -> int:
             ellipses=options.ellipses,
             make_parents=True,
             list_spacing=options.list_spacing,
+            check=options.check,
         )
     except ValueError as e:
         # Handle errors reported by reformat_file, like using --inplace with stdin.
@@ -551,6 +560,15 @@ def main(args: list[str] | None = None) -> int:
         # Catch other potential file or processing errors.
         print(f"Error: {e}", file=sys.stderr)
         return 2
+
+    # In check mode, report any files that would change and signal via exit code 1
+    # (matching the convention of Black/Ruff/Prettier).
+    if options.check:
+        for f in changed:
+            label = "<stdin>" if f == "-" else f
+            print(f"Would reformat: {label}", file=sys.stderr)
+        if changed:
+            return 1
 
     return 0
 
