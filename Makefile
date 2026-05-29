@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := default
 
-.PHONY: default install lint test test-golden test-golden-coverage upgrade build clean \
+.PHONY: default install lint lint-check test test-golden test-golden-coverage upgrade build clean \
         format format-docs generate generate-readme generate-skill validate-skill \
         check-release-pin benchmark profile reset-ref-docs
 
@@ -56,6 +56,10 @@ install:
 
 lint:
 	uv run python devtools/lint.py
+
+# Check-only lint, matching CI (does not modify files).
+lint-check:
+	uv run python devtools/lint.py --check
 
 test:
 	uv run pytest
