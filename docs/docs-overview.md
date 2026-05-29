@@ -18,6 +18,15 @@ Speculate project structure:
 Always read `development.md` first!
 Other docs give background but it includes essential project developer docs.
 
+- `e2e-testing.runbook.md`: Step-by-step full validation pass (orientation, developer
+  environment, skill installation across agents, and cross-version `uvx`-pin safety) for
+  use before a release or after large merges.
+  Mechanizable checks live in the test suite; this runbook is the connective tissue and
+  the checks CI cannot do.
+
+- `publishing.md`: How to cut and publish a release to PyPI, including the
+  `DISCOVERY_VERSION` bump in the pre-release checklist.
+
 ### `docs/general/`: Cross-project rules and templates
 
 General rules that apply to all projects:
