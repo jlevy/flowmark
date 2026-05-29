@@ -557,6 +557,14 @@ repos:
       # - id: flowmark-check  # or: check only, fail if files would change (for CI)
 ```
 
+These run via the [pre-commit](https://pre-commit.com) framework (not GitHub-specific):
+install it once with `pre-commit install`, and it builds Flowmark in an isolated
+environment on first use — no global install or extra dependency needed.
+Both hooks pass `--force-exclude`, so your `.flowmarkignore` and other exclusions are
+respected on the staged files pre-commit hands them (the same approach `ruff-pre-commit`
+uses); the `flowmark-check` hook also mirrors `--auto` so it validates exactly what the
+auto-fix hook would write.
+
 A `husky` setup works the same way; the key is the pinned invocation.
 
 ### 4. Add a CI check
