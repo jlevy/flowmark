@@ -24,14 +24,22 @@ format-docs:
 # Regenerate checked-in generated docs from their sources:
 #   README.md            <- docs/shared + docs/templates (generate-python-readme.py)
 #   skills/flowmark/SKILL.md (published discovery copy) <- generate-skill-discovery.py
-# The skill drift test (tests/test_skill_artifacts.py) fails if the discovery copy is stale.
-generate: generate-readme generate-skill
+#   .agents/.claude/AGENTS.md skill surfaces <- `flowmark --install-skill` (dogfood)
+# The skill drift test (tests/test_skill_artifacts.py) fails if any pin is stale.
+generate: generate-readme generate-skill generate-skill-install
 
 generate-readme:
 	uv run --python 3.14 scripts/generate-python-readme.py
 
 generate-skill:
 	uv run scripts/generate-skill-discovery.py
+
+# Dogfood: install flowmark's own skill into this repo's three integration surfaces so the
+# checked-in setup always reflects current output and the live DISCOVERY_VERSION pin.
+# Idempotent (reports "unchanged" when current); AGENTS.md/.claude are in .flowmarkignore
+# so the subsequent format pass leaves them alone.
+generate-skill-install:
+	uv run flowmark --install-skill
 
 # Validate the published skill against the Agent Skills spec (needs network/npx).
 validate-skill:

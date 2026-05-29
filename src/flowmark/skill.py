@@ -58,7 +58,7 @@ _VERSION_PLACEHOLDER = "__FLOWMARK_VERSION__"
 # version (see docs/publishing.md release checklist) and re-run `make format`.
 # Rust port: this becomes flowmark-rs's own release version — see the porting
 # contract above.
-DISCOVERY_VERSION = "0.7.0"
+DISCOVERY_VERSION = "0.7.1"
 
 
 def get_skill_content() -> str:

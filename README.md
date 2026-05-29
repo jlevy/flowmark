@@ -520,7 +520,7 @@ A single command everyone (and CI) runs.
 Makefile target:
 
 ```makefile
-FLOWMARK := uvx --from flowmark==0.7.0 flowmark
+FLOWMARK := uvx --from flowmark==0.7.1 flowmark
 
 format-docs:
 	$(FLOWMARK) --auto .
@@ -531,7 +531,7 @@ Or as an npm script in `package.json`:
 ```json
 {
   "scripts": {
-    "format:docs": "uvx --from flowmark==0.7.0 flowmark --auto ."
+    "format:docs": "uvx --from flowmark==0.7.1 flowmark --auto ."
   }
 }
 ```
@@ -545,7 +545,7 @@ pre-commit:
   commands:
     flowmark:
       glob: "*.{md,mdc,markdown}"
-      run: uvx --from flowmark==0.7.0 flowmark --auto {staged_files}
+      run: uvx --from flowmark==0.7.1 flowmark --auto {staged_files}
       stage_fixed: true
 ```
 

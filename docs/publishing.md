@@ -113,11 +113,20 @@ Follow this checklist for each new release.
    must be the release you are about to cut, or agents bootstrap a stale flowmark.
 
    There is exactly **one** place to change: the `DISCOVERY_VERSION` constant in
-   `src/flowmark/skill.py`. `make format` propagates it to every shipped artifact (the
-   discovery copy via `generate-skill-discovery.py`; the README runner examples via the
-   `__FLOWMARK_VERSION__` placeholder in `docs/shared/flowmark-readme-shared.md`, which
-   `generate-python-readme.py` substitutes).
-   Bump it, regenerate, verify, and commit before tagging:
+   `src/flowmark/skill.py`. `make format` propagates it to every artifact: the discovery
+   copy (via `generate-skill-discovery.py`), the README runner examples (via the
+   `__FLOWMARK_VERSION__` placeholder in `docs/shared/flowmark-readme-shared.md` that
+   `generate-python-readme.py` substitutes), and this repo’s own installed skill
+   surfaces (`.agents/`, `.claude/`, the `AGENTS.md` block, via
+   `flowmark --install-skill`). So `git add -A` after `make format` captures the whole
+   set.
+
+   Do this in the **final PR before tagging** — `DISCOVERY_VERSION` should equal the
+   version you are about to release.
+   The pin then references the imminent release: it is not installable from PyPI until
+   the tag publishes (expected), and the publish workflow refuses to publish if the tag
+   and `DISCOVERY_VERSION` disagree.
+   Bump, regenerate, verify, commit:
 
    ```shell
    # In src/flowmark/skill.py: DISCOVERY_VERSION = "<NEW_TAG without leading v>"

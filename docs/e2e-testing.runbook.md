@@ -138,10 +138,16 @@ Default `--install-skill` writes all three; `--surfaces=portable,claude,agents-m
 `all`) selects a subset; `--agent-base DIR` does a single explicit/global install (e.g.
 `~/.claude`).
 
-> **Always run install tests in a scratch directory, never in the repo root.** Running
-> `flowmark --install-skill` with the flowmark repo as the working directory writes the
-> three surfaces into the repo itself (including modifying the tracked `AGENTS.md`). Use
-> a `mktemp -d` sandbox:
+This repo **dogfoods** its own skill: all three surfaces are checked in
+(`.agents/skills/flowmark/`, `.claude/skills/flowmark/`, the `AGENTS.md` flowmark block)
+and `make generate-skill-install` (part of `make format`) keeps them current with
+`DISCOVERY_VERSION`. So the committed repo is itself a worked example of the install.
+
+> **For ad-hoc install experiments, use a scratch directory, not the repo root** — an
+> exploratory `flowmark --install-skill` in the repo would re-touch the committed
+> surfaces (and `AGENTS.md`) and create confusing diffs.
+> The repo’s real surfaces are owned by `make format`; experiment in a `mktemp -d`
+> sandbox:
 
 ```shell
 SCRATCH=$(mktemp -d)
