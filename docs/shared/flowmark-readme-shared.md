@@ -280,7 +280,7 @@ File discovery flags:
 | `--exclude PATTERN` | Replace all default exclusions |
 | `--extend-exclude PATTERN` | Add to default exclusions (e.g., `drafts/`) |
 | `--no-respect-gitignore` | Disable `.gitignore` integration |
-| `--force-exclude` | Apply `--exclude`/default patterns to explicitly-named files too (`.flowmarkignore` always applies) |
+| `--force-exclude` | Apply exclusions (incl. `.flowmarkignore`) to explicitly-named files too (for pre-commit) |
 | `--files-max-size BYTES` | Skip files larger than this (default: 1 MiB) |
 
 ## File Discovery
@@ -302,10 +302,13 @@ discovers files using a smart filter pipeline:
 
 4. **`.flowmarkignore`**: A tool-specific ignore file using gitignore syntax.
    Place it in your project root to exclude paths specific to Flowmark formatting.
-   As a persistent “never touch” list, it is always honored — even for files named
-   explicitly on the command line (e.g. by a pre-commit hook), with no extra flag.
-   By contrast, `--exclude`/default patterns apply to explicitly-named files only with
-   `--force-exclude` (otherwise naming a file explicitly formats it).
+
+Exclusions (default patterns, `--exclude`/`--extend-exclude`, `.gitignore`, and
+`.flowmarkignore`) apply when Flowmark discovers files by walking a directory or glob.
+Files named **explicitly** on the command line override exclusions by default (matching
+Black and Ruff), so `flowmark README.md` always formats that file.
+Pass `--force-exclude` to apply exclusions to explicitly-named files too — this is what
+the pre-commit hooks set, since pre-commit passes every changed file by name.
 
 5. **Max file size**: Files over 1 MiB are skipped by default.
    Change with `--files-max-size` (0 = no limit).

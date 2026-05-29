@@ -237,16 +237,28 @@ def test_force_exclude_explicit_file_skips_formatting(
     assert f.read_text() == _OVERLONG  # untouched
 
 
-def test_flowmarkignore_honored_for_explicit_file_without_flag(
+def test_explicit_file_overrides_flowmarkignore_by_default(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """.flowmarkignore is a persistent never-touch list; honored for explicit files."""
+    """Explicit naming overrides .flowmarkignore by default (Black/Ruff semantics)."""
     monkeypatch.chdir(tmp_path)
     f = tmp_path / "t.md"
     f.write_text(_OVERLONG)
     (tmp_path / ".flowmarkignore").write_text("t.md\n")
     assert main(["--auto", "t.md"]) == 0
-    assert f.read_text() == _OVERLONG  # untouched, no --force-exclude needed
+    assert f.read_text() != _OVERLONG  # formatted: explicit name wins without the flag
+
+
+def test_flowmarkignore_applies_to_explicit_file_with_force_exclude(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--force-exclude makes .flowmarkignore apply to explicitly-named files too."""
+    monkeypatch.chdir(tmp_path)
+    f = tmp_path / "t.md"
+    f.write_text(_OVERLONG)
+    (tmp_path / ".flowmarkignore").write_text("t.md\n")
+    assert main(["--auto", "--force-exclude", "t.md"]) == 0
+    assert f.read_text() == _OVERLONG  # untouched
 
 
 def test_force_exclude_explicit_multicomponent_pattern(

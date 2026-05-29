@@ -235,13 +235,23 @@ dependencies.
 - [ ] #4: Triaged — deferred; recommend a `--locale` design in its own spec.
   Decision pending.
 
-### Design note (supersedes initial plan)
+### Design note: exclude model for explicitly-named files (#43/#24)
 
-For #43/#24 the exclude model was refined: `.flowmarkignore` is a persistent,
-user-authored “never touch” list and is now **always honored, even for explicitly-named
-files** (no `--force-exclude` required).
-Configured/default patterns still apply to explicit files only under `--force-exclude`.
-This made the pre-commit hook a plain `--auto` with no footgun flag.
+We considered making `.flowmarkignore` authoritative for explicitly-named files, but
+that is surprising (an explicit `flowmark file.md` would silently do nothing) and offers
+no override without editing the file — and no formatter behaves that way.
+Surveying the ecosystem: **Black and Ruff** format explicitly-passed files even when
+excluded and gate exclusions on `--force-exclude` (which `ruff-pre-commit` bakes into
+its hooks); **dprint** keeps excludes authoritative but adds an `--excludes-override`
+escape hatch.
+
+Decision: **follow the Black/Ruff convention.** Exclusions (default patterns,
+`--exclude`/`--extend-exclude`, `.gitignore`, `.flowmarkignore`) apply during directory
+and glob discovery. A file named **explicitly** on the command line overrides exclusions
+by default; `--force-exclude` opts exclusions (including `.flowmarkignore`) back in for
+explicit files. The published pre-commit hooks set `--force-exclude`, exactly as
+`ruff-pre-commit` does, so pre-commit honors a project’s `.flowmarkignore` without the
+user thinking about it.
 
 ## Testing Strategy
 

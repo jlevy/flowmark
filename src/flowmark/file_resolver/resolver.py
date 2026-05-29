@@ -82,16 +82,16 @@ class FileResolver:
 
     def _should_include_explicit(self, path: Path) -> bool:
         """Check if an explicitly-named file should be included."""
-        # A tool ignore file (e.g. `.flowmarkignore`) is a persistent, user-authored
-        # "never touch" list, so it is always honored — even for files named explicitly
-        # on the command line. Configured/default exclude patterns, by contrast, only
-        # apply to explicit files under `force_exclude` (explicit naming otherwise
-        # overrides them).
-        tool_ignore = self._get_tool_ignore(path.parent)
-        if tool_ignore is not None and self._spec_matches_path(tool_ignore, path):
-            return False
-        if self._config.force_exclude and self._spec_matches_path(self._exclude_spec, path):
-            return False
+        # Files named explicitly on the command line override exclusions by default
+        # (matching Black/Ruff). Under `force_exclude` — the flag pre-commit hooks set —
+        # both configured/default patterns and a tool ignore file (`.flowmarkignore`)
+        # apply to explicit files too.
+        if self._config.force_exclude:
+            if self._spec_matches_path(self._exclude_spec, path):
+                return False
+            tool_ignore = self._get_tool_ignore(path.parent)
+            if tool_ignore is not None and self._spec_matches_path(tool_ignore, path):
+                return False
         if self._exceeds_max_size(path):
             return False
         return True

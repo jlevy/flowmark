@@ -8,15 +8,16 @@
 #       - id: flowmark          # auto-format Markdown in place
 #       # - id: flowmark-check  # or: check only, fail if files would change (CI)
 #
-# flowmark always honors a `.flowmarkignore` file (gitignore syntax) for the files
-# pre-commit passes, so no extra flag is needed to skip paths. You can also use
-# pre-commit's own `exclude:` / `files:` to scope which files the hook receives.
+# flowmark applies your `.flowmarkignore` (and other exclusions) to the files
+# pre-commit passes because these hooks set `--force-exclude` (the same approach
+# ruff-pre-commit uses). You can also use pre-commit's own `exclude:` / `files:`
+# to scope which files the hook receives.
 
 - id: flowmark
   name: flowmark (auto-format Markdown)
   description: Auto-format Markdown files with flowmark.
   entry: flowmark
-  args: [--auto]
+  args: [--auto, --force-exclude]
   language: python
   types: [markdown]
 
@@ -24,6 +25,6 @@
   name: flowmark (check Markdown formatting)
   description: Check Markdown formatting without writing; fails if any file would change.
   entry: flowmark
-  args: [--check]
+  args: [--check, --force-exclude]
   language: python
   types: [markdown]
