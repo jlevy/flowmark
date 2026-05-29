@@ -178,30 +178,30 @@ Follow this checklist for each new release.
 
 7. **Create the release with `gh`:**
 
-   Write the notes to a file and pass `--notes-file`. This is the recommended path: it
-   sidesteps shell-quoting pitfalls (a single-quoted heredoc does *not* expand
-   `${VARS}`, so an inline compare link would ship literally as
-   `${LAST_TAG}...${NEW_TAG}`), and it lets you proofread the rendered Markdown before
-   publishing.
+   Write the notes to a file and pass `--notes-file`. Author the file directly in your
+   editor — do **not** pipe the notes through a shell heredoc.
+   Release notes are Markdown prose that routinely contains backticks and `$`, and a
+   heredoc mangles both:
+
+   - an unquoted heredoc (`<<EOF`) runs command substitution on `` `...` `` and expands
+     `$name`, so `` `--flag` `` in your notes executes and `$foo` disappears;
+   - a quoted heredoc (`<<'EOF'`) is literal, but then a `${LAST_TAG}`/`${NEW_TAG}`
+     compare link ships verbatim instead of expanding.
+
+   So just write the file (it is plain Markdown — no shell involved), put a *concrete*
+   compare link in it, proofread the rendered Markdown, then create the release:
 
    ```shell
-   NEW_TAG="vX.Y.Z"  # Replace with actual version
-   LAST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
+   NEW_TAG="vX.Y.Z"  # the tag you are about to create
 
-   # Compose the notes (see "Release Notes Format" below). Expand the vars now,
-   # while writing the file, so the compare link is concrete:
-   cat > /tmp/release-notes.md <<EOF
-   ## What's Changed
+   # Find the previous tag for the compare link:
+   gh release list --limit 1
 
-   [Summarize changes here — see format guide below]
+   # Write release-notes.md in your editor, following "Release Notes Format" below,
+   # ending with a concrete compare link, e.g.:
+   #   https://github.com/OWNER/PROJECT/compare/vPREV...vX.Y.Z
 
-   ### Full Changelog
-
-   https://github.com/OWNER/PROJECT/compare/${LAST_TAG}...${NEW_TAG}
-   EOF
-
-   # Review it, then create the release:
-   gh release create "${NEW_TAG}" --title "${NEW_TAG}" --notes-file /tmp/release-notes.md
+   gh release create "${NEW_TAG}" --title "${NEW_TAG}" --notes-file release-notes.md
    ```
 
    Tagging triggers `publish.yml`, which re-runs `scripts/check-release-pin.py` against
