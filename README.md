@@ -554,16 +554,27 @@ pre-commit:
       stage_fixed: true
 ```
 
-Equivalent setups with [pre-commit](https://pre-commit.com) (via a `local` hook) or
-`husky` work the same way; the key is the pinned invocation.
+Flowmark also ships [pre-commit](https://pre-commit.com) hooks, so you can use it
+directly from your `.pre-commit-config.yaml` without writing a `local` hook:
+
+```yaml
+repos:
+  - repo: https://github.com/jlevy/flowmark
+    rev: v0.7.1
+    hooks:
+      - id: flowmark          # auto-format Markdown in place
+      # - id: flowmark-check  # or: check only, fail if files would change (for CI)
+```
+
+A `husky` setup works the same way; the key is the pinned invocation.
 
 ### 4. Add a CI check
 
-Run the entry point in CI and fail if anything changed:
+Use the `--check` flag (or the `flowmark-check` pre-commit hook) to fail if anything
+would change, without writing:
 
 ```yaml
-- run: make format-docs
-- run: git diff --exit-code -- '*.md' '*.mdc' '*.markdown'
+- run: uvx --from flowmark==0.7.1 flowmark --check .
 ```
 
 ### 5. Exclude generated and vendored Markdown

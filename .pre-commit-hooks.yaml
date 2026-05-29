@@ -1,0 +1,29 @@
+# Pre-commit hooks for flowmark (https://pre-commit.com).
+#
+# Add to your .pre-commit-config.yaml:
+#
+#   - repo: https://github.com/jlevy/flowmark
+#     rev: v0.7.1
+#     hooks:
+#       - id: flowmark          # auto-format Markdown in place
+#       # - id: flowmark-check  # or: check only, fail if files would change (CI)
+#
+# flowmark always honors a `.flowmarkignore` file (gitignore syntax) for the files
+# pre-commit passes, so no extra flag is needed to skip paths. You can also use
+# pre-commit's own `exclude:` / `files:` to scope which files the hook receives.
+
+- id: flowmark
+  name: flowmark (auto-format Markdown)
+  description: Auto-format Markdown files with flowmark.
+  entry: flowmark
+  args: [--auto]
+  language: python
+  types: [markdown]
+
+- id: flowmark-check
+  name: flowmark (check Markdown formatting)
+  description: Check Markdown formatting without writing; fails if any file would change.
+  entry: flowmark
+  args: [--check]
+  language: python
+  types: [markdown]
