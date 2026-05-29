@@ -81,25 +81,27 @@ The key differences from
 
 - Carefully chosen default formatting rules that are effective for use in editors/IDEs,
   in agent pipelines, and also when paging through docs in a terminal.
-  It parses and normalizes standard links and special characters, headings, tables,
-  footnotes, and horizontal rules, and performs Markdown-aware line wrapping.
 
-- “Just works” support for **GFM-style tables**, **footnotes**, **YAML frontmatter**,
-  **template tags** (Markdoc, Jinja, Nunjucks), and **inline HTML**, including HTML
-  comments.
+- Extensive Markdown feature support.
+  “Just works” support including **GFM-style tables**, **footnotes**, **YAML
+  frontmatter**, **template tags** (Markdoc, Jinja, Nunjucks), and **inline HTML** and
+  HTML comments.
 
-- Advanced and customizable line-wrapping capabilities, including
+- All line wrapping is Markdown-aware.
+  Flowmark offers advanced and customizable line-wrapping capabilities, including
   [semantic line breaks](#semantic-line-breaks), a feature that is especially helpful in
   managing diffs and allowing collaborative edits on a Markdown document while avoiding
   git conflicts.
 
-- Optional [automatic smart quotes](#smart-quote-support) for professional-looking
-  typography.
+- Optional typographic fixes such as [automatic smart quotes](#smart-quote-support) for
+  professional-looking typography.
 
 - Full-featured globbing, including git-ignore support.
 
-- A fast, **exact Rust port** of the Python reference implementation, compiled to a
+- A **fast, exact Rust port** of the Python reference implementation, compiled to a
   single native binary.
+  With the Rust port’s caching feature, it can auto-format thousands of documents in
+  milliseconds.
 
 Some general philosophy:
 

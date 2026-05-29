@@ -34,6 +34,18 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
+      # Block the publish if the skill's uvx bootstrap pin (DISCOVERY_VERSION) does not
+      # match the release being cut, so the published skill never points agents at a
+      # stale release. See docs/publishing.md and docs/e2e-testing.runbook.md §4.
+      - name: Verify skill release pin matches the release
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [ -n "$TAG" ]; then
+            uv run python scripts/check-release-pin.py --expected "$TAG"
+          else
+            uv run python scripts/check-release-pin.py --from-git-tag
+          fi
+
       - name: Build package
         run: uv build
 

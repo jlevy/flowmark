@@ -6,7 +6,7 @@
 
 .PHONY: default install lint test test-golden test-golden-coverage upgrade build clean \
         format format-docs generate generate-readme generate-skill validate-skill \
-        benchmark profile reset-ref-docs
+        check-release-pin benchmark profile reset-ref-docs
 
 default: format install lint test
 
@@ -36,6 +36,12 @@ generate-skill:
 # Validate the published skill against the Agent Skills spec (needs network/npx).
 validate-skill:
 	npx skills-ref validate skills/flowmark
+
+# Verify the skill's uvx bootstrap pin is consistent across all shipped artifacts.
+# Pass VERSION=X.Y.Z to also assert it matches the release being cut; with no VERSION
+# it checks internal consistency only. The publish workflow runs this with the tag.
+check-release-pin:
+	uv run python scripts/check-release-pin.py $(if $(VERSION),--expected $(VERSION),)
 
 install:
 	uv sync --all-extras

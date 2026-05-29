@@ -22,10 +22,13 @@ The first thing to confirm is that flowmark is self-describing: someone who has 
 binary, with no docs open, can find out what it does and how to use it.
 
 - `flowmark --help` — argument reference and common-usage examples.
+  This is where the `--install-skill`, `--surfaces`, and `--agent-base` flags are
+  discoverable.
 - `flowmark --version` — version (see §1 for why this matters).
-- `flowmark --skill` — prints the full `SKILL.md`. This is the contract: an agent
-  pointed at flowmark runs this to learn how to use it and how to install the skill.
-- `flowmark --docs` — prints the full README documentation.
+- `flowmark --skill` — prints the full `SKILL.md`: how to *use* flowmark to format
+  Markdown, plus the version-pinned `uvx` fallback for when `flowmark` is not on `PATH`.
+- `flowmark --docs` — prints the full README, including the “How to Install the Skill”
+  section that documents `--install-skill` and `--surfaces` end to end.
 
 Confirm the same works **without any install**, straight from PyPI, which is how most
 agents will first encounter it:
@@ -37,10 +40,16 @@ uvx flowmark --skill
 uvx --from flowmark==<X.Y.Z> flowmark --auto FILE
 ```
 
-Pass criterion: a reader who runs `--skill` learns (a) how to format Markdown, (b) how
-to install the skill into their agent, and (c) how to run flowmark via `uvx` if it is
-not on `PATH`. If any of those is missing or wrong, the skill text needs fixing before
-release.
+Pass criteria (the self-describing contract for a fresh agent):
+
+- `--skill` teaches (a) how to format Markdown and (b) how to run flowmark via `uvx`
+  when it is not on `PATH` (the pinned bootstrap line).
+  It does **not** document skill installation — that is intentionally not in the skill
+  body.
+- Skill *installation* (`flowmark --install-skill`) is discoverable from `--help` (flag
+  list) and fully documented in `--docs` (README “How to Install the Skill”).
+
+If any of those is missing or wrong, fix the skill text or README before release.
 
 ## 1. Developer Environment Sanity
 
@@ -170,23 +179,36 @@ Every installed surface (and the committed discovery copy) contains a bootstrap 
 uvx --from flowmark==<X.Y.Z> flowmark
 ```
 
-That pin **must always be a real, PyPI-installable release**. It must never be a
-`.dev`/local version such as `0.7.1.dev29+c40ee1b`, because that version was never
-uploaded to PyPI and the `uvx` command would fail to resolve.
-There are two independent sources of the pin, each with its own guard:
+That pin **must always be a real, PyPI-installable release**, and never the unpinned
+`flowmark@latest`. It must never be a `.dev`/local version such as
+`0.7.1.dev29+c40ee1b`, because that version was never uploaded to PyPI and the `uvx`
+command would fail to resolve.
 
-- **Committed discovery copy** (`skills/flowmark/SKILL.md`, consumed by
-  `npx skills add jlevy/flowmark`): pinned to the `DISCOVERY_VERSION` constant in
-  [src/flowmark/skill.py](../src/flowmark/skill.py).
-  Bump it as part of every release — see the checklist in
-  [publishing.md](publishing.md).
-  Guarded by `test_skill_artifacts.py::test_discovery_copy_has_resolvable_version_pin`.
-- **Install-time copies** (`flowmark --install-skill` on a user’s machine): pinned to
-  the *installed* version via `flowmark_version()`. When flowmark is running from a dev
-  or editable checkout, the installed version is a `.dev`/local string;
-  `flowmark_version()` detects this (`is_pypi_release()`) and falls back to
-  `DISCOVERY_VERSION` so the emitted pin is still installable.
-  Guarded by `TestVersionPin` in `tests/test_skill.py`.
+**One source of truth.** The `DISCOVERY_VERSION` constant in
+[src/flowmark/skill.py](../src/flowmark/skill.py) is the single canonical pin.
+`make format` propagates it to every shipped artifact: the committed discovery copy
+(`skills/flowmark/SKILL.md`, via `generate-skill-discovery.py`) and the README runner
+examples (Makefile/npm/pre-commit, via the `__FLOWMARK_VERSION__` placeholder in
+`docs/shared/flowmark-readme-shared.md` that `generate-python-readme.py` substitutes).
+A release bumps this one constant; see [publishing.md](publishing.md).
+
+The pin reaches agents through two paths, each guarded:
+
+- **`npx skills add` / committed copy** — pinned to `DISCOVERY_VERSION`. Guarded by
+  `test_discovery_copy_has_resolvable_version_pin` (real release, not a placeholder/dev
+  string), `test_shipped_artifacts_pin_discovery_version` (every artifact pins exactly
+  `DISCOVERY_VERSION` — catches a forgotten `make format`), and
+  `test_shipped_artifacts_never_use_at_latest`.
+- **Install-time copies** (`flowmark --install-skill` on a user’s machine) — pinned to
+  the *installed* version via `flowmark_version()`. On a dev/editable checkout the
+  installed version is a `.dev`/local string; `flowmark_version()` detects this
+  (`is_pypi_release()`) and falls back to `DISCOVERY_VERSION` so the emitted pin is
+  still installable. Guarded by `TestVersionPin` in `tests/test_skill.py`.
+
+A release-time guard, `scripts/check-release-pin.py` (run by `publish.yml` against the
+release tag, and via `make check-release-pin VERSION=X.Y.Z`), fails the publish if
+`DISCOVERY_VERSION` does not match the release being cut — so the published skill can
+never point agents at a stale release.
 
 Manual confirmation from a dev checkout:
 
@@ -196,23 +218,64 @@ SCRATCH=$(mktemp -d)
   grep -h 'uvx --from flowmark==' .agents/skills/flowmark/SKILL.md AGENTS.md )
 # Expect the released pin (e.g. flowmark==0.7.0), NOT the dev version,
 # even though `flowmark --version` reports the dev version.
+
+# And the single-source consistency + release-match guard:
+make check-release-pin VERSION=<release>   # "Release pin OK" or a specific mismatch
 ```
 
 ## 5. Real End-to-End via PyPI (Genuinely Manual, Post-Release)
 
 CI cannot test against a release that does not exist yet.
 After publishing (see [publishing.md](publishing.md)), confirm the real path that users
-and agents take:
+and agents take.
+
+> **Supply-chain cool-off on your test machine.** If your uv is configured with an
+> `exclude-newer`/`exclude-newer-span` cool-off (see
+> [SUPPLY-CHAIN-SECURITY.md](../SUPPLY-CHAIN-SECURITY.md)), a *just-published* release
+> is filtered out for the length of the window (e.g. a 7-day span hides a release for
+> its first week), and `uvx --from flowmark==<new>` fails with an “unsatisfiable /
+> filtered by `exclude-newer`” error.
+> flowmark is our own vetted package, so override the cool-off **for flowmark only**
+> when testing its releases — this is a local test-environment concern, not something
+> end users or the published skill need to handle:
+> 
+> ```shell
+> # Per-invocation override (date = today or later):
+> uvx --exclude-newer-package flowmark=<YYYY-MM-DD> --from flowmark==<JUST_RELEASED> flowmark --version
+> ```
 
 1. **Fresh `uvx` from PyPI** — on a machine without flowmark installed:
 
    ```shell
    uvx --from flowmark==<JUST_RELEASED> flowmark --auto sample.md
+   # add --exclude-newer-package flowmark=<today> if your machine has a cool-off
    ```
 
+   Confirm typographic cleanup actually applied (straight quotes → curly, `...` → `…`,
+   collapsed runs of spaces).
    This exercises the exact bootstrap line the skill hands to agents.
 
-2. **Real agent pickup** — in a scratch project, run `flowmark --install-skill`, then
+2. **Version coherence: the pinned release must actually contain this skill.** The
+   committed discovery copy pins `uvx --from flowmark==<DISCOVERY_VERSION>`, and
+   `npx skills add jlevy/flowmark` ships that copy to agents who have no other flowmark.
+   So the release `DISCOVERY_VERSION` points at must itself ship the skill behavior the
+   committed copy describes — otherwise an agent reads the new skill text but the pinned
+   binary behaves like an older one.
+   New cross-agent features (pinned `uvx` bootstrap, the three install surfaces, format
+   stamps) land in commits *after* a tag, so they are absent from any release cut before
+   them. Verify the pinned release matches:
+
+   ```shell
+   uvx --exclude-newer-package flowmark=<today> --from flowmark==<DISCOVERY_VERSION> flowmark --skill \
+     | grep -E "uvx --from flowmark==|@latest"
+   # Expect the pinned `uvx --from flowmark==<...>` form, NOT `flowmark@latest`.
+   ```
+
+   If they disagree, cut a new release that includes the skill changes and bump
+   `DISCOVERY_VERSION` to it (per [publishing.md](publishing.md)) before relying on the
+   discovery copy.
+
+3. **Real agent pickup** — in a scratch project, run `flowmark --install-skill`, then
    open that project in **Claude Code** and in **Codex** (or another portable-surface
    agent) and confirm each discovers the flowmark skill and can format a Markdown file
    on request. This is the ultimate check that the surface paths and frontmatter are
@@ -225,14 +288,18 @@ Before tagging a release, confirm:
 - [ ] `make` is fully green (lint + pytest + golden), from a clean `.venv` if the repo
   was recently moved (§1).
 - [ ] `flowmark --version` agrees with `git describe --tags` (§1).
-- [ ] `DISCOVERY_VERSION` bumped to the about-to-be-released version and `make format`
-  re-run, so the committed discovery copy pins the new release (§4 and
-  [publishing.md](publishing.md)).
+- [ ] `DISCOVERY_VERSION` (the single source of truth) bumped to the
+  about-to-be-released version and `make format` re-run, so every shipped artifact pins
+  the new release; then `make check-release-pin VERSION=<release>` prints “Release pin
+  OK” (§4 and [publishing.md](publishing.md)).
 - [ ] Skill install verified in a scratch dir: three surfaces, idempotent,
   forward-compat guard, AGENTS.md hygiene (§3).
-- [ ] `uvx` pin is a real release on both the discovery copy and a dev-checkout install
-  (§4).
-- [ ] After publishing: real `uvx`-from-PyPI run and real agent pickup (§5).
+- [ ] `uvx` pin is a real release (never `@latest`) on the discovery copy, the README
+  examples, and a dev-checkout install (§4).
+- [ ] After publishing: real `uvx`-from-PyPI run (override the cool-off for flowmark if
+  your machine has one), the pinned `DISCOVERY_VERSION` release actually ships this
+  skill (`--skill` shows the pinned bootstrap, not `@latest`), and real agent pickup
+  (§5).
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
