@@ -6,7 +6,7 @@
 
 .PHONY: default install lint test test-golden test-golden-coverage upgrade build clean \
         format format-docs generate generate-readme generate-skill validate-skill \
-        benchmark profile reset-ref-docs
+        check-release-pin benchmark profile reset-ref-docs
 
 default: format install lint test
 
@@ -24,8 +24,9 @@ format-docs:
 # Regenerate checked-in generated docs from their sources:
 #   README.md            <- docs/shared + docs/templates (generate-python-readme.py)
 #   skills/flowmark/SKILL.md (published discovery copy) <- generate-skill-discovery.py
-# The skill drift test (tests/test_skill_artifacts.py) fails if the discovery copy is stale.
-generate: generate-readme generate-skill
+#   .agents/.claude/AGENTS.md skill surfaces <- `flowmark --install-skill` (dogfood)
+# The skill drift test (tests/test_skill_artifacts.py) fails if any pin is stale.
+generate: generate-readme generate-skill generate-skill-install
 
 generate-readme:
 	uv run --python 3.14 scripts/generate-python-readme.py
@@ -33,9 +34,22 @@ generate-readme:
 generate-skill:
 	uv run scripts/generate-skill-discovery.py
 
+# Dogfood: install flowmark's own skill into this repo's three integration surfaces so the
+# checked-in setup always reflects current output and the live DISCOVERY_VERSION pin.
+# Idempotent (reports "unchanged" when current); AGENTS.md/.claude are in .flowmarkignore
+# so the subsequent format pass leaves them alone.
+generate-skill-install:
+	uv run flowmark --install-skill
+
 # Validate the published skill against the Agent Skills spec (needs network/npx).
 validate-skill:
 	npx skills-ref validate skills/flowmark
+
+# Verify the skill's uvx bootstrap pin is consistent across all shipped artifacts.
+# Pass VERSION=X.Y.Z to also assert it matches the release being cut; with no VERSION
+# it checks internal consistency only. The publish workflow runs this with the tag.
+check-release-pin:
+	uv run python scripts/check-release-pin.py $(if $(VERSION),--expected $(VERSION),)
 
 install:
 	uv sync --all-extras

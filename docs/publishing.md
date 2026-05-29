@@ -104,25 +104,48 @@ Follow this checklist for each new release.
 
    - **Major** (e.g., `v0.6.0` → `v1.0.0`): Breaking changes
 
-5. **Bump the committed discovery-copy version pin:**
+5. **Bump the skill’s `uvx` bootstrap pin (one source of truth):**
 
-   The repo-root `skills/flowmark/SKILL.md` is shipped to users of
-   `npx skills add jlevy/flowmark`, who do *not* have flowmark pre-installed.
-   Its `uvx --from flowmark==<X.Y.Z>` bootstrap line must therefore reference a real,
-   PyPI-installable release, never a `<version>` placeholder or a `.dev`/ local-suffix
-   string. Bump the `DISCOVERY_VERSION` constant in `src/flowmark/skill.py` to the
-   about-to-be-released version, then re-run `make format` to regenerate the discovery
-   copy, and commit before tagging:
+   The repo-root `skills/flowmark/SKILL.md` (shipped to `npx skills add jlevy/flowmark`
+   users who do *not* have flowmark pre-installed) and the README’s runner examples all
+   pin `uvx --from flowmark==<X.Y.Z>`. That pin must reference a real, PyPI-installable
+   release (never a `<version>` placeholder or a `.dev`/local-suffix string), and it
+   must be the release you are about to cut, or agents bootstrap a stale flowmark.
+
+   There is exactly **one** place to change: the `DISCOVERY_VERSION` constant in
+   `src/flowmark/skill.py`. `make format` propagates it to every artifact: the discovery
+   copy (via `generate-skill-discovery.py`), the README runner examples (via the
+   `__FLOWMARK_VERSION__` placeholder in `docs/shared/flowmark-readme-shared.md` that
+   `generate-python-readme.py` substitutes), and this repo’s own installed skill
+   surfaces (`.agents/`, `.claude/`, the `AGENTS.md` block, via
+   `flowmark --install-skill`). So `git add -A` after `make format` captures the whole
+   set.
+
+   Do this in the **final PR before tagging:** `DISCOVERY_VERSION` should equal the
+   version you are about to release.
+   The pin then references the imminent release: it is not installable from PyPI until
+   the tag publishes (expected), and the publish workflow refuses to publish if the tag
+   and `DISCOVERY_VERSION` disagree.
+   Bump, regenerate, verify, commit:
 
    ```shell
    # In src/flowmark/skill.py: DISCOVERY_VERSION = "<NEW_TAG without leading v>"
    make format
-   git add src/flowmark/skill.py skills/flowmark/SKILL.md
+   make check-release-pin VERSION=<NEW_TAG without leading v>   # must print "Release pin OK"
+   git add -A
    git commit -m "skill: bump DISCOVERY_VERSION to vX.Y.Z"
    ```
 
-   `tests/test_skill_artifacts.py::test_discovery_copy_has_resolvable_version_pin`
-   guards against shipping a non-resolvable pin.
+   Guards (no stale or non-resolvable pin can ship):
+
+   - `tests/test_skill_artifacts.py::test_discovery_copy_has_resolvable_version_pin` —
+     the pin is a real PyPI release, not a placeholder/dev string.
+   - `tests/test_skill_artifacts.py::test_shipped_artifacts_pin_discovery_version` —
+     every shipped artifact pins exactly `DISCOVERY_VERSION` (catches a forgotten
+     `make format`).
+   - `scripts/check-release-pin.py` (run in `publish.yml` against the release tag, and
+     via `make check-release-pin`), which fails the publish if `DISCOVERY_VERSION` does
+     not match the release being cut.
 
 #### Create the Release
 

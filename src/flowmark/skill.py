@@ -25,6 +25,26 @@ from strif import atomic_output_file
 # (and refuses to clobber a newer format it doesn't understand).
 FLOWMARK_FORMAT = "f02"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# CROSS-IMPLEMENTATION PORTING CONTRACT (read before porting to flowmark-rs)
+#
+# This file is auto-ported to the Rust implementation (github.com/jlevy/flowmark-rs)
+# by an LLM following the rust-porting playbook. The version pin below and the
+# `uvx --from <pkg>==<X.Y.Z>` bootstrap line in SKILL.md are PER-IMPLEMENTATION and
+# MUST NOT be copied verbatim across the port:
+#
+#   - Python flowmark   pins  `uvx --from flowmark==<this package's version>`
+#   - Rust   flowmark-rs pins  `uvx --from flowmark-rs==<flowmark-rs's own version>`
+#
+# `flowmark` and `flowmark-rs` are separate PyPI packages with INDEPENDENT, DIFFERENTLY
+# NUMBERED release histories (the Python version is the reference and is often ahead).
+# When porting, substitute BOTH the package name (`flowmark` -> `flowmark-rs`) AND the
+# version (use flowmark-rs's own current release, NOT this file's number). Each pin must
+# always be a real, installable release of *that* package. Pinning the Rust skill to a
+# Python version number (or vice versa) is a bug: the `uvx --from` would resolve to the
+# wrong package's release or fail outright.
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Placeholder in the authored SKILL.md, replaced by `compose_skill` with a concrete
 # version pin for the local-first runner fallback (see SKILL.md).
 _VERSION_PLACEHOLDER = "__FLOWMARK_VERSION__"
@@ -36,7 +56,9 @@ _VERSION_PLACEHOLDER = "__FLOWMARK_VERSION__"
 # local-suffix string — so the bootstrap `uvx --from flowmark==<X.Y.Z>` example
 # in the discovery copy actually runs. Bump this together with the published
 # version (see docs/publishing.md release checklist) and re-run `make format`.
-DISCOVERY_VERSION = "0.7.0"
+# Rust port: this becomes flowmark-rs's own release version — see the porting
+# contract above.
+DISCOVERY_VERSION = "0.7.1"
 
 
 def get_skill_content() -> str:
@@ -57,14 +79,45 @@ def get_skill_content() -> str:
     return skill_file.read_text(encoding="utf-8")
 
 
+# An exact-pinnable published PyPI release: a plain release segment (digits and
+# dots), optionally a `.postN` suffix. PEP 440 dev (`.devN`), pre-release
+# (`aN`/`bN`/`rcN`/`cN`), and local (`+<hash>`) versions — what editable/dev
+# checkouts report (e.g. `0.7.1.dev29+c40ee1b`) — are deliberately rejected:
+# they were never uploaded to PyPI, so an `uvx --from flowmark==<pin>` against
+# them cannot resolve.
+_PYPI_RELEASE_RE = re.compile(r"^\d+(?:\.\d+)*(?:\.post\d+)?$")
+
+
+def is_pypi_release(version_str: str) -> bool:
+    """Whether `version_str` is a real, exact-pinnable published PyPI release.
+
+    Used to decide whether the installed version is safe to bake into the
+    `uvx --from flowmark==<pin>` bootstrap line; see `flowmark_version`.
+    """
+    return bool(_PYPI_RELEASE_RE.match(version_str))
+
+
 def flowmark_version() -> str:
-    """The installed flowmark version, or the discovery-pin fallback if unknown."""
+    """The version to pin in the `uvx --from flowmark==<pin>` bootstrap line.
+
+    Returns the installed version when it is a real PyPI release, otherwise the
+    DISCOVERY_VERSION fallback. A dev or editable checkout reports a PEP 440
+    dev/local version (e.g. `0.7.1.dev29+c40ee1b`) that was never published, so
+    pinning uvx to it would fail to resolve; fall back to the last known
+    published release instead. Same reasoning when flowmark isn't installed as a
+    distribution at all.
+
+    Rust port: this must query the flowmark-rs package and pin
+    `flowmark-rs==<its own version>`, not `flowmark==…`. See the cross-implementation
+    porting contract near DISCOVERY_VERSION.
+    """
     from importlib.metadata import PackageNotFoundError, version
 
     try:
-        return version("flowmark")
+        installed = version("flowmark")
     except PackageNotFoundError:
         return DISCOVERY_VERSION
+    return installed if is_pypi_release(installed) else DISCOVERY_VERSION
 
 
 def compose_skill(version: str | None = None) -> str:
@@ -126,7 +179,7 @@ def _format_num() -> int:
 
 def _generated_marker() -> str:
     # No internal `.` so flowmark’s sentence-wrap leaves the line intact.
-    return f"<!-- DO NOT EDIT — `flowmark --install-skill` (format={FLOWMARK_FORMAT} surface=skill-md) -->"
+    return f"<!-- DO NOT EDIT: `flowmark --install-skill` (format={FLOWMARK_FORMAT} surface=skill-md) -->"
 
 
 def render_skill_file(version: str | None = None) -> str:
@@ -300,12 +353,16 @@ def install_skill(
     selected = ALL_SURFACES if surfaces is None else frozenset(surfaces)
 
     results: list[InstallResult] = []
+    # Set for a project-local install (agent_base is None); used to recommend a project
+    # root when the install lands outside any git repository.
+    project_local_root: Path | None = None
     try:
         if agent_base is not None:
             base = Path(agent_base).resolve()
             results.append(_write_surface(base / "skills" / SKILL_DIRNAME, str(base), content))
         else:
             root = Path(project_root).resolve() if project_root is not None else Path.cwd()
+            project_local_root = root
             if SURFACE_PORTABLE in selected:
                 results.append(
                     _write_surface(root / PORTABLE_SKILL_REL, ".agents/skills (portable)", content)
@@ -324,7 +381,26 @@ def install_skill(
         sys.exit(1)
 
     _print_install_summary(results)
+    # A project-local install writes to the current directory. If that is not inside a
+    # git repository, the skill likely landed somewhere unintended (e.g. a home dir), so
+    # recommend running it from a project root (or doing an explicit global install).
+    if project_local_root is not None and not _is_within_git_repo(project_local_root):
+        print(
+            f"Note: {project_local_root} is not inside a git repository. Agent skills are "
+            "best installed at a project root so agents working in that project discover "
+            "them. Re-run `flowmark --install-skill` from your project directory, or use "
+            "`--agent-base <DIR>` (e.g. ~/.claude) for an explicit global install.\n"
+        )
     return results
+
+
+def _is_within_git_repo(path: Path) -> bool:
+    """Whether `path` or any ancestor contains a `.git` entry (a regular repo dir or the
+    `.git` file used by worktrees/submodules)."""
+    for parent in (path, *path.parents):
+        if (parent / ".git").exists():
+            return True
+    return False
 
 
 def _print_install_summary(results: list[InstallResult]) -> None:

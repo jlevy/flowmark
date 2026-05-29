@@ -210,3 +210,14 @@ Run `tbd guidelines <name>` to apply any of these guidelines:
 
 <!-- END SHORTCUT DIRECTORY -->
 <!-- END TBD INTEGRATION -->
+
+<!-- BEGIN FLOWMARK INTEGRATION format=f02 surface=agents-md -->
+## flowmark
+
+Auto-format Markdown with `flowmark` for clean, semantic git diffs.
+
+- Run `flowmark --auto <files>` on Markdown you create or edit.
+- Run `flowmark --docs` for full usage and `flowmark --skill` for the skill.
+- If `flowmark` is not on `PATH`, run `uvx --from flowmark==0.7.1 flowmark`.
+
+<!-- END FLOWMARK INTEGRATION -->

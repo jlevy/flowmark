@@ -10,38 +10,7 @@ scripts/generate-python-readme.py.
 [![Python versions](https://img.shields.io/pypi/pyversions/flowmark)](https://pypi.org/project/flowmark/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
-## Original Python Flowmark
-
-> [!TIP]
-> This repository is the Python reference implementation of Flowmark.
-> 
-> For fastest CLI usage via a single native binary, consider the auto-synced Rust port:
-> [flowmark-rs](https://github.com/jlevy/flowmark-rs).
-
-## Installing Python Flowmark CLI
-
-The simplest way to use the Python version is [uv](https://github.com/astral-sh/uv).
-
-Run with `uvx flowmark --help` or install it as a tool:
-
-```shell
-uv tool install --upgrade flowmark
-```
-
-Then:
-
-```shell
-flowmark --help
-```
-
-For use in Python projects, add the [`flowmark`](https://pypi.org/project/flowmark/)
-package via uv, poetry, or pip.
-
-Primary command: `flowmark`. Alias available in this repo: `flowmark-py`.
-
-* * *
-
-## Why Use Flowmark?
+## What Is Flowmark?
 
 Flowmark is a Markdown auto-formatter, written
 [in Python](https://github.com/jlevy/flowmark) with an auto-synced
@@ -49,45 +18,92 @@ Flowmark is a Markdown auto-formatter, written
 workflows**, **clean git diffs**, and **flexible use from CLI, from IDEs, or as a
 library**.
 
-With AI tools increasingly using Markdown, having consistent, diff-friendly formatting
-has become essential for modern writing, editing, and document processing workflows.
-Normalizing Markdown formatting greatly improves collaborative editing and LLM
-workflows, especially when committing documents to git repositories.
+With AI tools increasingly producing Markdown, consistent and diff-friendly formatting
+has become essential.
+It improves collaborative editing and LLM workflows, especially when committing
+documents to git repositories.
 
-You can use Flowmark as a CLI, as an autoformatter in your IDE, or as a Python library.
+For CLI auto-formatting, the Python and Rust builds produce identical output: the Rust
+port is a fast single native binary, while the Python version is the reference and is
+sometimes ahead on the newest features.
+Pick whichever fits your environment; for heavy or latency-sensitive formatting, choose
+the Rust binary.
 
-Flowmark comes in two flavors: this Python reference implementation and an auto-synced
-[Rust port (flowmark-rs)](https://github.com/jlevy/flowmark-rs).
-For CLI auto-formatting either works and produces the same output: the Rust port is a
-fast single native binary, while the Python version is the reference and is sometimes
-ahead on the newest features.
-Pick whichever fits your environment; for heavy or latency-sensitive formatting the Rust
-binary is the faster choice.
+## Quick Start
 
-## Comparison With Other Formatters
+Both Python and Rust versions are best installed with
+[**uv**](https://github.com/astral-sh/uv).
+
+### Run With `uvx`
+
+No install needed for one-off usage:
+
+```shell
+uvx flowmark-rs --help                  # For native-binary Rust
+uvx flowmark-rs --auto somefile.md
+uvx flowmark --help                     # For Python
+uvx flowmark --auto somefile.md
+```
+
+### Install as a Global CLI
+
+```shell
+uv tool install --upgrade flowmark-rs   # For native-binary Rust
+uv tool install --upgrade flowmark      # For Python
+flowmark --auto somefile.md             # One file
+flowmark --auto .                       # Whole tree (respects .gitignore / .flowmarkignore)
+```
+
+Run `flowmark --help`, `flowmark --docs`, or `flowmark --skill` for more.
+
+### Set Up with Any Coding Agent
+
+Hand your agent this one instruction:
+
+> Set up Flowmark to keep this project’s Markdown auto-formatted.
+> Run `uvx --from flowmark==0.7.1 flowmark --skill` for details.
+
+Or run `uvx --from flowmark==0.7.1 flowmark --install-skill` to manually install the
+skill into `.agents/`, `.claude/`, and `AGENTS.md` (see
+[How to Install the Skill](#how-to-install-the-skill)).
+
+For consistency across users and supply chain security, it’s recommended to pin the
+version when installing within a skill or project build.
+
+## Why Another Markdown Auto-Formatter?
 
 Flowmark supports both [CommonMark](https://spec.commonmark.org/0.31.2/) and
 [GitHub-Flavored Markdown (GFM)](https://github.github.com/gfm/) via
 [Marko](https://github.com/frostming/marko).
 
-The key differences from [other Markdown formatters](#why-another-markdown-formatter):
+The key differences from
+[other Markdown formatters](#how-does-flowmark-compare-to-other-markdown-auto-formatters):
 
 - Carefully chosen default formatting rules that are effective for use in editors/IDEs,
-  in LLM pipelines, and also when paging through docs in a terminal.
-  It parses and normalizes standard links and special characters, headings, tables,
-  footnotes, and horizontal rules and performing Markdown-aware line wrapping.
+  in agent pipelines, and also when paging through docs in a terminal.
 
-- “Just works” support for GFM-style tables, footnotes, YAML frontmatter, template tags
-  (Markdoc, Jinja, Nunjucks), and inline HTML comments.
+- Extensive Markdown feature support.
+  “Just works” support including **GFM-style tables**, **footnotes**, **YAML
+  frontmatter**, **template tags** (Markdoc, Jinja, Nunjucks), and **inline HTML** and
+  HTML comments.
 
-- Advanced and customizable line-wrapping capabilities, including
+- All line wrapping is Markdown-aware.
+  Flowmark offers advanced and customizable line-wrapping capabilities, including
   [semantic line breaks](#semantic-line-breaks), a feature that is especially helpful in
-  allowing collaborative edits on a Markdown document while avoiding git conflicts.
+  managing diffs and allowing collaborative edits on a Markdown document while avoiding
+  git conflicts.
 
-- Optional [automatic smart quotes](#smart-quote-support) for professional-looking
-  typography.
+- Optional typographic fixes such as [automatic smart quotes](#smart-quote-support) for
+  professional-looking typography.
 
-General philosophy:
+- Full-featured globbing, including git-ignore support.
+
+- A **fast, exact Rust port** of the Python reference implementation, compiled to a
+  single native binary.
+  With the Rust port’s caching feature, it can auto-format thousands of documents in
+  milliseconds.
+
+Some general philosophy:
 
 - Be conservative about changes so that it is safe to run automatically on save or after
   any stage of a document pipeline.
@@ -97,11 +113,7 @@ General philosophy:
   And if you are using it as a library, you can fully control anything you want
   (including more complex things like custom line wrapping for HTML).
 
-- Be as small and simple as possible, with few dependencies:
-  [`marko`](https://github.com/frostming/marko),
-  [`pathspec`](https://pypi.org/project/pathspec/),
-  [`regex`](https://pypi.org/project/regex/), and
-  [`strif`](https://github.com/jlevy/strif).
+- Be as small and simple as possible, with few dependencies.
 
 ## Use Cases
 
@@ -444,9 +456,10 @@ for link in extract_links(doc):   # -> list[Link(text, url, title)], reference l
 
 **Map parsed blocks back to source.** Every block element produced by
 `flowmark_markdown().parse(text)` carries an authoritative `element.span = (start, end)`
-half-open offset pair, recorded straight from marko's parser state — no regex, no
-heuristic — at every nesting level. Offsets index the source after marko's `\r\n -> \n`
-normalization, so slice against an LF-normalized copy of the input:
+half-open offset pair, recorded straight from marko’s parser state (no regex, no
+heuristic) at every nesting level.
+Offsets index the source after marko’s `\r\n -> \n` normalization, so slice against an
+LF-normalized copy of the input:
 
 ```python
 from flowmark import flowmark_markdown
@@ -507,7 +520,7 @@ A single command everyone (and CI) runs.
 Makefile target:
 
 ```makefile
-FLOWMARK := uvx --from flowmark==0.7.0 flowmark
+FLOWMARK := uvx --from flowmark==0.7.1 flowmark
 
 format-docs:
 	$(FLOWMARK) --auto .
@@ -518,7 +531,7 @@ Or as an npm script in `package.json`:
 ```json
 {
   "scripts": {
-    "format:docs": "uvx --from flowmark==0.7.0 flowmark --auto ."
+    "format:docs": "uvx --from flowmark==0.7.1 flowmark --auto ."
   }
 }
 ```
@@ -532,7 +545,7 @@ pre-commit:
   commands:
     flowmark:
       glob: "*.{md,mdc,markdown}"
-      run: uvx --from flowmark==0.7.0 flowmark --auto {staged_files}
+      run: uvx --from flowmark==0.7.1 flowmark --auto {staged_files}
       stage_fixed: true
 ```
 
@@ -653,9 +666,16 @@ uvx --from flowmark==<version> flowmark --auto README.md   # Python
 # or use the Rust binary (flowmark-rs) for maximum speed
 ```
 
-## Why Another Markdown Formatter?
+## How Does Flowmark Compare to Other Markdown Auto-Formatters?
 
-There are several other Markdown auto-formatters:
+There are several other Markdown auto-formatters.
+All of these are worth looking at, but none offer the more advanced line-breaking
+features of Flowmark or have the “just works” CLI defaults and library usage I found
+most useful.
+
+- [dprint-plugin-markdown](https://github.com/dprint/dprint-plugin-markdown) is a
+  Markdown plugin for dprint, the fast Rust/WASM engine.
+  It is a good, modern option but does not auto-apply semantic line breaks.
 
 - [markdownfmt](https://github.com/shurcooL/markdownfmt) is one of the oldest and most
   popular Markdown formatters and works well for basic formatting.
@@ -666,10 +686,7 @@ There are several other Markdown auto-formatters:
   auto-apply them as Flowmark does and has somewhat different features.
 
 - [Prettier](https://prettier.io/blog/2017/11/07/1.8.0) is the ubiquitous Node formatter
-  that handles Markdown/MDX
-
-- [dprint-plugin-markdown](https://github.com/dprint/dprint-plugin-markdown) is a
-  Markdown plugin for dprint, the fast Rust/WASM engine
+  that handles Markdown/MDX.
 
 - Rule-based linters like
   [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) catch violations
@@ -680,10 +697,6 @@ There are several other Markdown auto-formatters:
   JavaScript/TypeScript.
   You can build auto-formatters with it but there isn’t one that’s broadly used as a CLI
   tool.
-
-All of these are worth looking at, but none offer the more advanced line breaking
-features of Flowmark or seemed to have the “just works” CLI defaults and library usage I
-found most useful.
 
 On speed, Flowmark’s auto-synced
 [Rust port (flowmark-rs)](https://github.com/jlevy/flowmark-rs) compiles to a single
@@ -701,4 +714,3 @@ For development workflows, see [development.md](docs/development.md).
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
 -->
-

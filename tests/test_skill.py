@@ -18,6 +18,7 @@ from flowmark.skill import (
     get_docs_content,
     get_skill_content,
     install_skill,
+    is_pypi_release,
     update_agents_md,
 )
 
@@ -76,6 +77,57 @@ class TestComposeSkill:
         assert "emeraldwalk.runonsave" in content
 
 
+class TestVersionPin:
+    """The `uvx --from flowmark==<pin>` bootstrap pin must be PyPI-installable."""
+
+    @pytest.mark.parametrize(
+        "version_str",
+        ["0.7.0", "1.2.3", "0.7", "10.20.30", "0.7.0.post1"],
+    )
+    def test_real_releases_are_accepted(self, version_str: str) -> None:
+        assert is_pypi_release(version_str)
+
+    @pytest.mark.parametrize(
+        "version_str",
+        [
+            "0.7.1.dev29+c40ee1b",  # editable/dev checkout (the bug we hit)
+            "0.6.6.dev7+6de6e10",  # stale editable build
+            "0.7.0.dev1",  # dev release, no local segment
+            "1.0.0+local",  # local version
+            "1.0.0a1",  # alpha pre-release
+            "1.0.0b2",  # beta pre-release
+            "1.0.0rc1",  # release candidate
+            "",  # empty / unparsable
+            "garbage",
+        ],
+    )
+    def test_non_releases_are_rejected(self, version_str: str) -> None:
+        assert not is_pypi_release(version_str)
+
+    def test_dev_version_falls_back_to_discovery_pin(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """On a dev/editable checkout, flowmark_version() yields a real PyPI pin."""
+        import importlib.metadata
+
+        def fake_version(_name: str) -> str:
+            return "0.7.1.dev29+c40ee1b"
+
+        monkeypatch.setattr(importlib.metadata, "version", fake_version)
+        assert flowmark_version() == DISCOVERY_VERSION
+        # And the rendered skill therefore pins something PyPI-installable.
+        assert is_pypi_release(flowmark_version())
+        assert f"flowmark=={DISCOVERY_VERSION}" in compose_skill()
+        assert f"flowmark=={DISCOVERY_VERSION}" in agents_md_block()
+
+    def test_real_release_is_passed_through(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import importlib.metadata
+
+        def fake_version(_name: str) -> str:
+            return "0.9.4"
+
+        monkeypatch.setattr(importlib.metadata, "version", fake_version)
+        assert flowmark_version() == "0.9.4"
+
+
 class TestGetDocsContent:
     """Tests for get_docs_content function."""
 
@@ -88,9 +140,11 @@ class TestGetDocsContent:
     def test_docs_content_is_readme(self) -> None:
         """get_docs_content returns README.md content."""
         content = get_docs_content()
-        # README.md has these distinctive sections
+        # README.md has these distinctive sections (the lead sections come from
+        # docs/shared/flowmark-readme-shared.md).
         assert "# flowmark" in content.lower()
-        assert "## Installing Python Flowmark CLI" in content
+        assert "## What Is Flowmark?" in content
+        assert "## Quick Start" in content
         assert "## Semantic Line Breaks" in content
 
     def test_docs_content_has_vscode_cursor_setup(self) -> None:
@@ -133,6 +187,31 @@ class TestInstallSkill:
         assert {r.action for r in first} == {"installed"}
         second = install_skill(project_root=tmp_path)
         assert {r.action for r in second} == {"unchanged"}
+
+    def test_install_outside_git_repo_recommends_project_root(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A project-local install outside a git repo recommends a project root."""
+        install_skill(project_root=tmp_path)
+        out = capsys.readouterr().out
+        assert "not inside a git repository" in out
+
+    def test_install_inside_git_repo_has_no_recommendation(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Inside a git repo, no project-root recommendation is printed."""
+        (tmp_path / ".git").mkdir()
+        install_skill(project_root=tmp_path)
+        out = capsys.readouterr().out
+        assert "not inside a git repository" not in out
+
+    def test_install_agent_base_skips_git_recommendation(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """An explicit `--agent-base` install never warns about git (it's intentional)."""
+        install_skill(agent_base=str(tmp_path / "base"))
+        out = capsys.readouterr().out
+        assert "not inside a git repository" not in out
 
     def test_forward_compat_guard_blocks_newer_format(self, tmp_path: Path) -> None:
         """A surface stamped with a newer format is not clobbered."""
