@@ -219,3 +219,55 @@ def test_explicit_flag_detection_with_default_value(tmp_path: Path) -> None:
 
     _, explicit_flags, _ = _parse_args(["--width", "88", str(tmp_path)])
     assert "width" in explicit_flags
+
+
+# --- Issue #43: exclusions must apply to explicitly-named files (not just dirs/globs) ---
+
+_OVERLONG = "# H\n\n" + ("word " * 30).strip() + "\n"
+
+
+def test_force_exclude_explicit_file_skips_formatting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--force-exclude must apply to an explicit file path, even without --list-files."""
+    monkeypatch.chdir(tmp_path)
+    f = tmp_path / "t.md"
+    f.write_text(_OVERLONG)
+    assert main(["--auto", "--force-exclude", "--extend-exclude", "t.md", "t.md"]) == 0
+    assert f.read_text() == _OVERLONG  # untouched
+
+
+def test_flowmarkignore_honored_for_explicit_file_without_flag(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """.flowmarkignore is a persistent never-touch list; honored for explicit files."""
+    monkeypatch.chdir(tmp_path)
+    f = tmp_path / "t.md"
+    f.write_text(_OVERLONG)
+    (tmp_path / ".flowmarkignore").write_text("t.md\n")
+    assert main(["--auto", "t.md"]) == 0
+    assert f.read_text() == _OVERLONG  # untouched, no --force-exclude needed
+
+
+def test_force_exclude_explicit_multicomponent_pattern(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Multi-component exclude patterns (e.g. docs/api/) match explicit nested paths."""
+    monkeypatch.chdir(tmp_path)
+    api = tmp_path / "docs" / "api"
+    api.mkdir(parents=True)
+    f = api / "notes.md"
+    f.write_text(_OVERLONG)
+    assert main(["--auto", "--force-exclude", "--extend-exclude", "docs/api/", "docs/api/notes.md"]) == 0
+    assert f.read_text() == _OVERLONG  # untouched
+
+
+def test_explicit_file_without_exclusions_is_formatted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Control: with no exclusions in play, an explicit file is still reformatted."""
+    monkeypatch.chdir(tmp_path)
+    f = tmp_path / "plain.md"
+    f.write_text(_OVERLONG)
+    assert main(["--auto", "plain.md"]) == 0
+    assert f.read_text() != _OVERLONG  # reformatted (wrapped)

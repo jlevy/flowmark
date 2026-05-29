@@ -415,8 +415,11 @@ class MarkdownNormalizer(Renderer):
         children: Any = self.render_children(element)
 
         # GFM checkbox support.
+        # marko strips the `[ ]`/`[x]` marker but leaves the following space in the
+        # inline body, so `lstrip()` here prevents a double space (which would otherwise
+        # accumulate one space per format pass; see issue #42).
         if hasattr(element, "checked"):
-            children = f"[{'x' if element.checked else ' '}] {children}"  # pyright: ignore
+            children = f"[{'x' if element.checked else ' '}] {children.lstrip()}"  # pyright: ignore
 
         # Wrap the text.
         wrapped_text = self._line_wrapper(

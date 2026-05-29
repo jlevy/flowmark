@@ -358,12 +358,37 @@ def _needs_file_resolution(files: list[str]) -> bool:
     return False
 
 
+def _exclusions_active(options: Options) -> bool:
+    """
+    Whether exclusion config could affect explicitly-named files, requiring the
+    FileResolver even when no input is a directory or glob.
+
+    `--force-exclude` applies configured/default patterns to explicit files, and a
+    `.flowmarkignore` file is always honored for explicit files — so the presence of
+    either means we must route through the resolver rather than short-circuit.
+    """
+    if options.force_exclude:
+        return True
+    from flowmark.file_resolver.gitignore import load_tool_ignore
+
+    search_dirs = {Path.cwd()}
+    for f in options.files:
+        if f != "-":
+            search_dirs.add(Path(f).parent)
+    return any(load_tool_ignore("flowmark", d) is not None for d in search_dirs)
+
+
 def _resolve_files(options: Options) -> list[str]:
     """
-    If inputs include directories or globs, use FileResolver to expand them.
-    Otherwise, pass through unchanged for backward compatibility.
+    If inputs include directories or globs, or exclusion config could apply to
+    explicit files, use FileResolver to expand and filter them. Otherwise, pass
+    through unchanged for backward compatibility.
     """
-    if not _needs_file_resolution(options.files) and not options.list_files:
+    if (
+        not _needs_file_resolution(options.files)
+        and not options.list_files
+        and not _exclusions_active(options)
+    ):
         return options.files
 
     from flowmark.file_resolver import FileResolver, FileResolverConfig

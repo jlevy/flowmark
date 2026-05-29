@@ -82,18 +82,38 @@ class FileResolver:
 
     def _should_include_explicit(self, path: Path) -> bool:
         """Check if an explicitly-named file should be included."""
-        if self._config.force_exclude:
-            # Check against all exclusion patterns
-            rel = path.name
-            if self._exclude_spec.match_file(rel):
-                return False
-            # Check parent directory components (only the path's own parts, not up to /)
-            for part in path.parts[:-1]:
-                if self._exclude_spec.match_file(part + "/"):
-                    return False
+        # A tool ignore file (e.g. `.flowmarkignore`) is a persistent, user-authored
+        # "never touch" list, so it is always honored — even for files named explicitly
+        # on the command line. Configured/default exclude patterns, by contrast, only
+        # apply to explicit files under `force_exclude` (explicit naming otherwise
+        # overrides them).
+        tool_ignore = self._get_tool_ignore(path.parent)
+        if tool_ignore is not None and self._spec_matches_path(tool_ignore, path):
+            return False
+        if self._config.force_exclude and self._spec_matches_path(self._exclude_spec, path):
+            return False
         if self._exceeds_max_size(path):
             return False
         return True
+
+    def _spec_matches_path(self, spec: pathspec.PathSpec, path: Path) -> bool:
+        """
+        Match an explicitly-named file against a gitignore-style spec, checking the
+        basename, the path relative to cwd (so multi-component patterns like `docs/api/`
+        work), and each ancestor directory component (e.g. `node_modules/`).
+        """
+        if spec.match_file(path.name):
+            return True
+        try:
+            rel = path.resolve().relative_to(Path.cwd().resolve())
+            if spec.match_file(rel.as_posix()):
+                return True
+        except ValueError:
+            pass
+        for part in path.parts[:-1]:
+            if spec.match_file(part + "/"):
+                return True
+        return False
 
     def _walk_directory(self, root: Path) -> Iterable[Path]:
         """
