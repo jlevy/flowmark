@@ -34,26 +34,31 @@ the Rust binary.
 Install with [uv](https://github.com/astral-sh/uv) — the Python build or the faster Rust
 port (`flowmark-rs`, identical output) — then format Markdown in place:
 
+### Install as a Global CLI
+
 ```shell
-uv tool install --upgrade flowmark        # or: flowmark-rs
-flowmark --auto README.md                 # one file
-flowmark --auto .                         # whole tree (respects .gitignore / .flowmarkignore)
+uv tool install --upgrade flowmark-rs   # For native-binary Rust
+uv tool install --upgrade flowmark      # For Python
+flowmark --auto README.md               # one file
+flowmark --auto .                       # whole tree (respects .gitignore / .flowmarkignore)
 ```
 
-No install needed for a one-off (pinned, never `@latest`):
-`uvx --from flowmark==0.7.1 flowmark --auto FILE`. Run `flowmark --help`,
-`flowmark --docs`, or `flowmark --skill` for more.
+Run `flowmark --help`, `flowmark --docs`, or `flowmark --skill` for more.
 
-**Set it up via your coding agent.** Hand your agent this one instruction:
+### Run With `uvx`
+
+No install needed for a one-off: `uvx flowmark --auto FILE`.
+
+### Set Up with Any Coding Agent
+
+Hand your agent this one instruction:
 
 > Set up Flowmark to keep this project’s Markdown auto-formatted.
-> Install it (or run it pinned with `uvx --from flowmark==0.7.1 flowmark`), wire
-> `flowmark --auto .` into the build — a `make format` target, a `package.json` script,
-> or a pre-commit hook — and add a `.flowmarkignore` for any generated or vendored
-> Markdown. Run `flowmark --skill` for the full setup recipe.
+> Run `uvx --from flowmark==0.7.1 flowmark --skill` for details.
 
-Or run `flowmark --install-skill` yourself to install the skill into `.agents/`,
-`.claude/`, and `AGENTS.md` (see [How to Install the Skill](#how-to-install-the-skill)).
+Or run `uvx --from flowmark==0.7.1 flowmark --install-skill` to manually install the
+skill into `.agents/`, `.claude/`, and `AGENTS.md` (see
+[How to Install the Skill](#how-to-install-the-skill)).
 
 ## Why Another Markdown Auto-Formatter?
 

@@ -188,6 +188,31 @@ class TestInstallSkill:
         second = install_skill(project_root=tmp_path)
         assert {r.action for r in second} == {"unchanged"}
 
+    def test_install_outside_git_repo_recommends_project_root(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A project-local install outside a git repo recommends a project root."""
+        install_skill(project_root=tmp_path)
+        out = capsys.readouterr().out
+        assert "not inside a git repository" in out
+
+    def test_install_inside_git_repo_has_no_recommendation(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Inside a git repo, no project-root recommendation is printed."""
+        (tmp_path / ".git").mkdir()
+        install_skill(project_root=tmp_path)
+        out = capsys.readouterr().out
+        assert "not inside a git repository" not in out
+
+    def test_install_agent_base_skips_git_recommendation(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """An explicit `--agent-base` install never warns about git (it's intentional)."""
+        install_skill(agent_base=str(tmp_path / "base"))
+        out = capsys.readouterr().out
+        assert "not inside a git repository" not in out
+
     def test_forward_compat_guard_blocks_newer_format(self, tmp_path: Path) -> None:
         """A surface stamped with a newer format is not clobbered."""
         target = tmp_path / ".claude" / "skills" / "flowmark" / "SKILL.md"

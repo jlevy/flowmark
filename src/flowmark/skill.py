@@ -353,12 +353,16 @@ def install_skill(
     selected = ALL_SURFACES if surfaces is None else frozenset(surfaces)
 
     results: list[InstallResult] = []
+    # Set for a project-local install (agent_base is None); used to recommend a project
+    # root when the install lands outside any git repository.
+    project_local_root: Path | None = None
     try:
         if agent_base is not None:
             base = Path(agent_base).resolve()
             results.append(_write_surface(base / "skills" / SKILL_DIRNAME, str(base), content))
         else:
             root = Path(project_root).resolve() if project_root is not None else Path.cwd()
+            project_local_root = root
             if SURFACE_PORTABLE in selected:
                 results.append(
                     _write_surface(root / PORTABLE_SKILL_REL, ".agents/skills (portable)", content)
@@ -377,7 +381,26 @@ def install_skill(
         sys.exit(1)
 
     _print_install_summary(results)
+    # A project-local install writes to the current directory. If that is not inside a
+    # git repository, the skill likely landed somewhere unintended (e.g. a home dir), so
+    # recommend running it from a project root (or doing an explicit global install).
+    if project_local_root is not None and not _is_within_git_repo(project_local_root):
+        print(
+            f"Note: {project_local_root} is not inside a git repository. Agent skills are "
+            "best installed at a project root so agents working in that project discover "
+            "them. Re-run `flowmark --install-skill` from your project directory, or use "
+            "`--agent-base <DIR>` (e.g. ~/.claude) for an explicit global install.\n"
+        )
     return results
+
+
+def _is_within_git_repo(path: Path) -> bool:
+    """Whether `path` or any ancestor contains a `.git` entry (a regular repo dir or the
+    `.git` file used by worktrees/submodules)."""
+    for parent in (path, *path.parents):
+        if (parent / ".git").exists():
+            return True
+    return False
 
 
 def _print_install_summary(results: list[InstallResult]) -> None:
