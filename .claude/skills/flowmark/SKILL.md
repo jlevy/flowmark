@@ -7,9 +7,10 @@ allowed-tools: Bash(flowmark:*), Bash(uvx:*), Read, Write
 
 # Flowmark - Markdown Auto-Formatter
 
-Fast, consistent Markdown auto-formatter. Run it on Markdown you generate or edit so
-committed diffs stay small and readable. It is conservative and safe to run on every
-file: it never modifies code blocks or inline code.
+Fast, consistent Markdown auto-formatter.
+Run it on Markdown you generate or edit so committed diffs stay small and readable.
+It is conservative and safe to run on every file: it never modifies code blocks or
+inline code.
 
 Flowmark is self-documenting, so this skill stays short and routes to the CLI for
 details instead of duplicating them:
@@ -45,18 +46,19 @@ uvx --from flowmark==0.7.1 flowmark --auto FILE
 - Typographic cleanup (smart quotes, ellipses) and consistent formatting.
 - Optional semantic (sentence-based) line breaks for cleaner git diffs (`--semantic`).
 
-Don't use it for rendering or syntax highlighting (use a viewer), format conversion (use
+Don’t use it for rendering or syntax highlighting (use a viewer), format conversion (use
 pandoc), or lint-only checks (use markdownlint).
 
 ## Details Are in the CLI
 
-Run these instead of guessing — don't reproduce their contents here:
+Run these instead of guessing — don’t reproduce their contents here:
 
 - **Flags** (`--semantic`, `--smartquotes`, `--ellipses`, `--width`, list spacing, file
   discovery via `--extend-include`/`--extend-exclude`, etc.): `flowmark --help`.
 - **Everything else** — editor on-save setup (VS Code/Cursor), project wiring
   (pre-commit/CI, `.flowmarkignore`), config files, the Python library API, and
-  installing this skill for other agents (`flowmark --install-skill`): `flowmark --docs`.
+  installing this skill for other agents (`flowmark --install-skill`):
+  `flowmark --docs`.
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

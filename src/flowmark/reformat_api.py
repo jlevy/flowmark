@@ -59,7 +59,8 @@ def reformat_file(
     ellipses: bool = False,
     make_parents: bool = True,
     list_spacing: ListSpacing = ListSpacing.preserve,
-) -> None:
+    check: bool = False,
+) -> bool:
     """
     Reformat text or markdown and wrap lines on the given files.
     Accepts "-" for stdin. Can omit output if `inplace` is True.
@@ -81,11 +82,17 @@ def reformat_file(
             (only applies to Markdown mode).
         make_parents: Whether to make parent directories if they don't exist.
         list_spacing: Control list spacing: "preserve" (default), "loose", or "tight".
+        check: Check-only mode. Do not write any output; just report whether the content
+            would change.
+
+    Returns:
+        True if the formatted output differs from the input (i.e. the file would change),
+        False otherwise.
     """
     read_stdin = path == "-"
     write_stdout = output == "-" or not output
 
-    if inplace and read_stdin:
+    if inplace and read_stdin and not check:
         raise ValueError("Cannot use `inplace` with stdin")
 
     if read_stdin:
@@ -96,6 +103,12 @@ def reformat_file(
     result = reformat_text(
         text, width, plaintext, semantic, cleanups, smartquotes, ellipses, list_spacing
     )
+
+    would_change = result != text
+
+    # In check mode, never write — only report whether the content would change.
+    if check:
+        return would_change
 
     if inplace:
         backup_suffix = ".orig" if not nobackup else ""
@@ -109,6 +122,8 @@ def reformat_file(
         else:
             with atomic_output_file(output, make_parents=make_parents) as tmp_path:
                 tmp_path.write_text(result)
+
+    return would_change
 
 
 def reformat_files(
@@ -124,7 +139,8 @@ def reformat_files(
     ellipses: bool = False,
     make_parents: bool = True,
     list_spacing: ListSpacing = ListSpacing.preserve,
-) -> None:
+    check: bool = False,
+) -> list[str]:
     """
     Reformat multiple files with the same options.
 
@@ -141,10 +157,18 @@ def reformat_files(
         ellipses: Convert three dots to ellipsis character.
         make_parents: Whether to make parent directories if they don't exist.
         list_spacing: Control list spacing: "preserve" (default), "loose", or "tight".
+        check: Check-only mode. Do not write any output; just report which files
+            would change.
+
+    Returns:
+        The list of input paths whose content would change (always empty unless any
+        file differs from its formatted output). In check mode nothing is written.
     """
+    changed: list[str] = []
+
     if len(files) == 1 and files[0] == "-":
         # Single stdin case - use original function
-        reformat_file(
+        if reformat_file(
             path=files[0],
             output=output,
             width=width,
@@ -157,11 +181,14 @@ def reformat_files(
             ellipses=ellipses,
             make_parents=make_parents,
             list_spacing=list_spacing,
-        )
-        return
+            check=check,
+        ):
+            changed.append(files[0])
+        return changed
 
-    # Multiple files case
-    if not inplace and output and output != "-":
+    # Multiple files case. Check mode never writes, so the multi-file output guard
+    # (which only concerns writing) does not apply.
+    if not inplace and not check and output and output != "-":
         raise ValueError(
             "Cannot specify output file when processing multiple files (use --inplace instead)"
         )
@@ -173,7 +200,7 @@ def reformat_files(
         else:
             # Process each file to stdout
             output = "-"
-        reformat_file(
+        if reformat_file(
             path=file_path,
             output=output,
             width=width,
@@ -186,4 +213,8 @@ def reformat_files(
             ellipses=ellipses,
             make_parents=make_parents,
             list_spacing=list_spacing,
-        )
+            check=check,
+        ):
+            changed.append(file_path)
+
+    return changed

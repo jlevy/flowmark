@@ -86,3 +86,24 @@ def test_existing_behavior_unchanged():
     result = reformat_text(long_text, plaintext=True)
     lines = result.strip().split("\n")
     assert len(lines) > 1, "Long text should be wrapped at default width"
+
+
+def test_task_list_idempotent_semantic_width0():
+    """Task list items must not accumulate spaces after the checkbox (issue #42)."""
+    text = "- [ ] Unchecked item one\n- [x] Checked item one\n- Normal list item\n"
+
+    once = reformat_text(text, width=0, semantic=True)
+    twice = reformat_text(once, width=0, semantic=True)
+    assert once == twice
+    assert "- [ ] Unchecked item one" in once
+    assert "- [x] Checked item one" in once
+    assert "]  " not in once  # no double space after the checkbox
+
+
+def test_task_list_idempotent_semantic_default_width():
+    text = "- [ ] First task\n- [x] Second task\n"
+
+    once = reformat_text(text, width=88, semantic=True)
+    twice = reformat_text(once, width=88, semantic=True)
+    assert once == twice
+    assert "]  " not in once
