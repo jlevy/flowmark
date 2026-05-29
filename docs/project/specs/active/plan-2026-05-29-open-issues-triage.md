@@ -4,7 +4,7 @@
 
 **Author:** Joshua Levy (with agent assistance)
 
-**Status:** In Review
+**Status:** In Review (5 of 7 issues fixed; #21 and #4 triaged, decisions pending)
 
 ## Overview
 
@@ -212,20 +212,36 @@ dependencies.
 
 ### Phase 1: Bug fixes and pre-commit enablement
 
-- [ ] #42: `lstrip()` checkbox children + normalize `width=0` semantic path; idempotency
-  tests.
-- [ ] #43: Route explicit files through `FileResolver` when filtering is requested; fix
-  `_should_include_explicit` (relative-path match + `.flowmarkignore`); tests.
-- [ ] #44: Add `--check` flag threaded through `reformat_files`/`reformat_file`; exit
+- [x] #42: `lstrip()` checkbox children + normalize `width=0` semantic path; idempotency
+  tests. Done.
+- [x] #43: Route explicit files through `FileResolver` when `--force-exclude` or a
+  `.flowmarkignore` is in play; `.flowmarkignore` is now always honored for explicit
+  files (no flag); fixed `_should_include_explicit` (relative-path match +
+  `.flowmarkignore`); tests.
+  Done.
+- [x] #44: Add `--check` flag threaded through `reformat_files`/`reformat_file`; exit
   code 1 on would-change; tests.
-- [ ] #24: Add `.pre-commit-hooks.yaml` (fix + check hooks); update README; verify args
-  against the #43/#44 behavior.
-- [ ] #35: Preserve interior newlines of multi-line HTML comments via verbatim segment
-  in `tag_handling.py`; tests + golden doc.
-- [ ] #21: Post analysis on the issue (basic cases already pass); optionally open a
-  focused pipe-less-table follow-up.
-  No code change unless maintainer wants the defensive heuristic.
-- [ ] #4: Post recommended `--locale` design direction; defer to its own spec.
+  Done.
+- [x] #24: Add `.pre-commit-hooks.yaml` (`flowmark` + `flowmark-check`); update README.
+  Ships `--auto` (no `--force-exclude` needed since `.flowmarkignore` always applies).
+  Done.
+- [x] #35: Preserve line breaks of multi-line HTML comments via verbatim segment in
+  `tag_handling.py`; unit tests.
+  Done. (Interior indentation is stripped by marko’s inline parsing and is not recovered;
+  line breaks are preserved, resolving the reported collapse.)
+- [ ] #21: Triaged — the headline cases already pass; no code change made.
+  Decision pending: close upstream as “works as intended” or open a narrow
+  pipe-less-table follow-up.
+- [ ] #4: Triaged — deferred; recommend a `--locale` design in its own spec.
+  Decision pending.
+
+### Design note (supersedes initial plan)
+
+For #43/#24 the exclude model was refined: `.flowmarkignore` is a persistent,
+user-authored “never touch” list and is now **always honored, even for explicitly-named
+files** (no `--force-exclude` required).
+Configured/default patterns still apply to explicit files only under `--force-exclude`.
+This made the pre-commit hook a plain `--auto` with no footgun flag.
 
 ## Testing Strategy
 
