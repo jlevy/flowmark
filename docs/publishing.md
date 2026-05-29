@@ -67,11 +67,20 @@ Follow this checklist for each new release.
 
 #### Pre-Release Checklist
 
-1. **Verify all changes are committed and pushed:**
+> Releases are cut from `main`. Every step below assumes you are on an up-to-date
+> `main`, so start there.
+> 
+> If `gh` cannot infer the repo (for example, the git remote points at a proxy rather
+> than `github.com`), pass `-R OWNER/PROJECT` to every `gh` command below.
+> You can confirm auth with `gh auth status`.
+
+1. **Check out `main` and make sure it is current:**
 
    ```shell
-   git status
-   git log origin/main..HEAD  # should be empty if pushed
+   git checkout main
+   git pull origin main
+   git status                  # working tree should be clean
+   git log origin/main..HEAD   # should be empty (nothing unpushed)
    ```
 
 2. **Run linting and tests locally:**
@@ -81,12 +90,15 @@ Follow this checklist for each new release.
    make test
    ```
 
-3. **Confirm CI is passing:**
+3. **Confirm CI is passing on `main`:**
 
    ```shell
-   gh run list --limit 3
+   gh run list --branch main --limit 3
    ```
 
+   The latest run on `main` must be green before you tag.
+   (A superseded older failure is fine, but the most recent run for the commit you are
+   about to tag must pass.)
    Or check the Actions tab on GitHub.
 
 4. **Determine the new version number:**
@@ -166,35 +178,54 @@ Follow this checklist for each new release.
 
 7. **Create the release with `gh`:**
 
+   Write the notes to a file and pass `--notes-file`. This is the recommended path: it
+   sidesteps shell-quoting pitfalls (a single-quoted heredoc does *not* expand
+   `${VARS}`, so an inline compare link would ship literally as
+   `${LAST_TAG}...${NEW_TAG}`), and it lets you proofread the rendered Markdown before
+   publishing.
+
    ```shell
    NEW_TAG="vX.Y.Z"  # Replace with actual version
    LAST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
 
-   gh release create "${NEW_TAG}" \
-     --title "${NEW_TAG}" \
-     --notes "$(cat <<'EOF'
+   # Compose the notes (see "Release Notes Format" below). Expand the vars now,
+   # while writing the file, so the compare link is concrete:
+   cat > /tmp/release-notes.md <<EOF
    ## What's Changed
 
-   [Summarize changes here—see format guide below]
+   [Summarize changes here — see format guide below]
 
    ### Full Changelog
 
    https://github.com/OWNER/PROJECT/compare/${LAST_TAG}...${NEW_TAG}
    EOF
-   )"
+
+   # Review it, then create the release:
+   gh release create "${NEW_TAG}" --title "${NEW_TAG}" --notes-file /tmp/release-notes.md
    ```
 
-   Alternatively, use `--generate-notes` for GitHub’s auto-generated notes, or
-   `--notes-file FILENAME` to read from a file.
+   Tagging triggers `publish.yml`, which re-runs `scripts/check-release-pin.py` against
+   the tag and refuses to publish if `DISCOVERY_VERSION` disagrees with the tag — so a
+   mismatched pin fails the publish rather than shipping a stale one.
+
+   Alternatively, use `--generate-notes` for GitHub’s auto-generated notes.
 
 8. **Verify the release published successfully:**
 
    ```shell
-   # Check the release workflow:
+   # Watch the release workflow to completion:
    gh run list --workflow=publish.yml --limit 1
+   gh run watch "$(gh run list --workflow=publish.yml --limit 1 --json databaseId -q '.[0].databaseId')"
 
    # Verify on PyPI (may take a minute):
    # https://pypi.org/project/PROJECT
+   ```
+
+   Then smoke-test the published artifact — the pin agents bootstrap with should now
+   resolve:
+
+   ```shell
+   uvx --from flowmark==X.Y.Z flowmark --version
    ```
 
 ### Release Notes Format
