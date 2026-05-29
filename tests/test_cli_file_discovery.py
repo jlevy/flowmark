@@ -219,3 +219,119 @@ def test_explicit_flag_detection_with_default_value(tmp_path: Path) -> None:
 
     _, explicit_flags, _ = _parse_args(["--width", "88", str(tmp_path)])
     assert "width" in explicit_flags
+
+
+# --- Issue #43: exclusions must apply to explicitly-named files (not just dirs/globs) ---
+
+_OVERLONG = "# H\n\n" + ("word " * 30).strip() + "\n"
+
+
+def test_force_exclude_explicit_file_skips_formatting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--force-exclude must apply to an explicit file path, even without --list-files."""
+    monkeypatch.chdir(tmp_path)
+    f = tmp_path / "t.md"
+    f.write_text(_OVERLONG)
+    assert main(["--auto", "--force-exclude", "--extend-exclude", "t.md", "t.md"]) == 0
+    assert f.read_text() == _OVERLONG  # untouched
+
+
+def test_explicit_file_overrides_flowmarkignore_by_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Explicit naming overrides .flowmarkignore by default (Black/Ruff semantics)."""
+    monkeypatch.chdir(tmp_path)
+    f = tmp_path / "t.md"
+    f.write_text(_OVERLONG)
+    (tmp_path / ".flowmarkignore").write_text("t.md\n")
+    assert main(["--auto", "t.md"]) == 0
+    assert f.read_text() != _OVERLONG  # formatted: explicit name wins without the flag
+
+
+def test_flowmarkignore_applies_to_explicit_file_with_force_exclude(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--force-exclude makes .flowmarkignore apply to explicitly-named files too."""
+    monkeypatch.chdir(tmp_path)
+    f = tmp_path / "t.md"
+    f.write_text(_OVERLONG)
+    (tmp_path / ".flowmarkignore").write_text("t.md\n")
+    assert main(["--auto", "--force-exclude", "t.md"]) == 0
+    assert f.read_text() == _OVERLONG  # untouched
+
+
+def test_force_exclude_explicit_multicomponent_pattern(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Multi-component exclude patterns (e.g. docs/api/) match explicit nested paths."""
+    monkeypatch.chdir(tmp_path)
+    api = tmp_path / "docs" / "api"
+    api.mkdir(parents=True)
+    f = api / "notes.md"
+    f.write_text(_OVERLONG)
+    assert (
+        main(["--auto", "--force-exclude", "--extend-exclude", "docs/api/", "docs/api/notes.md"])
+        == 0
+    )
+    assert f.read_text() == _OVERLONG  # untouched
+
+
+def test_explicit_file_without_exclusions_is_formatted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Control: with no exclusions in play, an explicit file is still reformatted."""
+    monkeypatch.chdir(tmp_path)
+    f = tmp_path / "plain.md"
+    f.write_text(_OVERLONG)
+    assert main(["--auto", "plain.md"]) == 0
+    assert f.read_text() != _OVERLONG  # reformatted (wrapped)
+
+
+# --- Issue #44: --check mode (no writes; non-zero exit if a file would change) ---
+
+
+def test_check_reports_and_does_not_write(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    f = tmp_path / "needs.md"
+    f.write_text(_OVERLONG)
+    assert main(["--check", str(f)]) == 1
+    assert f.read_text() == _OVERLONG  # not written
+    assert "Would reformat" in capsys.readouterr().err
+
+
+def test_check_clean_file_exits_zero(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    f = tmp_path / "clean.md"
+    f.write_text("# Title\n\nShort clean line.\n")
+    assert main(["--check", str(f)]) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_check_multiple_files_reports_only_dirty(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    clean = tmp_path / "clean.md"
+    clean.write_text("# Title\n\nShort clean line.\n")
+    dirty = tmp_path / "dirty.md"
+    dirty.write_text(_OVERLONG)
+    assert main(["--check", str(clean), str(dirty)]) == 1
+    err = capsys.readouterr().err
+    assert "dirty.md" in err
+    assert "clean.md" not in err
+
+
+def test_auto_check_validates_auto_formatting(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The advertised check path (--auto --check) must flag files --auto would rewrite."""
+    f = tmp_path / "smart.md"
+    # Smart quotes + ellipses only change under --auto; plain --check would miss them.
+    f.write_text('# H\n\n"hello"...\n')
+    # Plain --check (defaults) does not catch --auto-only transforms.
+    assert main(["--check", str(f)]) == 0
+    capsys.readouterr()
+    # --auto --check catches them, reports, and does not write.
+    assert main(["--auto", "--check", str(f)]) == 1
+    assert f.read_text() == '# H\n\n"hello"...\n'
+    assert "Would reformat" in capsys.readouterr().err

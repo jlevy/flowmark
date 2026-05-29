@@ -268,6 +268,7 @@ The main flags:
 | `--list-spacing` | Control list spacing: `preserve`, `loose`, `tight` |
 | `-i, --inplace` | Edit in place |
 | `--nobackup` | Skip `.orig` backup with `--inplace` |
+| `--check` | Don’t write; exit non-zero if any file would be reformatted (for CI / pre-commit) |
 | `--auto` | All auto-formatting: `--inplace --nobackup --semantic --cleanups --smartquotes --ellipses`. Requires file/directory args (use `.` for current directory) |
 
 File discovery flags:
@@ -279,7 +280,7 @@ File discovery flags:
 | `--exclude PATTERN` | Replace all default exclusions |
 | `--extend-exclude PATTERN` | Add to default exclusions (e.g., `drafts/`) |
 | `--no-respect-gitignore` | Disable `.gitignore` integration |
-| `--force-exclude` | Apply exclusions to explicitly-named files |
+| `--force-exclude` | Apply exclusions (incl. `.flowmarkignore`) to explicitly-named files too (for pre-commit) |
 | `--files-max-size BYTES` | Skip files larger than this (default: 1 MiB) |
 
 ## File Discovery
@@ -302,8 +303,38 @@ discovers files using a smart filter pipeline:
 4. **`.flowmarkignore`**: A tool-specific ignore file using gitignore syntax.
    Place it in your project root to exclude paths specific to Flowmark formatting.
 
+Exclusions (default patterns, `--exclude`/`--extend-exclude`, `.gitignore`, and
+`.flowmarkignore`) apply when Flowmark discovers files by walking a directory or glob.
+Files named **explicitly** on the command line override exclusions by default (matching
+Black and Ruff), so `flowmark README.md` always formats that file.
+Pass `--force-exclude` to apply exclusions to explicitly-named files too — this is what
+the pre-commit hooks set, since pre-commit passes every changed file by name.
+
 5. **Max file size**: Files over 1 MiB are skipped by default.
    Change with `--files-max-size` (0 = no limit).
+
+### Explicitly-Named Files and `--force-exclude`
+
+The exclusions above apply when Flowmark **discovers** files (you pass a directory or
+glob). But when you name a file **explicitly** on the command line, Flowmark formats it
+by default *even if it matches an exclusion* — naming a file is taken as “I mean this
+one”.
+
+This matches how
+[Black](https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#command-line-options)
+and [Ruff](https://docs.astral.sh/ruff/settings/#force-exclude) behave, and it exists
+for the same reason: tools like **pre-commit pass every changed file as an explicit
+argument**, so a formatter that always honored exclusions on explicit files would be
+surprising on the command line, while one that never did would reformat files you
+deliberately ignored in pre-commit.
+
+The `--force-exclude` flag resolves this: with it, all exclusion sources
+(`.flowmarkignore`, `--exclude`/`--extend-exclude`, and the built-in defaults) are
+applied to explicitly-named files too.
+This is why Flowmark’s [published pre-commit hooks](#3-run-on-pre-commit) set
+`--force-exclude` — exactly as
+[`ruff-pre-commit`](https://github.com/astral-sh/ruff-pre-commit) does — so your
+`.flowmarkignore` is respected on the staged files pre-commit hands the hook.
 
 ### Customizing Includes and Excludes
 
@@ -537,16 +568,36 @@ pre-commit:
       stage_fixed: true
 ```
 
-Equivalent setups with [pre-commit](https://pre-commit.com) (via a `local` hook) or
-`husky` work the same way; the key is the pinned invocation.
+Flowmark also ships [pre-commit](https://pre-commit.com) hooks, so you can use it
+directly from your `.pre-commit-config.yaml` without writing a `local` hook:
+
+```yaml
+repos:
+  - repo: https://github.com/jlevy/flowmark
+    rev: v__FLOWMARK_VERSION__
+    hooks:
+      - id: flowmark          # auto-format Markdown in place
+      # - id: flowmark-check  # or: check only, fail if files would change (for CI)
+```
+
+These run via the [pre-commit](https://pre-commit.com) framework (not GitHub-specific):
+install it once with `pre-commit install`, and it builds Flowmark in an isolated
+environment on first use — no global install or extra dependency needed.
+Both hooks pass `--force-exclude`, so your `.flowmarkignore` and other exclusions are
+respected on the staged files pre-commit hands them (the same approach `ruff-pre-commit`
+uses); the `flowmark-check` hook also mirrors `--auto` so it validates exactly what the
+auto-fix hook would write.
+
+A `husky` setup works the same way; the key is the pinned invocation.
 
 ### 4. Add a CI check
 
-Run the entry point in CI and fail if anything changed:
+Use `--check` (or the `flowmark-check` pre-commit hook) to fail if anything would
+change, without writing.
+Pair it with `--auto` so CI validates the same formatting the auto-fix path applies:
 
 ```yaml
-- run: make format-docs
-- run: git diff --exit-code -- '*.md' '*.mdc' '*.markdown'
+- run: uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --auto --check .
 ```
 
 ### 5. Exclude generated and vendored Markdown

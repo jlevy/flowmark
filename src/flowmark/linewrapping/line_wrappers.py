@@ -123,9 +123,11 @@ def line_wrap_by_sentence(
     def line_wrapper(text: str, initial_indent: str, subsequent_indent: str) -> str:
         text = text.replace("\n", " ")
 
-        # Handle width <= 0 as "no wrapping"
+        # Handle width <= 0 as "no wrapping". Collapse internal whitespace (not just
+        # strip ends) so the output is normalized and idempotent, matching the
+        # whitespace handling of the width > 0 path.
         if width <= 0:
-            return initial_indent + text.strip()
+            return initial_indent + " ".join(text.split())
 
         lines: list[str] = []
         first_line = True

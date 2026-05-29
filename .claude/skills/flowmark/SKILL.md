@@ -70,8 +70,10 @@ flowmark README.md
 | `--plaintext`, `-p` | Process as plain text instead of Markdown |
 | `--list-spacing` | Control list spacing: preserve, loose, or tight |
 | `--list-files` | Print resolved file paths, don’t format (useful for debugging) |
+| `--check` | Don’t write; exit non-zero if any file would be reformatted (CI / pre-commit) |
 | `--extend-include PAT` | Additional file patterns (e.g., `*.mdx`) |
 | `--extend-exclude PAT` | Add to default exclusions (e.g., `drafts/`) |
+| `--force-exclude` | Apply exclusions (incl. `.flowmarkignore`) to explicitly-named files too (for pre-commit) |
 | `--files-max-size BYTES` | Skip files larger than this (default: 1 MiB, 0 = no limit) |
 
 ## Common Workflows
@@ -133,9 +135,12 @@ Project Setup* section of the docs):
    runners silently drift between contributors.
 2. **Add one project entry point:** a `make format-docs` target or an
    `npm run format:docs` script that runs `flowmark --auto .`.
-3. **Run on pre-commit** via lefthook/pre-commit/husky on `*.{md,mdc,markdown}`.
-4. **CI check**: run the same entry point and `git diff --exit-code` on the Markdown
-   globs.
+3. **Run on pre-commit.** Flowmark ships [pre-commit](https://pre-commit.com) hooks
+   (`flowmark` and check-only `flowmark-check`); reference `repo:
+   https://github.com/jlevy/flowmark` at a pinned `rev`, or use a lefthook/husky
+   command on `*.{md,markdown}`. The hooks set `--force-exclude` (see note below).
+4. **CI check**: run `flowmark --auto --check .` (exits non-zero if anything would
+   change), or the `flowmark-check` hook.
 5. **Use `.flowmarkignore`** for generated and vendored Markdown.
 6. **Make this skill discoverable to other agents (optional).** From the project root,
    run `flowmark --install-skill` (idempotent) to write the portable
@@ -183,6 +188,14 @@ The rest of the paragraph stays exactly the same.
 - `flowmark --auto .` respects `.gitignore` and a `.flowmarkignore` file.
   Best practice: add generated, vendored, or test-fixture Markdown to `.flowmarkignore`
   so batch formatting only touches files you own.
+- Exclusions (`.flowmarkignore`, `--exclude`, defaults) apply when Flowmark *discovers*
+  files (a directory or glob). A file named *explicitly* is formatted even if excluded
+  (so `flowmark file.md` always works) — matching Black and Ruff. Add `--force-exclude`
+  to apply exclusions to explicit files too; this is why the pre-commit hooks set it,
+  since pre-commit passes every changed file by name.
+- Pass only Markdown to explicit invocations: an explicit non-Markdown path (e.g.
+  `flowmark --auto config.yaml`) is treated as Markdown. `flowmark --auto .` is safe (it
+  only discovers `*.md`).
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.

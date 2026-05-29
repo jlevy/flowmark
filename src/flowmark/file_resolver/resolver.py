@@ -82,18 +82,38 @@ class FileResolver:
 
     def _should_include_explicit(self, path: Path) -> bool:
         """Check if an explicitly-named file should be included."""
+        # Files named explicitly on the command line override exclusions by default
+        # (matching Black/Ruff). Under `force_exclude` — the flag pre-commit hooks set —
+        # both configured/default patterns and a tool ignore file (`.flowmarkignore`)
+        # apply to explicit files too.
         if self._config.force_exclude:
-            # Check against all exclusion patterns
-            rel = path.name
-            if self._exclude_spec.match_file(rel):
+            if self._spec_matches_path(self._exclude_spec, path):
                 return False
-            # Check parent directory components (only the path's own parts, not up to /)
-            for part in path.parts[:-1]:
-                if self._exclude_spec.match_file(part + "/"):
-                    return False
+            tool_ignore = self._get_tool_ignore(path.parent)
+            if tool_ignore is not None and self._spec_matches_path(tool_ignore, path):
+                return False
         if self._exceeds_max_size(path):
             return False
         return True
+
+    def _spec_matches_path(self, spec: pathspec.PathSpec, path: Path) -> bool:
+        """
+        Match an explicitly-named file against a gitignore-style spec, checking the
+        basename, the path relative to cwd (so multi-component patterns like `docs/api/`
+        work), and each ancestor directory component (e.g. `node_modules/`).
+        """
+        if spec.match_file(path.name):
+            return True
+        try:
+            rel = path.resolve().relative_to(Path.cwd().resolve())
+            if spec.match_file(rel.as_posix()):
+                return True
+        except ValueError:
+            pass
+        for part in path.parts[:-1]:
+            if spec.match_file(part + "/"):
+                return True
+        return False
 
     def _walk_directory(self, root: Path) -> Iterable[Path]:
         """
