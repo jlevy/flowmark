@@ -325,6 +325,29 @@ the pre-commit hooks set, since pre-commit passes every changed file by name.
 5. **Max file size**: Files over 1 MiB are skipped by default.
    Change with `--files-max-size` (0 = no limit).
 
+### Explicitly-Named Files and `--force-exclude`
+
+The exclusions above apply when Flowmark **discovers** files (you pass a directory or
+glob). But when you name a file **explicitly** on the command line, Flowmark formats it
+by default *even if it matches an exclusion* — naming a file is taken as “I mean this
+one”.
+
+This matches how
+[Black](https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#command-line-options)
+and [Ruff](https://docs.astral.sh/ruff/settings/#force-exclude) behave, and it exists
+for the same reason: tools like **pre-commit pass every changed file as an explicit
+argument**, so a formatter that always honored exclusions on explicit files would be
+surprising on the command line, while one that never did would reformat files you
+deliberately ignored in pre-commit.
+
+The `--force-exclude` flag resolves this: with it, all exclusion sources
+(`.flowmarkignore`, `--exclude`/`--extend-exclude`, and the built-in defaults) are
+applied to explicitly-named files too.
+This is why Flowmark’s [published pre-commit hooks](#3-run-on-pre-commit) set
+`--force-exclude` — exactly as
+[`ruff-pre-commit`](https://github.com/astral-sh/ruff-pre-commit) does — so your
+`.flowmarkignore` is respected on the staged files pre-commit hands the hook.
+
 ### Customizing Includes and Excludes
 
 ```bash

@@ -1,0 +1,28 @@
+# Pre-commit config for developing flowmark itself (dogfooding).
+
+# 
+
+# Setup:  uvx pre-commit install
+
+# Run:    uvx pre-commit run --all-files
+
+# 
+
+# This uses a `local` hook that runs flowmark from the project’s own uv environment,
+
+# rather than pinning a published release of itself (which would be circular during
+
+# development). It mirrors the published `flowmark` hook in `.pre-commit-hooks.yaml`
+
+# (`--auto --force-exclude`), so the repo’s own `.flowmarkignore` is respected.
+
+# 
+
+# Note: `make format` remains the full local formatting entry point (it also regenerates
+
+# generated docs); this hook is the commit-time guard for hand-edited Markdown.
+
+repos:
+- repo: local hooks:
+  - id: flowmark name: flowmark (auto-format Markdown) entry: uv run flowmark --auto
+    --force-exclude language: system types: [markdown] require_serial: true
