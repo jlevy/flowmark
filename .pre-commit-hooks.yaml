@@ -25,6 +25,8 @@
   name: flowmark (check Markdown formatting)
   description: Check Markdown formatting without writing; fails if any file would change.
   entry: flowmark
-  args: [--check, --force-exclude]
+  # Mirror the `flowmark` hook's --auto formatting so the check validates exactly what
+  # the auto-fix hook would write; --check just suppresses writing and sets the exit code.
+  args: [--auto, --check, --force-exclude]
   language: python
   types: [markdown]

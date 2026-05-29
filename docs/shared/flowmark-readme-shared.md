@@ -561,11 +561,12 @@ A `husky` setup works the same way; the key is the pinned invocation.
 
 ### 4. Add a CI check
 
-Use the `--check` flag (or the `flowmark-check` pre-commit hook) to fail if anything
-would change, without writing:
+Use `--check` (or the `flowmark-check` pre-commit hook) to fail if anything would
+change, without writing.
+Pair it with `--auto` so CI validates the same formatting the auto-fix path applies:
 
 ```yaml
-- run: uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --check .
+- run: uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --auto --check .
 ```
 
 ### 5. Exclude generated and vendored Markdown

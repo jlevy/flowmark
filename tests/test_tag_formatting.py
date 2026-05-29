@@ -707,3 +707,21 @@ def test_single_line_html_comment_unaffected():
     """Single-line comments are not treated as verbatim blocks."""
     result = fill_markdown("<!-- single line comment -->\n", width=88, semantic=True)
     assert result.strip() == "<!-- single line comment -->"
+
+
+def test_multiline_html_comment_keeps_blockquote_indent():
+    """Comment continuation lines stay inside a blockquote (PR #56 review)."""
+    result = fill_markdown("> <!-- field\n> a: b\n> -->\n", width=88, semantic=True)
+    for line in result.strip().split("\n"):
+        assert line.startswith("> ")
+    assert fill_markdown(result, width=88, semantic=True) == result
+
+
+def test_multiline_html_comment_keeps_list_indent():
+    """Comment continuation lines stay inside a list item (PR #56 review)."""
+    result = fill_markdown("- <!-- field\n  a: b\n  -->\n", width=88, semantic=True)
+    lines = result.strip().split("\n")
+    assert lines[0].startswith("- <!-- field")
+    assert lines[1].startswith("  a: b")
+    assert lines[2].startswith("  -->")
+    assert fill_markdown(result, width=88, semantic=True) == result

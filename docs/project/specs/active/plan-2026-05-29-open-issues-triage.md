@@ -214,16 +214,20 @@ dependencies.
 
 - [x] #42: `lstrip()` checkbox children + normalize `width=0` semantic path; idempotency
   tests. Done.
-- [x] #43: Route explicit files through `FileResolver` when `--force-exclude` or a
-  `.flowmarkignore` is in play; `.flowmarkignore` is now always honored for explicit
-  files (no flag); fixed `_should_include_explicit` (relative-path match +
+- [x] #43: Route explicit files through `FileResolver` when `--force-exclude` is set (so
+  exclusions and `.flowmarkignore` apply to explicitly-named files too); explicit naming
+  otherwise overrides exclusions, matching Black/Ruff.
+  Fixed `_should_include_explicit` (relative-path match for multi-component patterns +
   `.flowmarkignore`); tests.
   Done.
 - [x] #44: Add `--check` flag threaded through `reformat_files`/`reformat_file`; exit
   code 1 on would-change; tests.
   Done.
-- [x] #24: Add `.pre-commit-hooks.yaml` (`flowmark` + `flowmark-check`); update README.
-  Ships `--auto` (no `--force-exclude` needed since `.flowmarkignore` always applies).
+- [x] #24: Add `.pre-commit-hooks.yaml` (`flowmark` = `--auto --force-exclude`,
+  `flowmark-check` = `--auto --check --force-exclude`); update README. Both hooks set
+  `--force-exclude` (as `ruff-pre-commit` does) so exclusions apply to the explicit
+  paths pre-commit passes; the check hook mirrors `--auto` so it validates exactly what
+  the auto-fix hook would write.
   Done.
 - [x] #35: Preserve line breaks of multi-line HTML comments via verbatim segment in
   `tag_handling.py`; unit tests.

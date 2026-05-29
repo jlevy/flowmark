@@ -319,3 +319,19 @@ def test_check_multiple_files_reports_only_dirty(
     err = capsys.readouterr().err
     assert "dirty.md" in err
     assert "clean.md" not in err
+
+
+def test_auto_check_validates_auto_formatting(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The advertised check path (--auto --check) must flag files --auto would rewrite."""
+    f = tmp_path / "smart.md"
+    # Smart quotes + ellipses only change under --auto; plain --check would miss them.
+    f.write_text('# H\n\n"hello"...\n')
+    # Plain --check (defaults) does not catch --auto-only transforms.
+    assert main(["--check", str(f)]) == 0
+    capsys.readouterr()
+    # --auto --check catches them, reports, and does not write.
+    assert main(["--auto", "--check", str(f)]) == 1
+    assert f.read_text() == '# H\n\n"hello"...\n'
+    assert "Would reformat" in capsys.readouterr().err

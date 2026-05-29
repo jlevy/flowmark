@@ -279,10 +279,16 @@ def _is_multiline_html_comment(text: str) -> bool:
     return stripped.index(close_delim) == len(stripped) - len(close_delim)
 
 
-def _preserve_comment_verbatim(text: str, initial_indent: str) -> str:
-    """Return a multi-line HTML comment unchanged, indenting only its first line."""
+def _preserve_comment_verbatim(text: str, initial_indent: str, subsequent_indent: str) -> str:
+    """
+    Return a multi-line HTML comment unchanged, prefixing the first line with
+    `initial_indent` and every continuation line with `subsequent_indent` so the
+    comment body stays inside its Markdown container (blockquote, list item, etc.).
+    """
     comment_lines = text.split("\n")
-    return "\n".join([initial_indent + comment_lines[0], *comment_lines[1:]])
+    out = [initial_indent + comment_lines[0]]
+    out.extend(subsequent_indent + line for line in comment_lines[1:])
+    return "\n".join(out)
 
 
 def add_tag_newline_handling(
@@ -345,7 +351,7 @@ def add_tag_newline_handling(
         # A standalone multi-line HTML comment is kept verbatim — its internal line
         # breaks are intentional and must not be collapsed (see GitHub issue #35).
         if _is_multiline_html_comment(text):
-            return _preserve_comment_verbatim(text, initial_indent)
+            return _preserve_comment_verbatim(text, initial_indent, subsequent_indent)
 
         # Check if there are any tags in the text - only apply list heuristics
         # when tags are present to avoid changing normal markdown behavior.
@@ -405,7 +411,7 @@ def add_tag_newline_handling(
             segment_lines = segment.split("\n")
             if _is_multiline_html_comment(segment):
                 # Preserve a multi-line HTML comment's interior line breaks verbatim.
-                wrapped = _preserve_comment_verbatim(segment, cur_initial_indent)
+                wrapped = _preserve_comment_verbatim(segment, cur_initial_indent, subsequent_indent)
             elif all(line_is_table_row(line) for line in segment_lines if line.strip()):
                 # Table rows: preserve verbatim with appropriate indent,
                 # but normalize separator rows to 3 dashes for consistency.
