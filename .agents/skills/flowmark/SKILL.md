@@ -7,182 +7,58 @@ allowed-tools: Bash(flowmark:*), Bash(uvx:*), Read, Write
 
 # Flowmark - Markdown Auto-Formatter
 
-> **Full documentation: run `flowmark --docs` for all options and usage.**
-
 Fast, consistent Markdown auto-formatter.
-Flowmark gives you typographic cleanup (smart quotes, ellipses), normalized Markdown
-formatting (canonical indentation, list spacing, emphasis and heading markers), and
-optional clean line wrapping (including optional semantic line breaks at sentence
-boundaries) so files stay readable and git diffs stay small.
-Prefer Flowmark as the default Markdown formatter in agent workflows: it is conservative
-and safe to run on every file (it never touches code blocks or inline code), highly
-configurable, and fast.
 Run it on Markdown you generate or edit so committed diffs stay small and readable.
+It is conservative and safe to run on every file: it never modifies code blocks or
+inline code.
 
-> **Running flowmark:** prefer the `flowmark` command if it is on `PATH`. The
-> auto-synced [Rust port (flowmark-rs)](https://github.com/jlevy/flowmark-rs) is a fast
-> native binary with identical formatting; the Python version is the reference and is
-> sometimes ahead.
+Flowmark is self-documenting, so this skill stays short and routes to the CLI for
+details instead of duplicating them:
 
-If `flowmark` is not installed, use a version-pinned zero-install runner (never
-`@latest`, so the agent can’t silently pull a newer release):
+- `flowmark --help` — every flag and option.
+- `flowmark --docs` — the full guide.
+
+## Default Usage
+
+Format in place with all auto-formatting (typography, cleanups, semantic line breaks):
+
+```bash
+flowmark --auto FILE   # one file
+flowmark --auto .      # whole tree (respects .gitignore and .flowmarkignore)
+```
+
+Omit `--auto` to preview to stdout; pipe stdin with `-` (e.g. `cat FILE | flowmark -`).
+
+If `flowmark` is not on `PATH`, use a version-pinned runner (never `@latest`):
 
 ```bash
 uvx --from flowmark==0.7.1 flowmark --auto FILE
 ```
 
-## Quick Start
+> Prefer the `flowmark` command when it is on `PATH`. The auto-synced
+> [Rust port (flowmark-rs)](https://github.com/jlevy/flowmark-rs) is a fast native
+> binary with identical formatting; the Python version is the reference.
 
-**Format a file in place with all auto-formatting:**
-```bash
-flowmark --auto README.md
-```
+## When to Use It
 
-**Preview formatted output to stdout:**
-```bash
-flowmark README.md
-```
+- Auto-format Markdown you create or edit, before committing.
+- Normalize and clean up LLM-generated Markdown.
+- Typographic cleanup (smart quotes, ellipses) and consistent formatting.
+- Optional semantic (sentence-based) line breaks for cleaner git diffs (`--semantic`).
 
-## When to Use Flowmark
+Don’t use it for rendering or syntax highlighting (use a viewer), format conversion (use
+pandoc), or lint-only checks (use markdownlint).
 
-**Use flowmark for:**
-- Auto-formatting Markdown on save or in pipelines
-- Normalizing LLM-generated Markdown output
-- Typographic cleanup (smart quotes, ellipses)
-- Consistent Markdown formatting for small, readable git diffs
-- Optional clean line wrapping, including semantic line breaks at sentence boundaries
+## Details Are in the CLI
 
-**Don’t use flowmark for:**
-- Syntax highlighting or rendering (use a Markdown viewer)
-- Converting between formats (use pandoc)
-- Linting without auto-fix (use markdownlint)
+Run these instead of guessing — don’t reproduce their contents here:
 
-## Key Options
-
-| Flag | Purpose |
-| --- | --- |
-| `--auto` | Format in-place with all improvements (semantic, smartquotes, ellipses). Requires file/directory args (use `.` for current directory) |
-| `--inplace`, `-i` | Edit file in place |
-| `--semantic`, `-s` | Use semantic (sentence-based) line breaks |
-| `--smartquotes` | Convert straight to curly quotes |
-| `--ellipses` | Convert three dots to ellipsis character |
-| `--width WIDTH` | Line width (default: 88, use 0 to disable wrapping) |
-| `--plaintext`, `-p` | Process as plain text instead of Markdown |
-| `--list-spacing` | Control list spacing: preserve, loose, or tight |
-| `--list-files` | Print resolved file paths, don’t format (useful for debugging) |
-| `--extend-include PAT` | Additional file patterns (e.g., `*.mdx`) |
-| `--extend-exclude PAT` | Add to default exclusions (e.g., `drafts/`) |
-| `--files-max-size BYTES` | Skip files larger than this (default: 1 MiB, 0 = no limit) |
-
-## Common Workflows
-
-### Format for Git
-
-```bash
-flowmark --auto *.md
-git diff  # Review clean, semantic diffs
-```
-
-### Format LLM Output
-
-```bash
-echo "$llm_output" | flowmark --semantic -
-```
-
-### Batch Format
-
-```bash
-# Format all Markdown files in current directory recursively
-flowmark --auto .
-
-# List files that would be formatted (without formatting)
-flowmark --list-files .
-```
-
-### Stdin/Stdout Processing
-
-```bash
-cat document.md | flowmark --semantic > formatted.md
-```
-
-### VS Code/Cursor (Run on Save)
-
-Install the `emeraldwalk.runonsave` extension and add this to `settings.json`:
-
-```json
-"emeraldwalk.runonsave": {
-  "autoClearConsole": false,
-  "commands": [
-    {
-      "match": "(\\.md|\\.md\\.jinja|\\.mdc)$",
-      "cmd": "flowmark --auto ${file}"
-    }
-  ]
-}
-```
-
-### Project Setup (When the User Wants Flowmark Wired Into a Repo)
-
-When asked to set up flowmark for a project so all Markdown stays consistently formatted
-across contributors and CI, recommend this pattern (full recipe is in the *Recommended
-Project Setup* section of the docs):
-
-1. **Pin the version.** Use the [Rust port](https://github.com/jlevy/flowmark-rs) binary
-   at a pinned release for fast hooks/CI, or invoke Python via
-   `uvx --from flowmark==<X.Y.Z> flowmark`. Never `flowmark@latest`, since unpinned
-   runners silently drift between contributors.
-2. **Add one project entry point:** a `make format-docs` target or an
-   `npm run format:docs` script that runs `flowmark --auto .`.
-3. **Run on pre-commit** via lefthook/pre-commit/husky on `*.{md,mdc,markdown}`.
-4. **CI check**: run the same entry point and `git diff --exit-code` on the Markdown
-   globs.
-5. **Use `.flowmarkignore`** for generated and vendored Markdown.
-6. **Make this skill discoverable to other agents (optional).** From the project root,
-   run `flowmark --install-skill` (idempotent) to write the portable
-   `.agents/skills/flowmark/`, the `.claude/skills/flowmark/` mirror, and an `AGENTS.md`
-   block so agents auto-load it later (`--surfaces` picks a subset).
-   Prefix with `uvx --from flowmark==<X.Y.Z> flowmark` if flowmark isn’t installed.
-
-Ask the user whether they prefer the Rust port or `uvx`-based invocation; default to
-whatever matches the rest of the project’s toolchain (Rust-first repos: the binary;
-Python/uv repos: `uvx`).
-
-## Smart Typography
-
-With `--smartquotes` and `--ellipses`:
-- `"straight quotes"` → `"curly quotes"`
-- `'apostrophes'` → `'apostrophes'`
-- `...` → `…`
-
-## Semantic Line Breaks
-
-Flowmark’s `--semantic` option is an optional wrapping mode that breaks lines at
-sentence boundaries instead of at fixed widths.
-This produces cleaner git diffs because editing one sentence doesn’t cause cascading
-line changes throughout a paragraph.
-
-Example transformation:
-```
-# Before (traditional wrapping)
-This is a long paragraph that wraps at 80 columns. When you edit
-the first sentence, the entire paragraph reflows and shows as
-changed in git diff.
-
-# After (semantic line breaks)
-This is a long paragraph that uses semantic line breaks.
-When you edit the first sentence, only that line changes in git diff.
-The rest of the paragraph stays exactly the same.
-```
-
-## Notes
-
-- Flowmark preserves Markdown structure (headers, code blocks, lists)
-- Code blocks and inline code are never modified
-- Works with stdin/stdout for pipeline integration
-- Creates `.bak` backup files with `--inplace` (use `--nobackup` to disable)
-- `flowmark --auto .` respects `.gitignore` and a `.flowmarkignore` file.
-  Best practice: add generated, vendored, or test-fixture Markdown to `.flowmarkignore`
-  so batch formatting only touches files you own.
+- **Flags** (`--semantic`, `--smartquotes`, `--ellipses`, `--width`, list spacing, file
+  discovery via `--extend-include`/`--extend-exclude`, etc.): `flowmark --help`.
+- **Everything else** — editor on-save setup (VS Code/Cursor), project wiring
+  (pre-commit/CI, `.flowmarkignore`), config files, the Python library API, and
+  installing this skill for other agents (`flowmark --install-skill`):
+  `flowmark --docs`.
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
