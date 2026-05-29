@@ -53,11 +53,11 @@ $ flowmark --install-skill --agent-base deep/nested/path >/dev/null && test -f d
 nested dirs created
 ```
 
-## V5: Skill output contains required frontmatter
+## V5: Skill output routes to the self-documenting CLI
 
 ```console
-$ flowmark --skill | grep -F -- "flowmark --docs" | sed 's/^> //'
-**Full documentation: run `flowmark --docs` for all options and usage.**
+$ flowmark --skill | grep -F -- "the full guide:" | sed 's/^- //'
+`flowmark --docs` — the full guide: editor on-save setup (VS Code/Cursor), project
 ```
 
 ## V6: Install skill project-local default writes all three surfaces

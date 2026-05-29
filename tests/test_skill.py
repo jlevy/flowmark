@@ -70,11 +70,15 @@ class TestComposeSkill:
         rendered = compose_skill("1.2.3")
         assert rendered.startswith("---\nname: flowmark\n")
 
-    def test_skill_content_has_vscode_cursor_setup(self) -> None:
-        """SKILL.md includes VS Code/Cursor run-on-save guidance."""
+    def test_skill_routes_details_to_cli(self) -> None:
+        """The skill stays minimal: it routes to the self-documenting CLI rather than
+        inlining setup details. Editor/project setup lives in `flowmark --docs`."""
         content = get_skill_content()
-        assert "VS Code/Cursor" in content
-        assert "emeraldwalk.runonsave" in content
+        # Routes to the self-documenting CLI.
+        assert "flowmark --help" in content
+        assert "flowmark --docs" in content
+        # Does not duplicate the editor-setup recipe that --docs already covers.
+        assert "emeraldwalk.runonsave" not in content
 
 
 class TestVersionPin:
