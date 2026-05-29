@@ -31,23 +31,30 @@ the Rust binary.
 
 ## Quick Start
 
-Install with [uv](https://github.com/astral-sh/uv) — the Python build or the faster Rust
-port (`flowmark-rs`, identical output) — then format Markdown in place:
+Both Python and Rust versions are best installed with
+[**uv**](https://github.com/astral-sh/uv).
+
+### Run With `uvx`
+
+No install needed for one-off usage:
+
+```shell
+uvx flowmark-rs --help                  # For native-binary Rust
+uvx flowmark-rs --auto somefile.md
+uvx flowmark --help                     # For Python
+uvx flowmark --auto somefile.md
+```
 
 ### Install as a Global CLI
 
 ```shell
 uv tool install --upgrade flowmark-rs   # For native-binary Rust
 uv tool install --upgrade flowmark      # For Python
-flowmark --auto README.md               # one file
-flowmark --auto .                       # whole tree (respects .gitignore / .flowmarkignore)
+flowmark --auto somefile.md             # One file
+flowmark --auto .                       # Whole tree (respects .gitignore / .flowmarkignore)
 ```
 
 Run `flowmark --help`, `flowmark --docs`, or `flowmark --skill` for more.
-
-### Run With `uvx`
-
-No install needed for a one-off: `uvx flowmark --auto FILE`.
 
 ### Set Up with Any Coding Agent
 
@@ -59,6 +66,9 @@ Hand your agent this one instruction:
 Or run `uvx --from flowmark==0.7.1 flowmark --install-skill` to manually install the
 skill into `.agents/`, `.claude/`, and `AGENTS.md` (see
 [How to Install the Skill](#how-to-install-the-skill)).
+
+For consistency across users and supply chain security, it’s recommended to pin the
+version when installing within a skill or project build.
 
 ## Why Another Markdown Auto-Formatter?
 
@@ -446,8 +456,8 @@ for link in extract_links(doc):   # -> list[Link(text, url, title)], reference l
 
 **Map parsed blocks back to source.** Every block element produced by
 `flowmark_markdown().parse(text)` carries an authoritative `element.span = (start, end)`
-half-open offset pair, recorded straight from marko’s parser state — no regex, no
-heuristic — at every nesting level.
+half-open offset pair, recorded straight from marko’s parser state (no regex, no
+heuristic) at every nesting level.
 Offsets index the source after marko’s `\r\n -> \n` normalization, so slice against an
 LF-normalized copy of the input:
 

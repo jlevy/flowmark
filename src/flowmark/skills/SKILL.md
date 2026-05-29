@@ -136,7 +136,7 @@ Project Setup* section of the docs):
    globs.
 5. **Use `.flowmarkignore`** for generated and vendored Markdown.
 6. **Make this skill discoverable to other agents (optional).** From the project root,
-   run `flowmark --install-skill` — idempotent; writes the portable
+   run `flowmark --install-skill` (idempotent) to write the portable
    `.agents/skills/flowmark/`, the `.claude/skills/flowmark/` mirror, and an `AGENTS.md`
    block so agents auto-load it later (`--surfaces` picks a subset).
    Prefix with `uvx --from flowmark==<X.Y.Z> flowmark` if flowmark isn’t installed.

@@ -109,7 +109,7 @@ Follow this checklist for each new release.
    The repo-root `skills/flowmark/SKILL.md` (shipped to `npx skills add jlevy/flowmark`
    users who do *not* have flowmark pre-installed) and the README’s runner examples all
    pin `uvx --from flowmark==<X.Y.Z>`. That pin must reference a real, PyPI-installable
-   release — never a `<version>` placeholder or a `.dev`/local-suffix string — and it
+   release (never a `<version>` placeholder or a `.dev`/local-suffix string), and it
    must be the release you are about to cut, or agents bootstrap a stale flowmark.
 
    There is exactly **one** place to change: the `DISCOVERY_VERSION` constant in
@@ -121,7 +121,7 @@ Follow this checklist for each new release.
    `flowmark --install-skill`). So `git add -A` after `make format` captures the whole
    set.
 
-   Do this in the **final PR before tagging** — `DISCOVERY_VERSION` should equal the
+   Do this in the **final PR before tagging:** `DISCOVERY_VERSION` should equal the
    version you are about to release.
    The pin then references the imminent release: it is not installable from PyPI until
    the tag publishes (expected), and the publish workflow refuses to publish if the tag
@@ -144,8 +144,8 @@ Follow this checklist for each new release.
      every shipped artifact pins exactly `DISCOVERY_VERSION` (catches a forgotten
      `make format`).
    - `scripts/check-release-pin.py` (run in `publish.yml` against the release tag, and
-     via `make check-release-pin`) — fails the publish if `DISCOVERY_VERSION` does not
-     match the release being cut.
+     via `make check-release-pin`), which fails the publish if `DISCOVERY_VERSION` does
+     not match the release being cut.
 
 #### Create the Release
 

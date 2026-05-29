@@ -1,7 +1,7 @@
 # End-to-End Testing Runbook
 
 This is a step-by-step guide for an agent (or human) doing a **full validation pass** of
-flowmark — the kind of pass worth running before a release, after large merges, or when
+flowmark, the kind of pass worth running before a release, after large merges, or when
 the developer or skill-install experience feels off.
 
 It is intentionally written in prose, not as a script.
@@ -16,18 +16,18 @@ Principle: **if you find a gap that a test could cover, add the test** (see
 [development.md](development.md) for where tests live) rather than only documenting the
 manual step.
 
-## 0. Orientation: How Anyone — or Any Agent — Gets Oriented
+## 0. Orientation: How Anyone (or Any Agent) Gets Oriented
 
 The first thing to confirm is that flowmark is self-describing: someone who has only the
 binary, with no docs open, can find out what it does and how to use it.
 
-- `flowmark --help` — argument reference and common-usage examples.
+- `flowmark --help`: argument reference and common-usage examples.
   This is where the `--install-skill`, `--surfaces`, and `--agent-base` flags are
   discoverable.
-- `flowmark --version` — version (see §1 for why this matters).
-- `flowmark --skill` — prints the full `SKILL.md`: how to *use* flowmark to format
+- `flowmark --version`: version (see §1 for why this matters).
+- `flowmark --skill`: prints the full `SKILL.md`: how to *use* flowmark to format
   Markdown, plus the version-pinned `uvx` fallback for when `flowmark` is not on `PATH`.
-- `flowmark --docs` — prints the full README, including the “How to Install the Skill”
+- `flowmark --docs`: prints the full README, including the “How to Install the Skill”
   section that documents `--install-skill` and `--surfaces` end to end.
 
 Confirm the same works **without any install**, straight from PyPI, which is how most
@@ -36,7 +36,7 @@ agents will first encounter it:
 ```shell
 uvx flowmark --help
 uvx flowmark --skill
-# Pinned (what the skill's own bootstrap line recommends — reproducible):
+# Pinned (what the skill's own bootstrap line recommends, reproducible):
 uvx --from flowmark==<X.Y.Z> flowmark --auto FILE
 ```
 
@@ -44,7 +44,7 @@ Pass criteria (the self-describing contract for a fresh agent):
 
 - `--skill` teaches (a) how to format Markdown and (b) how to run flowmark via `uvx`
   when it is not on `PATH` (the pinned bootstrap line).
-  It does **not** document skill installation — that is intentionally not in the skill
+  It does **not** document skill installation; that is intentionally not in the skill
   body.
 - Skill *installation* (`flowmark --install-skill`) is discoverable from `--help` (flag
   list) and fully documented in `--docs` (README “How to Install the Skill”).
@@ -66,7 +66,7 @@ make           # format + install + lint + test
 `uv` console-script shebangs (`.venv/bin/codespell`, `ruff`, `basedpyright`, `flowmark`,
 …) contain an **absolute** path to `.venv/bin/python`. If the repo directory is moved or
 renamed, those shebangs point at a path that no longer exists.
-The tools then fail to exec with a misleading error — Python surfaces a dead interpreter
+The tools then fail to exec with a misleading error: Python surfaces a dead interpreter
 as `FileNotFoundError: [Errno 2] No such file or directory: 'codespell'`, which looks
 like a missing dependency but is not.
 A plain `uv sync` does **not** fix it (the packages are installed; only the shebangs are
@@ -115,14 +115,14 @@ make test-golden-coverage # tryscript coverage/quality gates
 
 Notable suites:
 
-- `tests/test_skill.py` — skill composition, install across surfaces, idempotency,
+- `tests/test_skill.py`: skill composition, install across surfaces, idempotency,
   forward-compat guard, and the `uvx` version-pin behavior (§4).
-- `tests/test_skill_artifacts.py` — the committed discovery copy stays in sync with the
+- `tests/test_skill_artifacts.py`: the committed discovery copy stays in sync with the
   generator and always pins a PyPI-installable version.
-- `tests/tryscript/*.tryscript.md` — CLI golden tests, including `--install-skill`
-  across every surface (`verbose-docs.tryscript.md`).
+- `tests/tryscript/*.tryscript.md`: CLI golden tests, including `--install-skill` across
+  every surface (`verbose-docs.tryscript.md`).
 
-## 3. Skill Installation — Manual Cross-Agent Validation
+## 3. Skill Installation: Manual Cross-Agent Validation
 
 flowmark installs its skill across **three surfaces**, so it works regardless of which
 agent the user runs.
@@ -143,7 +143,7 @@ This repo **dogfoods** its own skill: all three surfaces are checked in
 and `make generate-skill-install` (part of `make format`) keeps them current with
 `DISCOVERY_VERSION`. So the committed repo is itself a worked example of the install.
 
-> **For ad-hoc install experiments, use a scratch directory, not the repo root** — an
+> **For ad-hoc install experiments, use a scratch directory, not the repo root:** an
 > exploratory `flowmark --install-skill` in the repo would re-touch the committed
 > surfaces (and `AGENTS.md`) and create confusing diffs.
 > The repo’s real surfaces are owned by `make format`; experiment in a `mktemp -d`
@@ -159,18 +159,18 @@ Verify, in the scratch directory:
 
 1. **All three surfaces exist** and each `SKILL.md` starts with valid frontmatter
    (`---\nname: flowmark\n…`) so the agent can parse it.
-2. **The format stamp is present** — each artifact carries `format=fNN surface=…` on its
+2. **The format stamp is present:** each artifact carries `format=fNN surface=…` on its
    marker line. This is the forward-compatibility handle: a future flowmark uses it to
    upgrade older shapes and to refuse to clobber a newer shape it does not understand.
-3. **Idempotency** — run `flowmark --install-skill` a second time.
+3. **Idempotency:** run `flowmark --install-skill` a second time.
    It must report `unchanged` for every surface and leave the files byte-identical.
    (Automated: `test_install_is_idempotent`, `test_update_is_idempotent`.)
-4. **Forward-compat guard** — hand-edit one surface’s stamp to a higher number (e.g.
+4. **Forward-compat guard:** hand-edit one surface’s stamp to a higher number (e.g.
    `format=f99`) and re-run.
    It must report `blocked-newer` and leave that file untouched.
    (Automated: `test_forward_compat_guard_blocks_newer_format`,
    `test_update_guard_blocks_newer_format`.)
-5. **AGENTS.md hygiene** — the block is marker-bounded, user content around it is
+5. **AGENTS.md hygiene:** the block is marker-bounded, user content around it is
    preserved, duplicate stale blocks collapse to one, and a `flowmark --auto` pass over
    the host `AGENTS.md` leaves the block unchanged.
    (Automated: `test_update_*`, `test_block_is_flowmark_auto_stable`.)
@@ -200,12 +200,12 @@ A release bumps this one constant; see [publishing.md](publishing.md).
 
 The pin reaches agents through two paths, each guarded:
 
-- **`npx skills add` / committed copy** — pinned to `DISCOVERY_VERSION`. Guarded by
+- **`npx skills add` / committed copy:** pinned to `DISCOVERY_VERSION`. Guarded by
   `test_discovery_copy_has_resolvable_version_pin` (real release, not a placeholder/dev
   string), `test_shipped_artifacts_pin_discovery_version` (every artifact pins exactly
-  `DISCOVERY_VERSION` — catches a forgotten `make format`), and
+  `DISCOVERY_VERSION`, catching a forgotten `make format`), and
   `test_shipped_artifacts_never_use_at_latest`.
-- **Install-time copies** (`flowmark --install-skill` on a user’s machine) — pinned to
+- **Install-time copies** (`flowmark --install-skill` on a user’s machine): pinned to
   the *installed* version via `flowmark_version()`. On a dev/editable checkout the
   installed version is a `.dev`/local string; `flowmark_version()` detects this
   (`is_pypi_release()`) and falls back to `DISCOVERY_VERSION` so the emitted pin is
@@ -213,7 +213,7 @@ The pin reaches agents through two paths, each guarded:
 
 A release-time guard, `scripts/check-release-pin.py` (run by `publish.yml` against the
 release tag, and via `make check-release-pin VERSION=X.Y.Z`), fails the publish if
-`DISCOVERY_VERSION` does not match the release being cut — so the published skill can
+`DISCOVERY_VERSION` does not match the release being cut, so the published skill can
 never point agents at a stale release.
 
 Manual confirmation from a dev checkout:
@@ -242,15 +242,15 @@ and agents take.
 > its first week), and `uvx --from flowmark==<new>` fails with an “unsatisfiable /
 > filtered by `exclude-newer`” error.
 > flowmark is our own vetted package, so override the cool-off **for flowmark only**
-> when testing its releases — this is a local test-environment concern, not something
-> end users or the published skill need to handle:
+> when testing its releases; this is a local test-environment concern, not something end
+> users or the published skill need to handle:
 > 
 > ```shell
 > # Per-invocation override (date = today or later):
 > uvx --exclude-newer-package flowmark=<YYYY-MM-DD> --from flowmark==<JUST_RELEASED> flowmark --version
 > ```
 
-1. **Fresh `uvx` from PyPI** — on a machine without flowmark installed:
+1. **Fresh `uvx` from PyPI:** on a machine without flowmark installed:
 
    ```shell
    uvx --from flowmark==<JUST_RELEASED> flowmark --auto sample.md
@@ -265,7 +265,7 @@ and agents take.
    committed discovery copy pins `uvx --from flowmark==<DISCOVERY_VERSION>`, and
    `npx skills add jlevy/flowmark` ships that copy to agents who have no other flowmark.
    So the release `DISCOVERY_VERSION` points at must itself ship the skill behavior the
-   committed copy describes — otherwise an agent reads the new skill text but the pinned
+   committed copy describes; otherwise an agent reads the new skill text but the pinned
    binary behaves like an older one.
    New cross-agent features (pinned `uvx` bootstrap, the three install surfaces, format
    stamps) land in commits *after* a tag, so they are absent from any release cut before
@@ -281,7 +281,7 @@ and agents take.
    `DISCOVERY_VERSION` to it (per [publishing.md](publishing.md)) before relying on the
    discovery copy.
 
-3. **Real agent pickup** — in a scratch project, run `flowmark --install-skill`, then
+3. **Real agent pickup:** in a scratch project, run `flowmark --install-skill`, then
    open that project in **Claude Code** and in **Codex** (or another portable-surface
    agent) and confirm each discovers the flowmark skill and can format a Markdown file
    on request. This is the ultimate check that the surface paths and frontmatter are

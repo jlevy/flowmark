@@ -179,7 +179,7 @@ def _format_num() -> int:
 
 def _generated_marker() -> str:
     # No internal `.` so flowmark’s sentence-wrap leaves the line intact.
-    return f"<!-- DO NOT EDIT — `flowmark --install-skill` (format={FLOWMARK_FORMAT} surface=skill-md) -->"
+    return f"<!-- DO NOT EDIT: `flowmark --install-skill` (format={FLOWMARK_FORMAT} surface=skill-md) -->"
 
 
 def render_skill_file(version: str | None = None) -> str:
