@@ -3,15 +3,15 @@ type: is
 id: is-01ksrwzqbpvrav1r702035p180
 title: "CI/publish: bump GitHub Actions to Node 24-capable versions (checkout@v6, setup-uv@v8.1.0)"
 kind: task
-status: open
+status: in_progress
 priority: 1
-version: 3
+version: 4
 labels: []
 dependencies:
   - type: blocks
     target: is-01ksrx01vtyypaf37nj3tz6tvr
 created_at: 2026-05-29T03:38:28.597Z
-updated_at: 2026-05-29T03:39:09.815Z
+updated_at: 2026-05-29T03:52:14.159Z
 ---
 Source: comparison with jlevy/simple-modern-uv template (already vetted versions).
 In BOTH .github/workflows/ci.yml and publish.yml:
