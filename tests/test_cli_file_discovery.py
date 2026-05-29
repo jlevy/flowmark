@@ -258,7 +258,10 @@ def test_force_exclude_explicit_multicomponent_pattern(
     api.mkdir(parents=True)
     f = api / "notes.md"
     f.write_text(_OVERLONG)
-    assert main(["--auto", "--force-exclude", "--extend-exclude", "docs/api/", "docs/api/notes.md"]) == 0
+    assert (
+        main(["--auto", "--force-exclude", "--extend-exclude", "docs/api/", "docs/api/notes.md"])
+        == 0
+    )
     assert f.read_text() == _OVERLONG  # untouched
 
 
@@ -286,9 +289,7 @@ def test_check_reports_and_does_not_write(
     assert "Would reformat" in capsys.readouterr().err
 
 
-def test_check_clean_file_exits_zero(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_check_clean_file_exits_zero(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     f = tmp_path / "clean.md"
     f.write_text("# Title\n\nShort clean line.\n")
     assert main(["--check", str(f)]) == 0
