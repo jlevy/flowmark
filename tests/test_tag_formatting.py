@@ -684,3 +684,26 @@ def test_list_item_with_tag_on_continuation_line():
         "tsconfig.base.json)\n  <!-- #kg-32zz -->" in result
         or "(tsconfig.base.json)\n<!-- #kg-32zz -->" in result
     ), f"Tag continuation line not preserved correctly.\nResult:\n{result}"
+
+
+def test_multiline_html_comment_preserves_line_breaks():
+    """Multi-line HTML comments keep their internal line breaks (issue #35)."""
+    src = dedent("""
+        <!-- field
+        columnIds: a, b
+        columnLabels: X, Y
+        -->
+        """).strip()
+    result = fill_markdown(src, width=88, semantic=True)
+    assert "columnIds: a, b\n" in result
+    assert "columnLabels: X, Y\n" in result
+    # Must not collapse onto a single line.
+    assert "columnIds: a, b columnLabels" not in result
+    # Idempotent.
+    assert fill_markdown(result, width=88, semantic=True) == result
+
+
+def test_single_line_html_comment_unaffected():
+    """Single-line comments are not treated as verbatim blocks."""
+    result = fill_markdown("<!-- single line comment -->\n", width=88, semantic=True)
+    assert result.strip() == "<!-- single line comment -->"

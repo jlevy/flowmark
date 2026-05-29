@@ -260,6 +260,31 @@ def _is_unindented_tag_line(line: str) -> bool:
     return line_starts_with_tag(line)
 
 
+def _is_multiline_html_comment(text: str) -> bool:
+    """
+    True if `text` is a single HTML comment that spans multiple lines, with no other
+    content around it. The interior formatting of such comments is intentional (e.g.
+    structured metadata / form-field definitions), so it must be preserved verbatim
+    rather than reflowed onto one line (see GitHub issue #35).
+    """
+    open_delim = SINGLE_HTML_COMMENT.open_delim
+    close_delim = SINGLE_HTML_COMMENT.close_delim
+    stripped = text.strip()
+    if "\n" not in stripped:
+        return False
+    if not (stripped.startswith(open_delim) and stripped.endswith(close_delim)):
+        return False
+    # Require exactly one comment: the only closing delimiter is the trailing one.
+    # (This rejects multiple comments or any trailing/leading non-comment content.)
+    return stripped.index(close_delim) == len(stripped) - len(close_delim)
+
+
+def _preserve_comment_verbatim(text: str, initial_indent: str) -> str:
+    """Return a multi-line HTML comment unchanged, indenting only its first line."""
+    comment_lines = text.split("\n")
+    return "\n".join([initial_indent + comment_lines[0], *comment_lines[1:]])
+
+
 def add_tag_newline_handling(
     base_wrapper: LineWrapper,
 ) -> LineWrapper:
@@ -317,6 +342,11 @@ def add_tag_newline_handling(
             result = _fix_multiline_opening_tag_with_closing(result)
             return result
 
+        # A standalone multi-line HTML comment is kept verbatim — its internal line
+        # breaks are intentional and must not be collapsed (see GitHub issue #35).
+        if _is_multiline_html_comment(text):
+            return _preserve_comment_verbatim(text, initial_indent)
+
         # Check if there are any tags in the text - only apply list heuristics
         # when tags are present to avoid changing normal markdown behavior.
         has_tags = any(line_ends_with_tag(line) or line_starts_with_tag(line) for line in lines)
@@ -373,7 +403,10 @@ def add_tag_newline_handling(
             is_first = i == 0
             cur_initial_indent = initial_indent if is_first else subsequent_indent
             segment_lines = segment.split("\n")
-            if all(line_is_table_row(line) for line in segment_lines if line.strip()):
+            if _is_multiline_html_comment(segment):
+                # Preserve a multi-line HTML comment's interior line breaks verbatim.
+                wrapped = _preserve_comment_verbatim(segment, cur_initial_indent)
+            elif all(line_is_table_row(line) for line in segment_lines if line.strip()):
                 # Table rows: preserve verbatim with appropriate indent,
                 # but normalize separator rows to 3 dashes for consistency.
                 indented_lines: list[str] = []
