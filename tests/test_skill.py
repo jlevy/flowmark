@@ -140,11 +140,11 @@ class TestGetDocsContent:
     def test_docs_content_is_readme(self) -> None:
         """get_docs_content returns README.md content."""
         content = get_docs_content()
-        # README.md has these distinctive sections. The install heading text comes from
-        # docs/templates/python-readme-wrapper.md (the source of truth); match loosely so
-        # a heading reword there doesn't break this test.
+        # README.md has these distinctive sections (the lead sections come from
+        # docs/shared/flowmark-readme-shared.md).
         assert "# flowmark" in content.lower()
-        assert "## Installing Flowmark" in content
+        assert "## What Is Flowmark?" in content
+        assert "## Quick Start" in content
         assert "## Semantic Line Breaks" in content
 
     def test_docs_content_has_vscode_cursor_setup(self) -> None:

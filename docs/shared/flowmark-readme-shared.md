@@ -1,4 +1,4 @@
-## Why Use Flowmark?
+## What Is Flowmark?
 
 Flowmark is a Markdown auto-formatter, written
 [in Python](https://github.com/jlevy/flowmark) with an auto-synced
@@ -16,6 +16,33 @@ port is a fast single native binary, while the Python version is the reference a
 sometimes ahead on the newest features.
 Pick whichever fits your environment; for heavy or latency-sensitive formatting, choose
 the Rust binary.
+
+## Quick Start
+
+Install with [uv](https://github.com/astral-sh/uv) — the Python build or the faster Rust
+port (`flowmark-rs`, identical output) — then format Markdown in place:
+
+```shell
+uv tool install --upgrade flowmark        # or: flowmark-rs
+flowmark --auto README.md                 # one file
+flowmark --auto .                         # whole tree (respects .gitignore / .flowmarkignore)
+```
+
+No install needed for a one-off (pinned, never `@latest`):
+`uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --auto FILE`. Run `flowmark --help`,
+`flowmark --docs`, or `flowmark --skill` for more.
+
+**Set it up via your coding agent.** Hand your agent this one instruction:
+
+> Set up Flowmark to keep this project’s Markdown auto-formatted.
+> Install it (or run it pinned with
+> `uvx --from flowmark==__FLOWMARK_VERSION__ flowmark`), wire `flowmark --auto .` into
+> the build — a `make format` target, a `package.json` script, or a pre-commit hook —
+> and add a `.flowmarkignore` for any generated or vendored Markdown.
+> Run `flowmark --skill` for the full setup recipe.
+
+Or run `flowmark --install-skill` yourself to install the skill into `.agents/`,
+`.claude/`, and `AGENTS.md` (see [How to Install the Skill](#how-to-install-the-skill)).
 
 ## Why Another Markdown Auto-Formatter?
 

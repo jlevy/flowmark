@@ -35,8 +35,8 @@ $ flowmark --docs | grep -Fx "# flowmark"
 ```
 
 ```console
-$ flowmark --docs | grep -Fx "## Python and Rust Flowmark"
-## Python and Rust Flowmark
+$ flowmark --docs | grep -Fx "## What Is Flowmark?"
+## What Is Flowmark?
 ```
 
 ## V3: Install skill creates skill file
