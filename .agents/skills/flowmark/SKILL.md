@@ -34,7 +34,7 @@ If `flowmark` is not on `PATH`, run it with a version-pinned runner (never `@lat
 # Recommended: fast native Rust port
 uvx --from flowmark-rs==0.3.0 flowmark --auto FILE
 # Python reference (library API or newest patch releases)
-uvx --from flowmark==0.7.1 flowmark --auto FILE
+uvx --from flowmark==0.7.2 flowmark --auto FILE
 ```
 
 ## When to Use It

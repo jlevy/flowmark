@@ -69,7 +69,7 @@ _RS_VERSION_PLACEHOLDER = "__FLOWMARK_RS_VERSION__"  # sibling Rust port (flowma
 # version (see docs/publishing.md release checklist) and re-run `make format`.
 # Rust port: this becomes flowmark-rs's own release version — see the porting
 # contract above.
-DISCOVERY_VERSION = "0.7.1"
+DISCOVERY_VERSION = "0.7.2"
 
 # Recommended pin for the fast Rust port (github.com/jlevy/flowmark-rs) — the default the
 # skill suggests. flowmark and flowmark-rs are SEPARATE PyPI packages with independent
