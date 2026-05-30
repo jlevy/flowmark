@@ -61,9 +61,9 @@ Run `flowmark --help`, `flowmark --docs`, or `flowmark --skill` for more.
 Hand your agent this one instruction:
 
 > Set up Flowmark to keep this project’s Markdown auto-formatted.
-> Run `uvx --from flowmark==0.7.1 flowmark --skill` for details.
+> Run `uvx --from flowmark==0.7.2 flowmark --skill` for details.
 
-Or run `uvx --from flowmark==0.7.1 flowmark --install-skill` to manually install the
+Or run `uvx --from flowmark==0.7.2 flowmark --install-skill` to manually install the
 skill into `.agents/`, `.claude/`, and `AGENTS.md` (see
 [How to Install the Skill](#how-to-install-the-skill)).
 
@@ -551,7 +551,7 @@ A single command everyone (and CI) runs.
 Makefile target:
 
 ```makefile
-FLOWMARK := uvx --from flowmark==0.7.1 flowmark
+FLOWMARK := uvx --from flowmark==0.7.2 flowmark
 
 format-docs:
 	$(FLOWMARK) --auto .
@@ -562,7 +562,7 @@ Or as an npm script in `package.json`:
 ```json
 {
   "scripts": {
-    "format:docs": "uvx --from flowmark==0.7.1 flowmark --auto ."
+    "format:docs": "uvx --from flowmark==0.7.2 flowmark --auto ."
   }
 }
 ```
@@ -576,7 +576,7 @@ pre-commit:
   commands:
     flowmark:
       glob: "*.{md,mdc,markdown}"
-      run: uvx --from flowmark==0.7.1 flowmark --auto {staged_files}
+      run: uvx --from flowmark==0.7.2 flowmark --auto {staged_files}
       stage_fixed: true
 ```
 
@@ -586,7 +586,7 @@ directly from your `.pre-commit-config.yaml` without writing a `local` hook:
 ```yaml
 repos:
   - repo: https://github.com/jlevy/flowmark
-    rev: v0.7.1
+    rev: v0.7.2
     hooks:
       - id: flowmark          # auto-format Markdown in place
       # - id: flowmark-check  # or: check only, fail if files would change (for CI)
@@ -609,7 +609,7 @@ change, without writing.
 Pair it with `--auto` so CI validates the same formatting the auto-fix path applies:
 
 ```yaml
-- run: uvx --from flowmark==0.7.1 flowmark --auto --check .
+- run: uvx --from flowmark==0.7.2 flowmark --auto --check .
 ```
 
 ### 5. Exclude generated and vendored Markdown
