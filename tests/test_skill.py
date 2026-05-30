@@ -10,6 +10,7 @@ from flowmark.skill import (
     AGENTS_BEGIN_PREFIX,
     AGENTS_END_MARKER,
     DISCOVERY_VERSION,
+    FLOWMARK_RS_DISCOVERY_VERSION,
     SURFACE_CLAUDE,
     SURFACE_PORTABLE,
     agents_md_block,
@@ -53,6 +54,21 @@ class TestComposeSkill:
         rendered = compose_skill("1.2.3")
         assert "flowmark==1.2.3" in rendered
         assert "__FLOWMARK_VERSION__" not in rendered
+
+    def test_compose_substitutes_both_package_pins(self) -> None:
+        """Both the Python and the recommended Rust-port placeholders are filled in."""
+        rendered = compose_skill("1.2.3")
+        assert "__FLOWMARK_RS_VERSION__" not in rendered
+        assert f"flowmark-rs=={FLOWMARK_RS_DISCOVERY_VERSION}" in rendered
+        # The Python pin tracks the passed version; the Rust pin is its own constant.
+        assert "flowmark==1.2.3" in rendered
+
+    def test_compose_recommends_rust_offers_python(self) -> None:
+        """The skill names both packages and links each one."""
+        rendered = compose_skill("1.2.3")
+        assert "github.com/jlevy/flowmark-rs" in rendered
+        assert "github.com/jlevy/flowmark)" in rendered
+        assert "uvx --from flowmark-rs==" in rendered
 
     def test_compose_default_pins_installed_version(self) -> None:
         rendered = compose_skill()

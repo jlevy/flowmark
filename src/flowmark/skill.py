@@ -29,25 +29,36 @@ FLOWMARK_FORMAT = "f02"
 # CROSS-IMPLEMENTATION PORTING CONTRACT (read before porting to flowmark-rs)
 #
 # This file is auto-ported to the Rust implementation (github.com/jlevy/flowmark-rs)
-# by an LLM following the rust-porting playbook. The version pin below and the
-# `uvx --from <pkg>==<X.Y.Z>` bootstrap line in SKILL.md are PER-IMPLEMENTATION and
-# MUST NOT be copied verbatim across the port:
+# by an LLM following the rust-porting playbook. The SKILL.md recommends the fast Rust
+# port by default and offers the Python build as the reference fallback, so it pins BOTH
+# packages via two placeholders:
 #
-#   - Python flowmark   pins  `uvx --from flowmark==<this package's version>`
-#   - Rust   flowmark-rs pins  `uvx --from flowmark-rs==<flowmark-rs's own version>`
+#   - `__FLOWMARK_RS_VERSION__` -> the flowmark-rs (Rust) pin
+#   - `__FLOWMARK_VERSION__`    -> the flowmark   (Python) pin
 #
 # `flowmark` and `flowmark-rs` are separate PyPI packages with INDEPENDENT, DIFFERENTLY
-# NUMBERED release histories (the Python version is the reference and is often ahead).
-# When porting, substitute BOTH the package name (`flowmark` -> `flowmark-rs`) AND the
-# version (use flowmark-rs's own current release, NOT this file's number). Each pin must
-# always be a real, installable release of *that* package. Pinning the Rust skill to a
-# Python version number (or vice versa) is a bug: the `uvx --from` would resolve to the
+# NUMBERED release histories (the Python version is the reference and is often ahead;
+# flowmark-rs tracks it but is numbered on its own and is sometimes a release behind).
+#
+# Each implementation pins its OWN package dynamically (from its installed build) and the
+# SIBLING package from a hard-coded discovery constant. The two roles SWAP across the
+# port, but the authored SKILL.md is IDENTICAL — only the substitution sources differ, so
+# the port stays mechanical:
+#
+#   - Python flowmark   : `__FLOWMARK_VERSION__` <- flowmark_version() (own, dynamic),
+#                         `__FLOWMARK_RS_VERSION__` <- FLOWMARK_RS_DISCOVERY_VERSION (sibling).
+#   - Rust   flowmark-rs : `__FLOWMARK_RS_VERSION__` <- its own installed version,
+#                         `__FLOWMARK_VERSION__` <- a sibling flowmark (Python) constant.
+#
+# Each pin must always be a real, installable release of *that* package. Pinning one
+# package to the other's version number is a bug: the `uvx --from` would resolve to the
 # wrong package's release or fail outright.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Placeholder in the authored SKILL.md, replaced by `compose_skill` with a concrete
-# version pin for the local-first runner fallback (see SKILL.md).
-_VERSION_PLACEHOLDER = "__FLOWMARK_VERSION__"
+# Placeholders in the authored SKILL.md, replaced by `compose_skill` with concrete
+# version pins for the local-first runner fallbacks (see SKILL.md).
+_VERSION_PLACEHOLDER = "__FLOWMARK_VERSION__"  # this package (flowmark, Python)
+_RS_VERSION_PLACEHOLDER = "__FLOWMARK_RS_VERSION__"  # sibling Rust port (flowmark-rs)
 
 # Concrete released-version pin baked into the committed repo-root discovery copy
 # (`skills/flowmark/SKILL.md`), the artifact `npx skills add jlevy/flowmark` and
@@ -59,6 +70,17 @@ _VERSION_PLACEHOLDER = "__FLOWMARK_VERSION__"
 # Rust port: this becomes flowmark-rs's own release version — see the porting
 # contract above.
 DISCOVERY_VERSION = "0.7.1"
+
+# Recommended pin for the fast Rust port (github.com/jlevy/flowmark-rs) — the default the
+# skill suggests. flowmark and flowmark-rs are SEPARATE PyPI packages with independent
+# numbering (flowmark-rs tracks the Python reference but is versioned on its own and is
+# sometimes a release behind), so this is NOT the Python DISCOVERY_VERSION — it is
+# flowmark-rs's own latest published release. Bump it when flowmark-rs releases. Must be a
+# real, PyPI-installable release (guarded by tests) so the recommended
+# `uvx --from flowmark-rs==<X.Y.Z> flowmark` bootstrap actually resolves.
+# Rust port: roles swap — the port pins flowmark-rs dynamically (its own build) and keeps
+# a sibling flowmark (Python) discovery constant here instead. See the porting contract.
+FLOWMARK_RS_DISCOVERY_VERSION = "0.3.0"
 
 
 def get_skill_content() -> str:
@@ -124,14 +146,19 @@ def compose_skill(version: str | None = None) -> str:
     """
     Render the SKILL.md template into a final skill document.
 
-    `version` is substituted into the pinned-runner fallback. Pass an explicit string
-    (e.g. `DISCOVERY_VERSION` for the committed discovery copy) for a stable, drift-free
-    artifact; pass `None` to pin to the installed flowmark version (used when installing
-    into an agent on a user's machine). Deterministic: same inputs always yield identical
-    output.
+    `version` is the Python `flowmark` pin substituted into the runner fallback. Pass an
+    explicit string (e.g. `DISCOVERY_VERSION` for the committed discovery copy) for a
+    stable, drift-free artifact; pass `None` to pin to the installed flowmark version
+    (used when installing into an agent on a user's machine). The recommended Rust-port
+    pin always comes from `FLOWMARK_RS_DISCOVERY_VERSION`. Deterministic: same inputs
+    always yield identical output.
     """
     pin = flowmark_version() if version is None else version
-    return get_skill_content().replace(_VERSION_PLACEHOLDER, pin)
+    return (
+        get_skill_content()
+        .replace(_VERSION_PLACEHOLDER, pin)
+        .replace(_RS_VERSION_PLACEHOLDER, FLOWMARK_RS_DISCOVERY_VERSION)
+    )
 
 
 def get_docs_content() -> str:
@@ -245,7 +272,9 @@ def agents_md_block(version: str | None = None) -> str:
         "\n"
         "- Run `flowmark --auto <files>` on Markdown you create or edit.\n"
         "- Run `flowmark --docs` for full usage and `flowmark --skill` for the skill.\n"
-        f"- If `flowmark` is not on `PATH`, run `uvx --from flowmark=={pin} flowmark`.\n"
+        "- If `flowmark` is not on `PATH`, use a pinned `uvx` runner (never `@latest`).\n"
+        f"- Fast Rust port (recommended): `uvx --from flowmark-rs=={FLOWMARK_RS_DISCOVERY_VERSION} flowmark`.\n"
+        f"- Python build (library / newest patch): `uvx --from flowmark=={pin} flowmark`.\n"
         "\n"
         f"{AGENTS_END_MARKER}"
     )

@@ -7,7 +7,13 @@ from pathlib import Path
 import pytest
 
 from flowmark import reformat_text
-from flowmark.skill import DISCOVERY_VERSION, compose_skill, discovery_skill_text
+from flowmark.skill import (
+    DISCOVERY_VERSION,
+    FLOWMARK_RS_DISCOVERY_VERSION,
+    compose_skill,
+    discovery_skill_text,
+    is_pypi_release,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DISCOVERY_COPY = REPO_ROOT / "skills" / "flowmark" / "SKILL.md"
@@ -27,9 +33,21 @@ _PINNED_ARTIFACTS = [
     REPO_ROOT / "AGENTS.md",
 ]
 
+# Skill surfaces that also carry a recommended Rust-port `flowmark-rs==` pin (the README
+# references flowmark-rs without an exact pin, so it is excluded here).
+_RS_PINNED_ARTIFACTS = [
+    DISCOVERY_COPY,
+    REPO_ROOT / ".agents" / "skills" / "flowmark" / "SKILL.md",
+    REPO_ROOT / ".claude" / "skills" / "flowmark" / "SKILL.md",
+    REPO_ROOT / "AGENTS.md",
+]
+
 # A concrete `flowmark==<version>` pin (digit-led), ignoring intentionally-generic
-# `flowmark==<X.Y.Z>` / `flowmark==<version>` placeholder examples in prose.
+# `flowmark==<X.Y.Z>` / `flowmark==<version>` placeholder examples in prose. The trailing
+# `(?!-)` keeps it from matching the `flowmark` prefix of a `flowmark-rs==` pin.
 _CONCRETE_PIN_RE = re.compile(r"flowmark==(\d[^\s`)\"']*)")
+# A concrete `flowmark-rs==<version>` pin (the recommended fast Rust port).
+_CONCRETE_RS_PIN_RE = re.compile(r"flowmark-rs==(\d[^\s`)\"']*)")
 
 
 def test_discovery_copy_matches_generator() -> None:
@@ -61,16 +79,42 @@ def test_shipped_artifacts_pin_discovery_version(artifact: Path) -> None:
     )
 
 
+@pytest.mark.parametrize("artifact", _RS_PINNED_ARTIFACTS, ids=lambda p: p.name)
+def test_shipped_artifacts_pin_rs_discovery_version(artifact: Path) -> None:
+    """Every `flowmark-rs==` pin in a skill surface equals FLOWMARK_RS_DISCOVERY_VERSION.
+
+    The Rust port is the recommended default; its pin is a separate source of truth from
+    the Python DISCOVERY_VERSION (the packages are numbered independently), so this guards
+    against a stale or mismatched Rust pin slipping into one surface.
+    """
+    text = artifact.read_text(encoding="utf-8")
+    pins = _CONCRETE_RS_PIN_RE.findall(text)
+    assert pins, f"{artifact.name} has no concrete flowmark-rs== pin to check"
+    stale = sorted({p for p in pins if p != FLOWMARK_RS_DISCOVERY_VERSION})
+    assert not stale, (
+        f"{artifact.name} pins flowmark-rs {stale} but FLOWMARK_RS_DISCOVERY_VERSION is "
+        f"{FLOWMARK_RS_DISCOVERY_VERSION!r}; bump it and re-run `make format`"
+    )
+
+
+def test_rs_discovery_version_is_resolvable() -> None:
+    """The recommended Rust-port pin must be a real, PyPI-installable release."""
+    assert is_pypi_release(FLOWMARK_RS_DISCOVERY_VERSION)
+
+
 @pytest.mark.parametrize("artifact", _PINNED_ARTIFACTS, ids=lambda p: p.name)
 def test_shipped_artifacts_never_use_at_latest(artifact: Path) -> None:
-    """Shipped runner examples must pin a version, never the unpinned `flowmark@latest`.
+    """Shipped runner examples must pin a version, never an unpinned `@latest`.
 
     Mentions warning *against* `@latest` are fine; an actual `uvx flowmark@latest`
-    invocation is not (it silently drifts and defeats the supply-chain pin).
+    invocation is not (it silently drifts and defeats the supply-chain pin). The same
+    holds for the recommended Rust port, `flowmark-rs`.
     """
     text = artifact.read_text(encoding="utf-8")
     assert "uvx flowmark@latest" not in text
     assert "uvx --from flowmark@latest" not in text
+    assert "uvx flowmark-rs@latest" not in text
+    assert "uvx --from flowmark-rs@latest" not in text
 
 
 def test_discovery_copy_has_resolvable_version_pin() -> None:
@@ -82,7 +126,9 @@ def test_discovery_copy_has_resolvable_version_pin() -> None:
     the README.
     """
     text = DISCOVERY_COPY.read_text(encoding="utf-8")
-    assert "__FLOWMARK_VERSION__" not in text  # template never escaped past compose
+    # Neither placeholder may survive past compose.
+    assert "__FLOWMARK_VERSION__" not in text
+    assert "__FLOWMARK_RS_VERSION__" not in text
     assert "flowmark==<version>" not in text  # not a literal placeholder
     pin = re.search(r"flowmark==([^\s`)\"']+)", text)
     assert pin is not None, "discovery copy missing a flowmark== version pin"
@@ -91,6 +137,22 @@ def test_discovery_copy_has_resolvable_version_pin() -> None:
         f"discovery copy pin {pin_value!r} is a dev/local version, not PyPI-installable; "
         "bump DISCOVERY_VERSION to a real release and re-run `make format`"
     )
+    rs_pin = re.search(r"flowmark-rs==([^\s`)\"']+)", text)
+    assert rs_pin is not None, "discovery copy missing a flowmark-rs== version pin"
+    rs_value = rs_pin.group(1)
+    assert ".dev" not in rs_value and "+" not in rs_value, (
+        f"discovery copy Rust pin {rs_value!r} is a dev/local version, not PyPI-installable"
+    )
+
+
+def test_discovery_copy_references_both_packages() -> None:
+    """The skill recommends the Rust port and offers the Python build, so the discovery
+    copy must name and link both packages."""
+    text = DISCOVERY_COPY.read_text(encoding="utf-8")
+    assert "github.com/jlevy/flowmark-rs" in text
+    assert "github.com/jlevy/flowmark)" in text  # the Python package link
+    assert "uvx --from flowmark-rs==" in text
+    assert "uvx --from flowmark==" in text
 
 
 def test_skill_frontmatter_is_valid() -> None:

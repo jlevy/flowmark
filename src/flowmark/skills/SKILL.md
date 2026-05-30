@@ -21,15 +21,19 @@ flowmark --auto .      # whole tree (respects .gitignore and .flowmarkignore)
 
 Omit `--auto` to preview to stdout; pipe stdin with `-` (e.g. `cat FILE | flowmark -`).
 
-If `flowmark` is not on `PATH`, use a version-pinned runner (never `@latest`):
+Flowmark ships as two packages with identical formatting and the same `flowmark`
+command: the fast native Rust port [`flowmark-rs`](https://github.com/jlevy/flowmark-rs)
+(recommended) and the Python reference [`flowmark`](https://github.com/jlevy/flowmark).
+Prefer flowmark-rs; reach for the Python build only when you need its library API or the
+very latest patch release not yet ported to Rust.
+If `flowmark` is not on `PATH`, run it with a version-pinned runner (never `@latest`):
 
 ```bash
+# Recommended: fast native Rust port
+uvx --from flowmark-rs==__FLOWMARK_RS_VERSION__ flowmark --auto FILE
+# Python reference (library API or newest patch releases)
 uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --auto FILE
 ```
-
-> Prefer the `flowmark` command when it is on `PATH`. The auto-synced
-> [Rust port (flowmark-rs)](https://github.com/jlevy/flowmark-rs) is a fast native
-> binary with identical formatting; the Python version is the reference.
 
 ## When to Use It
 
