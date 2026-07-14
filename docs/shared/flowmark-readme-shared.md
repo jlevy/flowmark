@@ -50,9 +50,13 @@ Hand your agent this one instruction:
 > Install the Flowmark skill with `npx skills add jlevy/flowmark@flowmark` and follow
 > it.
 
-Or run `uvx --from flowmark-rs==__FLOWMARK_RS_VERSION__ flowmark --install-skill` to
-install the skill into `.agents/`, `.claude/`, and `AGENTS.md` directly (see
-[How to Install the Skill](#how-to-install-the-skill)).
+Or install the skill into `.agents/`, `.claude/`, and `AGENTS.md` directly:
+
+```bash
+uvx --from flowmark-rs==__FLOWMARK_RS_VERSION__ flowmark --install-skill
+```
+
+See [How to Install the Skill](#how-to-install-the-skill) for the available surfaces.
 
 For consistency across users and supply chain security, it’s recommended to pin the
 version when installing within a skill or project build.
