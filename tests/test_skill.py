@@ -14,9 +14,11 @@ from flowmark.skill import (
     SURFACE_CLAUDE,
     SURFACE_PORTABLE,
     agents_md_block,
+    compose_project_setup,
     compose_skill,
     flowmark_version,
     get_docs_content,
+    get_project_setup_content,
     get_skill_content,
     install_skill,
     is_pypi_release,
@@ -45,6 +47,13 @@ class TestGetSkillContent:
         content = get_skill_content()
         assert "# Flowmark" in content
         assert "flowmark --auto" in content
+
+    def test_skill_routes_repository_adoption_to_bundled_reference(self) -> None:
+        content = get_skill_content()
+        assert "references/project-setup.md" in content
+        reference = get_project_setup_content()
+        assert "## Auto-Fix on Commit" in reference
+        assert "## Disable Competing Markdown Formatters" in reference
 
 
 class TestComposeSkill:
@@ -86,9 +95,15 @@ class TestComposeSkill:
         rendered = compose_skill("1.2.3")
         assert rendered.startswith("---\nname: flowmark\n")
 
+    def test_compose_project_setup_substitutes_rust_pin(self) -> None:
+        rendered = compose_project_setup("1.2.3")
+        assert "flowmark-rs==1.2.3" in rendered
+        assert "__FLOWMARK_RS_VERSION__" not in rendered
+
     def test_skill_routes_details_to_cli(self) -> None:
         """The skill stays minimal: it routes to the self-documenting CLI rather than
-        inlining setup details. Editor/project setup lives in `flowmark --docs`."""
+        inlining CLI mechanics. Editor setup lives in `flowmark --docs`; repository
+        migration lives in the bundled project-setup reference."""
         content = get_skill_content()
         # Routes to the self-documenting CLI.
         assert "flowmark --help" in content
@@ -183,14 +198,21 @@ class TestInstallSkill:
 
         portable = tmp_path / ".agents" / "skills" / "flowmark" / "SKILL.md"
         claude = tmp_path / ".claude" / "skills" / "flowmark" / "SKILL.md"
+        portable_reference = portable.parent / "references" / "project-setup.md"
+        claude_reference = claude.parent / "references" / "project-setup.md"
         assert portable.exists()
         assert claude.exists()
+        assert portable_reference.exists()
+        assert claude_reference.exists()
         assert "name: flowmark" in claude.read_text()
 
     def test_install_target_selection(self, tmp_path: Path) -> None:
         """The `surfaces` set selects which surfaces are written."""
         install_skill(project_root=tmp_path, surfaces=frozenset({SURFACE_PORTABLE}))
         assert (tmp_path / ".agents" / "skills" / "flowmark" / "SKILL.md").exists()
+        assert (
+            tmp_path / ".agents" / "skills" / "flowmark" / "references" / "project-setup.md"
+        ).exists()
         assert not (tmp_path / ".claude").exists()
         assert not (tmp_path / "AGENTS.md").exists()
 
@@ -198,9 +220,13 @@ class TestInstallSkill:
         install_skill(project_root=tmp_path)
         content = (tmp_path / ".claude" / "skills" / "flowmark" / "SKILL.md").read_text()
         assert "DO NOT EDIT" in content
-        assert "format=f02 surface=skill-md" in content
+        assert "format=f03 surface=skill-md" in content
         # Frontmatter must still come first for the skill to parse.
         assert content.startswith("---\nname: flowmark\n")
+        reference = (
+            tmp_path / ".claude" / "skills" / "flowmark" / "references" / "project-setup.md"
+        ).read_text()
+        assert "format=f03 surface=skill-reference" in reference
 
     def test_install_is_idempotent(self, tmp_path: Path) -> None:
         first = install_skill(project_root=tmp_path)
@@ -244,6 +270,18 @@ class TestInstallSkill:
         assert [r.action for r in results] == ["blocked-newer"]
         assert target.read_text() == "<!-- format=f99 surface=skill-md -->\nnewer"
 
+    def test_forward_compat_guard_checks_bundled_reference(self, tmp_path: Path) -> None:
+        skill_dir = tmp_path / ".claude" / "skills" / "flowmark"
+        target = skill_dir / "references" / "project-setup.md"
+        target.parent.mkdir(parents=True)
+        target.write_text("<!-- format=f99 surface=skill-reference -->\nnewer", encoding="utf-8")
+
+        results = install_skill(project_root=tmp_path, surfaces=frozenset({SURFACE_CLAUDE}))
+
+        assert [r.action for r in results] == ["blocked-newer"]
+        assert target.read_text() == "<!-- format=f99 surface=skill-reference -->\nnewer"
+        assert not (skill_dir / "SKILL.md").exists()
+
 
 class TestAgentsMdBlock:
     """Tests for the AGENTS.md integration block."""
@@ -251,7 +289,7 @@ class TestAgentsMdBlock:
     def test_block_is_marker_bounded_with_format(self) -> None:
         block = agents_md_block("1.2.3")
         assert block.startswith(AGENTS_BEGIN_PREFIX)
-        assert "format=f02" in block
+        assert "format=f03" in block
         assert block.rstrip().endswith(AGENTS_END_MARKER)
         assert "flowmark==1.2.3" in block
 
@@ -325,6 +363,7 @@ class TestAgentsMdBlock:
 
         skill_file = custom_base / "skills" / "flowmark" / "SKILL.md"
         assert skill_file.exists()
+        assert (skill_file.parent / "references" / "project-setup.md").exists()
 
         content = skill_file.read_text()
         assert "name: flowmark" in content
@@ -337,6 +376,7 @@ class TestAgentsMdBlock:
 
         skill_file = custom_base / "skills" / "flowmark" / "SKILL.md"
         assert skill_file.exists()
+        assert (skill_file.parent / "references" / "project-setup.md").exists()
 
     def test_install_skill_overwrites_existing(self, tmp_path: Path) -> None:
         """Skill installation overwrites existing SKILL.md."""

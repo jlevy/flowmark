@@ -118,9 +118,10 @@ Follow this checklist for each new release.
 
 5. **Bump the skill’s `uvx` bootstrap pin (one source of truth):**
 
-   The repo-root `skills/flowmark/SKILL.md` (shipped to `npx skills add jlevy/flowmark`
-   users who do *not* have flowmark pre-installed) and the README’s runner examples all
-   pin `uvx --from flowmark==<X.Y.Z>`. That pin must reference a real, PyPI-installable
+   The repo-root `skills/flowmark/SKILL.md` (shipped to
+   `npx skills add jlevy/flowmark@flowmark` users who do *not* have flowmark
+   pre-installed) and the README’s runner examples all pin
+   `uvx --from flowmark==<X.Y.Z>`. That pin must reference a real, PyPI-installable
    release (never a `<version>` placeholder or a `.dev`/local-suffix string), and it
    must be the release you are about to cut, or agents bootstrap a stale flowmark.
 

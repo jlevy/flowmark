@@ -11,12 +11,14 @@ from flowmark.skill import (
     DISCOVERY_VERSION,
     FLOWMARK_RS_DISCOVERY_VERSION,
     compose_skill,
+    discovery_project_setup_text,
     discovery_skill_text,
     is_pypi_release,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DISCOVERY_COPY = REPO_ROOT / "skills" / "flowmark" / "SKILL.md"
+DISCOVERY_REFERENCE = REPO_ROOT / "skills" / "flowmark" / "references" / "project-setup.md"
 README = REPO_ROOT / "README.md"
 
 # Artifacts whose runner-pin examples are consumed by users/agents and must all pin the
@@ -33,12 +35,16 @@ _PINNED_ARTIFACTS = [
     REPO_ROOT / "AGENTS.md",
 ]
 
-# Skill surfaces that also carry a recommended Rust-port `flowmark-rs==` pin (the README
-# references flowmark-rs without an exact pin, so it is excluded here).
+# Shipped docs and skill resources that carry the recommended Rust-port
+# `flowmark-rs==` pin.
 _RS_PINNED_ARTIFACTS = [
+    README,
     DISCOVERY_COPY,
+    DISCOVERY_REFERENCE,
     REPO_ROOT / ".agents" / "skills" / "flowmark" / "SKILL.md",
+    REPO_ROOT / ".agents" / "skills" / "flowmark" / "references" / "project-setup.md",
     REPO_ROOT / ".claude" / "skills" / "flowmark" / "SKILL.md",
+    REPO_ROOT / ".claude" / "skills" / "flowmark" / "references" / "project-setup.md",
     REPO_ROOT / "AGENTS.md",
 ]
 
@@ -53,12 +59,21 @@ _CONCRETE_RS_PIN_RE = re.compile(r"flowmark-rs==(\d[^\s`)\"']*)")
 def test_discovery_copy_matches_generator() -> None:
     """The committed repo-root discovery copy must match the generator output."""
     assert DISCOVERY_COPY.read_text(encoding="utf-8") == discovery_skill_text()
+    assert DISCOVERY_REFERENCE.read_text(encoding="utf-8") == discovery_project_setup_text()
 
 
 def test_discovery_copy_is_flowmark_stable() -> None:
     """`flowmark --auto` over the discovery copy must be a no-op (it lives under `skills/`)."""
     text = DISCOVERY_COPY.read_text(encoding="utf-8")
     assert reformat_text(text) == text
+    reference = DISCOVERY_REFERENCE.read_text(encoding="utf-8")
+    assert reformat_text(reference) == reference
+
+
+def test_discovery_skill_bundles_its_project_setup_reference() -> None:
+    text = DISCOVERY_COPY.read_text(encoding="utf-8")
+    assert "references/project-setup.md" in text
+    assert DISCOVERY_REFERENCE.is_file()
 
 
 @pytest.mark.parametrize("artifact", _PINNED_ARTIFACTS, ids=lambda p: p.name)
@@ -120,7 +135,7 @@ def test_shipped_artifacts_never_use_at_latest(artifact: Path) -> None:
 def test_discovery_copy_has_resolvable_version_pin() -> None:
     """The committed discovery copy must pin a real, PyPI-installable version.
 
-    `npx skills add jlevy/flowmark` users have no other source of truth for the
+    `npx skills add jlevy/flowmark@flowmark` users have no other source of truth for the
     bootstrap invocation, so a `<version>` placeholder or `.dev`/local-suffix pin
     in the committed copy would silently break the cross-agent install promise in
     the README.

@@ -23,7 +23,7 @@ from strif import atomic_output_file
 # which artifact. Bump this whenever the shape of any generated artifact changes —
 # a future flowmark uses the stamp to detect older shapes and safely upgrade them
 # (and refuses to clobber a newer format it doesn't understand).
-FLOWMARK_FORMAT = "f02"
+FLOWMARK_FORMAT = "f03"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CROSS-IMPLEMENTATION PORTING CONTRACT (read before porting to flowmark-rs)
@@ -61,7 +61,7 @@ _VERSION_PLACEHOLDER = "__FLOWMARK_VERSION__"  # this package (flowmark, Python)
 _RS_VERSION_PLACEHOLDER = "__FLOWMARK_RS_VERSION__"  # sibling Rust port (flowmark-rs)
 
 # Concrete released-version pin baked into the committed repo-root discovery copy
-# (`skills/flowmark/SKILL.md`), the artifact `npx skills add jlevy/flowmark` and
+# (`skills/flowmark/SKILL.md`), the artifact `npx skills add jlevy/flowmark@flowmark` and
 # skill indexers consume without flowmark needing to be pre-installed. Must be a
 # real, PyPI-installable version — never a `<version>` placeholder or a `.dev`/
 # local-suffix string — so the bootstrap `uvx --from flowmark==<X.Y.Z>` example
@@ -80,7 +80,7 @@ DISCOVERY_VERSION = "0.7.2"
 # `uvx --from flowmark-rs==<X.Y.Z> flowmark` bootstrap actually resolves.
 # Rust port: roles swap — the port pins flowmark-rs dynamically (its own build) and keeps
 # a sibling flowmark (Python) discovery constant here instead. See the porting contract.
-FLOWMARK_RS_DISCOVERY_VERSION = "0.3.0"
+FLOWMARK_RS_DISCOVERY_VERSION = "0.3.1"
 
 
 def get_skill_content() -> str:
@@ -99,6 +99,14 @@ def get_skill_content() -> str:
 
     skill_file = files("flowmark").joinpath("skills/SKILL.md")
     return skill_file.read_text(encoding="utf-8")
+
+
+def get_project_setup_content() -> str:
+    """Read the authored project-setup reference from package data."""
+    from importlib.resources import files
+
+    reference_file = files("flowmark").joinpath("skills/references/project-setup.md")
+    return reference_file.read_text(encoding="utf-8")
 
 
 # An exact-pinnable published PyPI release: a plain release segment (digits and
@@ -161,6 +169,12 @@ def compose_skill(version: str | None = None) -> str:
     )
 
 
+def compose_project_setup(rs_version: str | None = None) -> str:
+    """Render the project-setup reference with a concrete Rust-port runner pin."""
+    pin = FLOWMARK_RS_DISCOVERY_VERSION if rs_version is None else rs_version
+    return get_project_setup_content().replace(_RS_VERSION_PLACEHOLDER, pin)
+
+
 def get_docs_content() -> str:
     """Read README.md from the repository root.
 
@@ -204,9 +218,12 @@ def _format_num() -> int:
     return int(FLOWMARK_FORMAT.lstrip("f"))
 
 
-def _generated_marker() -> str:
+def _generated_marker(surface: str) -> str:
     # No internal `.` so flowmark’s sentence-wrap leaves the line intact.
-    return f"<!-- DO NOT EDIT: `flowmark --install-skill` (format={FLOWMARK_FORMAT} surface=skill-md) -->"
+    return (
+        "<!-- DO NOT EDIT: `flowmark --install-skill` "
+        f"(format={FLOWMARK_FORMAT} surface={surface}) -->"
+    )
 
 
 def render_skill_file(version: str | None = None) -> str:
@@ -216,13 +233,19 @@ def render_skill_file(version: str | None = None) -> str:
     first and the marker survives a `flowmark --auto` pass).
     """
     composed = compose_skill(version)
-    marker = _generated_marker()
+    marker = _generated_marker("skill-md")
     delimiter = "\n---\n"
     if composed.startswith("---\n") and (end := composed.find(delimiter, 4)) != -1:
         head = composed[: end + len(delimiter)]
         body = composed[end + len(delimiter) :]
         return f"{head}{marker}\n\n{body}"
     return f"{marker}\n\n{composed}"
+
+
+def render_project_setup_file(rs_version: str | None = None) -> str:
+    """Render the generated project-setup reference installed beside `SKILL.md`."""
+    marker = _generated_marker("skill-reference")
+    return f"{marker}\n\n{compose_project_setup(rs_version)}"
 
 
 def discovery_skill_text() -> str:
@@ -234,6 +257,11 @@ def discovery_skill_text() -> str:
     Install-time copies, by contrast, pin to the actually-installed version.
     """
     return render_skill_file(DISCOVERY_VERSION)
+
+
+def discovery_project_setup_text() -> str:
+    """The reference bundled with the committed `skills/flowmark/` discovery skill."""
+    return render_project_setup_file(FLOWMARK_RS_DISCOVERY_VERSION)
 
 
 def _existing_format(path: Path) -> int | None:
@@ -337,17 +365,32 @@ def update_agents_md(path: Path, version: str | None = None) -> InstallResult:
     return InstallResult(surface, path, action)
 
 
-def _write_surface(skill_dir: Path, surface: str, content: str) -> InstallResult:
+def _write_surface(
+    skill_dir: Path,
+    surface: str,
+    content: str,
+    project_setup_content: str,
+) -> InstallResult:
     target = skill_dir / "SKILL.md"
-    existing = _existing_format(target)
+    project_setup_target = skill_dir / "references" / "project-setup.md"
+    existing_formats = [_existing_format(target), _existing_format(project_setup_target)]
     # Forward-compatibility guard: never clobber an artifact stamped with a newer format.
-    if existing is not None and existing > _format_num():
+    if any(existing is not None and existing > _format_num() for existing in existing_formats):
         return InstallResult(surface, target, "blocked-newer")
-    if target.is_file() and target.read_text(encoding="utf-8") == content:
+    skill_matches = target.is_file() and target.read_text(encoding="utf-8") == content
+    reference_matches = (
+        project_setup_target.is_file()
+        and project_setup_target.read_text(encoding="utf-8") == project_setup_content
+    )
+    if skill_matches and reference_matches:
         return InstallResult(surface, target, "unchanged")
-    action = "updated" if target.exists() else "installed"
-    with atomic_output_file(target, make_parents=True) as tmp:
-        Path(tmp).write_text(content, encoding="utf-8")
+    action = "updated" if target.exists() or project_setup_target.exists() else "installed"
+    if not skill_matches:
+        with atomic_output_file(target, make_parents=True) as tmp:
+            Path(tmp).write_text(content, encoding="utf-8")
+    if not reference_matches:
+        with atomic_output_file(project_setup_target, make_parents=True) as tmp:
+            Path(tmp).write_text(project_setup_content, encoding="utf-8")
     return InstallResult(surface, target, action)
 
 
@@ -373,6 +416,7 @@ def install_skill(
     """
     try:
         content = render_skill_file()
+        project_setup_content = render_project_setup_file()
     except (ImportError, FileNotFoundError) as e:
         print(f"\n✗ Error: Could not load skill content: {e}", file=sys.stderr)
         print("\nThis command requires flowmark to be installed as a package.", file=sys.stderr)
@@ -388,19 +432,36 @@ def install_skill(
     try:
         if agent_base is not None:
             base = Path(agent_base).resolve()
-            results.append(_write_surface(base / "skills" / SKILL_DIRNAME, str(base), content))
+            results.append(
+                _write_surface(
+                    base / "skills" / SKILL_DIRNAME,
+                    str(base),
+                    content,
+                    project_setup_content,
+                )
+            )
         else:
             root = Path(project_root).resolve() if project_root is not None else Path.cwd()
             project_local_root = root
             if SURFACE_PORTABLE in selected:
                 results.append(
-                    _write_surface(root / PORTABLE_SKILL_REL, ".agents/skills (portable)", content)
+                    _write_surface(
+                        root / PORTABLE_SKILL_REL,
+                        ".agents/skills (portable)",
+                        content,
+                        project_setup_content,
+                    )
                 )
             if SURFACE_AGENTS_MD in selected:
                 results.append(update_agents_md(root / "AGENTS.md"))
             if SURFACE_CLAUDE in selected:
                 results.append(
-                    _write_surface(root / CLAUDE_SKILL_REL, ".claude/skills (Claude Code)", content)
+                    _write_surface(
+                        root / CLAUDE_SKILL_REL,
+                        ".claude/skills (Claude Code)",
+                        content,
+                        project_setup_content,
+                    )
                 )
     except PermissionError as e:
         print(f"\n✗ Permission denied: {e}", file=sys.stderr)
