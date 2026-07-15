@@ -557,11 +557,15 @@ own.
 
 ### How to Install the Skill
 
+The main [Flowmark repository](https://github.com/jlevy/flowmark) owns the public skill
+bundle and its documentation.
+The Rust repository supplies the recommended fast implementation, not a second skill
+distribution.
+
 There are three install paths, ordered by what most users want first:
 
-**1. Cross-agent package manager (no flowmark prerequisite).** If you just want the
-skill on disk for any supported agent and don’t already have flowmark, use the
-`skills.sh` installer.
+**1. Install from the main Flowmark repository (recommended).** If you just want the
+skill on disk for any supported agent, use the `skills.sh` installer.
 It copies the published discovery copy into `.agents/skills/` and symlinks it into each
 agent’s native location (Claude Code, Codex, Cursor, Copilot, Gemini, …). The discovery
 copy bootstraps its own pinned `uvx` invocation, so no prior flowmark install is
@@ -571,8 +575,9 @@ required:
 npx skills add jlevy/flowmark@flowmark
 ```
 
-**2. Direct install via the flowmark CLI (recommended once you have flowmark).** Run
-from the repo root.
+**2. Direct install via either flowmark CLI.** Run from the repo root.
+The Python and Rust CLIs install the same skill bundle; this path is useful when either
+implementation is already available.
 By default this writes all three project-local surfaces: the portable
 `.agents/skills/flowmark/` (read by Codex, Gemini CLI, pi, and others), the
 `.claude/skills/flowmark/` mirror (Claude Code reads only that path), and a compact

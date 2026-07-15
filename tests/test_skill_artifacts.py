@@ -76,6 +76,14 @@ def test_discovery_skill_bundles_its_project_setup_reference() -> None:
     assert DISCOVERY_REFERENCE.is_file()
 
 
+def test_readme_uses_main_repository_for_skill_distribution() -> None:
+    """The Python repository is the sole public discovery and documentation source."""
+    text = README.read_text(encoding="utf-8")
+    assert "npx skills add jlevy/flowmark@flowmark" in text
+    assert "jlevy/flowmark-rs@flowmark" not in text
+    assert "github.com/jlevy/flowmark/blob/main/skills/flowmark/SKILL.md" in text
+
+
 def test_project_setup_hooks_cover_common_markdown_extensions() -> None:
     reference = DISCOVERY_REFERENCE.read_text(encoding="utf-8")
     assert 'glob: "*.{md,mdc,markdown}"' in reference

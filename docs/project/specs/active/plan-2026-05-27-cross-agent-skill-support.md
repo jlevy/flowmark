@@ -48,10 +48,14 @@ deterministic, formatter-stable output.
   alternative.
 - **Public discovery**: generate a repo-root `skills/flowmark/` bundle from the same
   sources (drift-tested) so `npx skills add jlevy/flowmark@flowmark` and GitHub skill
-  indexers pick it up (§6.8).
+  indexers pick it up (§6.8). The main Flowmark repository is the sole public
+  skill-distribution and documentation source; flowmark-rs provides the recommended
+  executable implementation.
 - **One source of truth**: every surface (portable, Claude mirror, repo-root discovery
   copy, `AGENTS.md` block) is generated from a single authored body so they cannot
-  drift.
+  drift. The Rust port vendors that authored bundle only for `--skill` /
+  `--install-skill` compatibility and tests it byte-for-byte against its pinned Flowmark
+  submodule; it does not publish a second repo-root discovery bundle.
 
 ## Non-Goals
 
@@ -69,6 +73,9 @@ deterministic, formatter-stable output.
 - **Global/user installs by default.** Writing `~/.claude`, `~/.agents/skills/`, etc.
   stays an explicit, separately-flagged action, never something the project-local
   default does silently.
+- **A second public skill bundle in flowmark-rs.** The Rust CLI may install its vendored
+  runtime mirror, but discovery, `npx skills add`, and the main documentation all point
+  to `jlevy/flowmark`.
 
 ## Background
 
