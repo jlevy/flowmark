@@ -373,10 +373,11 @@ def _write_surface(
 ) -> InstallResult:
     target = skill_dir / "SKILL.md"
     project_setup_target = skill_dir / "references" / "project-setup.md"
-    existing_formats = [_existing_format(target), _existing_format(project_setup_target)]
     # Forward-compatibility guard: never clobber an artifact stamped with a newer format.
-    if any(existing is not None and existing > _format_num() for existing in existing_formats):
-        return InstallResult(surface, target, "blocked-newer")
+    for artifact in (target, project_setup_target):
+        existing_format = _existing_format(artifact)
+        if existing_format is not None and existing_format > _format_num():
+            return InstallResult(surface, artifact, "blocked-newer")
     skill_matches = target.is_file() and target.read_text(encoding="utf-8") == content
     reference_matches = (
         project_setup_target.is_file()

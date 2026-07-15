@@ -62,7 +62,7 @@ Lefthook can format and stage Markdown without turning style into a separate fai
 pre-commit:
   commands:
     flowmark:
-      glob: "*.md"
+      glob: "*.{md,mdc,markdown}"
       run: uvx --from flowmark-rs==0.3.1 flowmark --auto --force-exclude {staged_files}
       stage_fixed: true
 ```
@@ -81,12 +81,13 @@ repos:
         name: flowmark
         entry: uvx --from flowmark-rs==0.3.1 flowmark --auto --force-exclude
         language: system
-        types: [markdown]
+        files: '\.(md|mdc|markdown)$'
 ```
 
-The `pre-commit` framework stops the first commit after modifying files; stage the fixes
-and retry. Use Lefthook with `stage_fixed: true` when transparent auto-staging is
-preferred.
+Keep both hook selectors aligned with any Markdown extensions the repository discovers
+through `--extend-include`. The `pre-commit` framework stops the first commit after
+modifying files; stage the fixes and retry.
+Use Lefthook with `stage_fixed: true` when transparent auto-staging is preferred.
 
 ## Disable Competing Markdown Formatters
 

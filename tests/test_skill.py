@@ -279,6 +279,7 @@ class TestInstallSkill:
         results = install_skill(project_root=tmp_path, surfaces=frozenset({SURFACE_CLAUDE}))
 
         assert [r.action for r in results] == ["blocked-newer"]
+        assert results[0].path == target
         assert target.read_text() == "<!-- format=f99 surface=skill-reference -->\nnewer"
         assert not (skill_dir / "SKILL.md").exists()
 

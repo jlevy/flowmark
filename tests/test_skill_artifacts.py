@@ -76,6 +76,12 @@ def test_discovery_skill_bundles_its_project_setup_reference() -> None:
     assert DISCOVERY_REFERENCE.is_file()
 
 
+def test_project_setup_hooks_cover_common_markdown_extensions() -> None:
+    reference = DISCOVERY_REFERENCE.read_text(encoding="utf-8")
+    assert 'glob: "*.{md,mdc,markdown}"' in reference
+    assert "files: '\\.(md|mdc|markdown)$'" in reference
+
+
 @pytest.mark.parametrize("artifact", _PINNED_ARTIFACTS, ids=lambda p: p.name)
 def test_shipped_artifacts_pin_discovery_version(artifact: Path) -> None:
     """Every concrete `flowmark==` pin in a shipped artifact equals DISCOVERY_VERSION.
