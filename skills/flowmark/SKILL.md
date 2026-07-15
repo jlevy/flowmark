@@ -40,8 +40,10 @@ uvx --from flowmark==0.7.2 flowmark --auto FILE
 
 ## Adopt Flowmark in a Repository
 
-For a repository-wide migration, Makefile wiring, `.flowmarkignore`, commit hooks, CI
-policy, and disabling Prettier or other competing Markdown formatters, read
+If this skill came from `flowmark --skill`, run the same runner with `--install-skill`
+from the project root to materialize the complete bundle.
+Then, for a repository-wide migration, Makefile wiring, `.flowmarkignore`, commit hooks,
+CI policy, and disabling Prettier or other competing Markdown formatters, read
 [project-setup.md](references/project-setup.md) in full before editing.
 
 ## Full Documentation

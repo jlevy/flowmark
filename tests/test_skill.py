@@ -108,6 +108,7 @@ class TestComposeSkill:
         # Routes to the self-documenting CLI.
         assert "flowmark --help" in content
         assert "flowmark --docs" in content
+        assert "same runner with `--install-skill`" in content
         # Does not duplicate the editor-setup recipe that --docs already covers.
         assert "emeraldwalk.runonsave" not in content
 
@@ -281,6 +282,17 @@ class TestInstallSkill:
         assert [r.action for r in results] == ["blocked-newer"]
         assert results[0].path == target
         assert target.read_text() == "<!-- format=f99 surface=skill-reference -->\nnewer"
+        assert not (skill_dir / "SKILL.md").exists()
+
+    def test_install_does_not_publish_skill_before_reference(self, tmp_path: Path) -> None:
+        skill_dir = tmp_path / ".claude" / "skills" / "flowmark"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "references").write_text("not a directory", encoding="utf-8")
+
+        with pytest.raises(SystemExit) as exc_info:
+            install_skill(project_root=tmp_path, surfaces=frozenset({SURFACE_CLAUDE}))
+
+        assert exc_info.value.code == 1
         assert not (skill_dir / "SKILL.md").exists()
 
 

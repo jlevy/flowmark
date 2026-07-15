@@ -386,12 +386,19 @@ def _write_surface(
     if skill_matches and reference_matches:
         return InstallResult(surface, target, "unchanged")
     action = "updated" if target.exists() or project_setup_target.exists() else "installed"
-    if not skill_matches:
-        with atomic_output_file(target, make_parents=True) as tmp:
-            Path(tmp).write_text(content, encoding="utf-8")
-    if not reference_matches:
+    if not skill_matches and not reference_matches:
+        # Stage both files, then publish the reference first so SKILL.md never links to
+        # an artifact that failed to materialize.
+        with atomic_output_file(target, make_parents=True) as skill_tmp:
+            Path(skill_tmp).write_text(content, encoding="utf-8")
+            with atomic_output_file(project_setup_target, make_parents=True) as reference_tmp:
+                Path(reference_tmp).write_text(project_setup_content, encoding="utf-8")
+    elif not reference_matches:
         with atomic_output_file(project_setup_target, make_parents=True) as tmp:
             Path(tmp).write_text(project_setup_content, encoding="utf-8")
+    elif not skill_matches:
+        with atomic_output_file(target, make_parents=True) as tmp:
+            Path(tmp).write_text(content, encoding="utf-8")
     return InstallResult(surface, target, action)
 
 
