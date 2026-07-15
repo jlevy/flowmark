@@ -14,6 +14,13 @@ on:
 permissions:
   contents: read
 
+env:
+  # Supply-chain cool-off: only consider releases older than this, so CI never
+  # resolves packages too new to have been vetted. uv (>= 0.9, and the version
+  # pinned below) accepts a relative duration directly. See the Supply Chain
+  # Hardening section in docs/development.md.
+  UV_EXCLUDE_NEWER: "14 days"
+
 jobs:
   build:
     strategy:
@@ -22,37 +29,33 @@ jobs:
 
         # Common platforms: ["ubuntu-latest", "macos-latest", "windows-latest"]
         os: ["ubuntu-latest"]
-        python-version: ["3.10","3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     # Linux only by default. Use ${{ matrix.os }} for other OSes.
     runs-on: ${{ matrix.os }}
-
-    env:
-      # 14-day install cool-off for any resolution in CI (e.g. the pinned pip-audit
-      # tool below). The friendly duration needs uv >= 0.9 (we pin a newer uv).
-      # `uv sync --frozen` does not re-resolve, so this is belt-and-suspenders for it.
-      # NOTE: deliberately NOT setting UV_NO_BUILD — it blocks building the editable
-      # local package and breaks `uv sync`. See SUPPLY-CHAIN-SECURITY.md.
-      UV_EXCLUDE_NEWER: "14 days"
 
     steps:
       # Generally following uv docs:
       # https://docs.astral.sh/uv/guides/integration/github/
 
       - name: Checkout (official GitHub action)
-        uses: actions/checkout@v6
+        # Pinned to a full commit SHA (see supply-chain notes in
+        # docs/development.md); bump deliberately when updating.
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           # Important for versioning plugins:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Install uv (official Astral action)
-        # Pinned to a full, immutable version tag. As of v8, setup-uv no longer
-        # publishes floating major/minor tags (e.g. `@v8`), so bump this exact
-        # version when updating.
-        uses: astral-sh/setup-uv@v8.1.0
+        # Pinned to a full commit SHA. Bump the action, uv version, and Linux
+        # checksum together when updating.
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           # Update this as needed:
-          version: "0.11.13"
+          version: "0.11.25"
+          # uv-x86_64-unknown-linux-gnu; update for another matrix OS/arch.
+          checksum: "1db18b5e76fa645a7f3865773139bdec8e2d46adbdbb35e7410b34fa8015ccd2"
           enable-cache: true
           python-version: ${{ matrix.python-version }}
 
@@ -60,15 +63,16 @@ jobs:
         run: uv python install
 
       # Alternately can use the official Python action:
+      # Pin a reviewed full commit SHA before enabling it.
       # - name: Set up Python (using actions/setup-python)
-      #   uses: actions/setup-python@v5
+      #   uses: actions/setup-python@FULL_COMMIT_SHA # reviewed version
       #   with:
       #     python-version: ${{ matrix.python-version }}
 
       - name: Install all dependencies
-        # --frozen: install exactly from uv.lock, never re-resolving in CI.
-        # See SUPPLY-CHAIN-SECURITY.md.
-        run: uv sync --all-extras --frozen
+        # --frozen: install exactly from the committed uv.lock, never re-resolving
+        # (UV_EXCLUDE_NEWER, set above, governs any resolution that does happen).
+        run: uv sync --all-extras --all-groups --frozen
 
       - name: Run linting
         # Check-only mode so CI fails on unformatted code instead of fixing it.
@@ -76,17 +80,15 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
-
       - name: Audit dependencies (pip-audit)
         # Audit the locked deps with a pinned, isolated pip-audit so the scanner's own
         # (large) transitive tree never enters uv.lock or our cool-off/audit surface.
+        # The export is complete and hashed, so disable pip resolution and its temporary
+        # venv; this also avoids executing ensurepip under the managed Python matrix.
         # See SUPPLY-CHAIN-SECURITY.md and upstream guidelines/hardening-pypi.md.
-        # Non-blocking for now; flip continue-on-error to false once the advisory
-        # backlog is cleared.
-        continue-on-error: true
         run: |
-          uv export --frozen --no-emit-project --all-extras --format requirements-txt > /tmp/reqs.txt
-          uvx --from "pip-audit==2.10.0" pip-audit -r /tmp/reqs.txt
+          uv export --frozen --no-emit-project --all-extras --all-groups --format requirements-txt > /tmp/reqs.txt
+          uvx --from "pip-audit==2.10.0" pip-audit --disable-pip -r /tmp/reqs.txt
 
       - name: Check golden coverage
         run: bash scripts/check-golden-coverage.sh

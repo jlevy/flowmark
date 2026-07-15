@@ -5,9 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pathspec
+from pathspec.pattern import Pattern
+
+_PathSpec = pathspec.PathSpec[Pattern]
 
 
-def _read_ignore_file(path: Path) -> pathspec.PathSpec | None:
+def _read_ignore_file(path: Path) -> _PathSpec | None:
     """
     Read an ignore file (gitignore syntax), stripping comments and blanks.
     Returns a compiled PathSpec, or None if the file has no active rules or
@@ -25,7 +28,7 @@ def _read_ignore_file(path: Path) -> pathspec.PathSpec | None:
     return pathspec.PathSpec.from_lines("gitignore", lines)
 
 
-def load_gitignore(directory: Path) -> pathspec.PathSpec | None:
+def load_gitignore(directory: Path) -> _PathSpec | None:
     """
     Read `.gitignore` in the given directory and return a compiled `PathSpec`,
     or `None` if the file doesn't exist or is empty.
@@ -36,7 +39,7 @@ def load_gitignore(directory: Path) -> pathspec.PathSpec | None:
     return _read_ignore_file(gitignore)
 
 
-def load_tool_ignore(tool_name: str, start_dir: Path) -> pathspec.PathSpec | None:
+def load_tool_ignore(tool_name: str, start_dir: Path) -> _PathSpec | None:
     """
     Walk up from `start_dir` looking for `.{tool_name}ignore` (e.g., `.flowmarkignore`).
     Returns compiled `PathSpec` from first found, or `None`.

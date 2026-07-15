@@ -1,8 +1,18 @@
 # Makefile for easy development workflows.
-# See development.md for docs.
+# See docs/development.md for docs.
 # Note GitHub Actions call uv directly, not this Makefile.
 
 .DEFAULT_GOAL := default
+
+# Safe default for every dependency resolution invoked through this Makefile.
+UV_EXCLUDE_NEWER ?= 14 days
+export UV_EXCLUDE_NEWER
+
+# Keep user-level uv settings (including package-specific cool-off exceptions) out of
+# the committed lockfile. Project metadata is still read from pyproject.toml; the
+# cool-off is supplied explicitly above.
+UV_NO_CONFIG ?= 1
+export UV_NO_CONFIG
 
 .PHONY: default install lint lint-check test test-golden test-golden-coverage upgrade build clean \
         format format-docs generate generate-readme generate-skill validate-skill \
@@ -52,7 +62,7 @@ check-release-pin:
 	uv run python scripts/check-release-pin.py $(if $(VERSION),--expected $(VERSION),)
 
 install:
-	uv sync --all-extras
+	uv sync --all-extras --all-groups
 
 lint:
 	uv run python devtools/lint.py
@@ -72,15 +82,16 @@ test-golden-coverage:
 	bash scripts/check-golden-coverage.sh
 
 upgrade:
-	uv sync --upgrade --all-extras --dev
+	uv sync --upgrade --all-extras --all-groups
 
-build:
-	uv build
+build: install
+	uv build --no-build-isolation
 
 clean:
 	-rm -rf dist/
 	-rm -rf *.egg-info/
 	-rm -rf .pytest_cache/
+	-rm -rf .ruff_cache/
 	-rm -rf .mypy_cache/
 	-rm -rf .venv/
 	-find . -type d -name "__pycache__" -exec rm -rf {} +

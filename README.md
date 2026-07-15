@@ -39,15 +39,15 @@ Both Python and Rust versions are best installed with
 No install needed for one-off usage:
 
 ```shell
-uvx --from flowmark-rs==0.3.1 flowmark --help
-uvx --from flowmark-rs==0.3.1 flowmark --auto somefile.md
-uvx --from flowmark==0.7.2 flowmark --help  # Python reference
+uvx --from flowmark-rs==0.3.2 flowmark --help
+uvx --from flowmark-rs==0.3.2 flowmark --auto somefile.md
+uvx --from flowmark==0.7.3 flowmark --help  # Python reference
 ```
 
 ### Install as a Global CLI
 
 ```shell
-uv tool install flowmark-rs==0.3.1  # Native Rust CLI
+uv tool install flowmark-rs==0.3.2  # Native Rust CLI
 flowmark --auto somefile.md                         # One file
 flowmark --auto .                                   # Whole tree
 ```
@@ -65,7 +65,7 @@ Hand your agent this one instruction:
 Or install the skill into `.agents/`, `.claude/`, and `AGENTS.md` directly:
 
 ```bash
-uvx --from flowmark-rs==0.3.1 flowmark --install-skill
+uvx --from flowmark-rs==0.3.2 flowmark --install-skill
 ```
 
 See [How to Install the Skill](#how-to-install-the-skill) for the available surfaces.
@@ -533,7 +533,7 @@ For batch formatting an entire project, use `flowmark --auto .` from the termina
 Use one pinned Rust command everywhere:
 
 ```bash
-uvx --from flowmark-rs==0.3.1 flowmark --auto .
+uvx --from flowmark-rs==0.3.2 flowmark --auto .
 ```
 
 Keep generated, vendored, and byte-exact Markdown in `.flowmarkignore`; disable Markdown
@@ -637,7 +637,7 @@ In ephemeral or cloud agent environments where nothing is installed, run it via 
 a newer release):
 
 ```bash
-uvx --from flowmark-rs==0.3.1 flowmark --auto README.md
+uvx --from flowmark-rs==0.3.2 flowmark --auto README.md
 ```
 
 ## How Does Flowmark Compare to Other Markdown Auto-Formatters?
