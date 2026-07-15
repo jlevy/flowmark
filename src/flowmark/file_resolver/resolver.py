@@ -12,9 +12,12 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 import pathspec
+from pathspec.pattern import Pattern
 
 from flowmark.file_resolver.gitignore import load_gitignore, load_tool_ignore
 from flowmark.file_resolver.types import FileResolverConfig
+
+_PathSpec = pathspec.PathSpec[Pattern]
 
 # Characters that indicate a path is a glob pattern rather than a literal path.
 _GLOB_CHARS = frozenset("*?[")
@@ -31,15 +34,15 @@ class FileResolver:
 
     def __init__(self, config: FileResolverConfig) -> None:
         self._config: FileResolverConfig = config
-        self._exclude_spec: pathspec.PathSpec = pathspec.PathSpec.from_lines(
+        self._exclude_spec: _PathSpec = pathspec.PathSpec.from_lines(
             "gitignore", config.effective_exclude
         )
-        self._include_spec: pathspec.PathSpec = pathspec.PathSpec.from_lines(
+        self._include_spec: _PathSpec = pathspec.PathSpec.from_lines(
             "gitignore", config.effective_include
         )
-        self._tool_ignore_cache: dict[Path, pathspec.PathSpec | None] = {}
+        self._tool_ignore_cache: dict[Path, _PathSpec | None] = {}
         # Cache gitignore specs per directory to avoid re-reading from disk.
-        self._gitignore_cache: dict[Path, pathspec.PathSpec | None] = {}
+        self._gitignore_cache: dict[Path, _PathSpec | None] = {}
 
     def resolve(self, paths: Sequence[str | Path]) -> list[Path]:
         """
@@ -96,7 +99,7 @@ class FileResolver:
             return False
         return True
 
-    def _spec_matches_path(self, spec: pathspec.PathSpec, path: Path) -> bool:
+    def _spec_matches_path(self, spec: _PathSpec, path: Path) -> bool:
         """
         Match an explicitly-named file against a gitignore-style spec, checking the
         basename, the path relative to cwd (so multi-component patterns like `docs/api/`
@@ -134,7 +137,7 @@ class FileResolver:
             ]
 
             # Collect gitignore specs for this directory (including ancestors)
-            gitignore_specs: list[pathspec.PathSpec] = []
+            gitignore_specs: list[_PathSpec] = []
             if self._config.respect_gitignore:
                 gitignore_specs = self._get_gitignore_chain(current, root)
 
@@ -156,7 +159,7 @@ class FileResolver:
         dirname: str,
         rel_path: Path,
         current_dir: Path,
-        tool_ignore: pathspec.PathSpec | None,
+        tool_ignore: _PathSpec | None,
         walk_root: Path | None = None,
     ) -> bool:
         """Check if a directory should be pruned during traversal."""
@@ -207,15 +210,15 @@ class FileResolver:
         except OSError:
             return False
 
-    def _get_gitignore(self, directory: Path) -> pathspec.PathSpec | None:
+    def _get_gitignore(self, directory: Path) -> _PathSpec | None:
         """Load and cache gitignore for a directory."""
         if directory not in self._gitignore_cache:
             self._gitignore_cache[directory] = load_gitignore(directory)
         return self._gitignore_cache[directory]
 
-    def _get_gitignore_chain(self, directory: Path, walk_root: Path) -> list[pathspec.PathSpec]:
+    def _get_gitignore_chain(self, directory: Path, walk_root: Path) -> list[_PathSpec]:
         """Collect all gitignore specs from walk_root down to directory (inclusive)."""
-        specs: list[pathspec.PathSpec] = []
+        specs: list[_PathSpec] = []
         resolved_root = walk_root.resolve()
         resolved_dir = directory.resolve()
         # Walk from root down to current directory
@@ -233,7 +236,7 @@ class FileResolver:
             current = current / next_part
         return specs
 
-    def _get_tool_ignore(self, start_dir: Path) -> pathspec.PathSpec | None:
+    def _get_tool_ignore(self, start_dir: Path) -> _PathSpec | None:
         """Lazily load tool-specific ignore file, cached per resolved start directory."""
         resolved = start_dir.resolve()
         if resolved not in self._tool_ignore_cache:

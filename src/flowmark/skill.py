@@ -69,7 +69,7 @@ _RS_VERSION_PLACEHOLDER = "__FLOWMARK_RS_VERSION__"  # sibling Rust port (flowma
 # version (see docs/publishing.md release checklist) and re-run `make format`.
 # Rust port: this becomes flowmark-rs's own release version — see the porting
 # contract above.
-DISCOVERY_VERSION = "0.7.2"
+DISCOVERY_VERSION = "0.7.3"
 
 # Recommended pin for the fast Rust port (github.com/jlevy/flowmark-rs) — the default the
 # skill suggests. flowmark and flowmark-rs are SEPARATE PyPI packages with independent
@@ -80,7 +80,7 @@ DISCOVERY_VERSION = "0.7.2"
 # `uvx --from flowmark-rs==<X.Y.Z> flowmark` bootstrap actually resolves.
 # Rust port: roles swap — the port pins flowmark-rs dynamically (its own build) and keeps
 # a sibling flowmark (Python) discovery constant here instead. See the porting contract.
-FLOWMARK_RS_DISCOVERY_VERSION = "0.3.1"
+FLOWMARK_RS_DISCOVERY_VERSION = "0.3.2"
 
 
 def get_skill_content() -> str:

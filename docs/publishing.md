@@ -18,12 +18,19 @@ This part is a little confusing the first time.
 Here is the simplest way to do it.
 For the purposes of this example replace OWNER and PROJECT with the right values.
 
+**Note:** These steps assume you already have a GitHub repo with your code pushed.
+If not, create an **empty** GitHub repo (no README, no .gitignore, no license; the
+template already provides these) and push your code to it.
+See the
+[README](https://github.com/jlevy/simple-modern-uv#option-2-use-copier-and-git-yourself)
+for details.
+
 1. **Get a PyPI account** at [pypi.org](https://pypi.org/) and sign in.
 
 2. **Pick a name for the project** that isn’t already taken.
 
    - Go to `https://pypi.org/project/PROJECT` to see if another project with that name
-     already exits.
+     already exists.
 
    - If needed, update your `pyproject.toml` with the correct name.
 
@@ -86,8 +93,9 @@ Follow this checklist for each new release.
 2. **Run linting and tests locally:**
 
    ```shell
-   make lint
+   make lint-check
    make test
+   make build
    ```
 
 3. **Confirm CI is passing on `main`:**

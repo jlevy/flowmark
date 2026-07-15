@@ -16,19 +16,28 @@ The `Makefile` simply offers shortcuts to `uv` commands for developer convenienc
 (For clarity, GitHub Actions don’t use the Makefile and just call `uv` directly.)
 
 ```shell
+# Apply the supply-chain cool-off to direct uv commands below. The Makefile sets
+# the same default and ignores user-level uv configuration so local package
+# exceptions cannot leak into the committed lockfile.
+export UV_EXCLUDE_NEWER="14 days"
+export UV_NO_CONFIG=1
+
 # First, install all dependencies and set up your virtual environment.
-# This simply runs `uv sync --all-extras` to install all packages,
-# including dev dependencies and optional dependencies.
+# This runs `uv sync --all-extras --all-groups` to install runtime, development,
+# optional, and locked build dependencies.
 make install
 
-# Run uv sync, lint, and test (and also generate agent rules):
+# Generate artifacts, install, lint, and test:
 make
 
 # Build wheel:
 make build
 
-# Linting:
+# Linting (auto-fixes formatting and lint issues):
 make lint
+
+# Linting in check-only mode, matching CI (fails on issues, does not modify files):
+make lint-check
 
 # Run tests:
 make test
@@ -57,15 +66,13 @@ uv tool install --editable .
 
 # Dependency management directly with uv:
 # Add a new dependency:
-uv add package_name
+uv add --exclude-newer "14 days" package_name
 # Add a development dependency:
-uv add --dev package_name
+uv add --dev --exclude-newer "14 days" package_name
 # Update to latest compatible versions (including dependencies on git repos):
 uv sync --upgrade
 # Update a specific package:
 uv lock --upgrade-package package_name
-# Update dependencies on a package:
-uv add package_name@latest
 
 # Run a shell within the Python environment:
 uv venv
@@ -73,17 +80,6 @@ source .venv/bin/activate
 ```
 
 See [uv docs](https://docs.astral.sh/uv/) for details.
-
-## Agent Rules
-
-See [.cursor/rules](.cursor/rules) for agent rules.
-These are written for [Cursor](https://www.cursor.com/) but are also used by other
-agents because the Makefile will generate `CLAUDE.md` and `AGENTS.md` from the same
-rules.
-
-```shell
-make agent-rules
-```
 
 ## IDE Setup
 
@@ -95,6 +91,32 @@ extensions:
 - [Based Pyright](https://marketplace.visualstudio.com/items?itemName=detachhead.basedpyright)
   for type checking. Note that this extension works with non-Microsoft VSCode forks like
   Cursor.
+
+## Supply Chain Hardening
+
+Dependencies are an attack surface.
+Before adding or upgrading any dependency, read the repository’s
+[supply-chain policy](../SUPPLY-CHAIN-SECURITY.md) and follow
+[**supply-chain-hardening**](https://github.com/jlevy/supply-chain-hardening), a concise
+cross-ecosystem guide on installing dependencies safely.
+Its key defaults:
+
+- **Cool-off period:** Don’t install or upgrade to a release less than 14 days old
+  (absent a documented exception); most malicious publishes are caught within days.
+  For uv, set `UV_EXCLUDE_NEWER` to a cool-off window (recent uv accepts a relative
+  duration like `"14 days"`); this project sets it in `pyproject.toml`, CI, and the
+  Makefile so direct commands and standard workflows default to the same policy.
+  Override it explicitly for a stricter window, such as
+  `UV_EXCLUDE_NEWER="30 days" make upgrade`. A reviewed emergency exception must be
+  equally explicit, using `UV_EXCLUDE_NEWER="0 days"` only for that invocation and
+  recording why the normal gate was bypassed.
+
+- **Vet before adding:** Confirm the package is actually needed and its name is spelled
+  correctly (typosquats are common), and prefer a little first-party code over a new
+  dependency.
+
+- **Pin, lock, and audit:** Commit your `uv.lock`, pin GitHub Actions to a commit SHA or
+  immutable tag, and run a vulnerability audit (e.g. `pip-audit`) after changes.
 
 ## Publishing Releases
 

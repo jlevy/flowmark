@@ -8,13 +8,22 @@ Before adding or upgrading any dependency, read
 [SUPPLY-CHAIN-SECURITY.md](SUPPLY-CHAIN-SECURITY.md) (14-day cool-off, frozen lockfile,
 pinned runners).
 
+This project uses [uv](https://docs.astral.sh/uv/) for Python and dependency management.
+Use the `Makefile` for the standard workflows:
 
-<!-- BEGIN TBD INTEGRATION format=f04 surface=agents-md -->
+```bash
+make install     # Install all locked dependency groups.
+make lint-check  # Check formatting, lint, and types without modifying files.
+make test        # Run pytest and golden tests.
+make build       # Build wheel and sdist from the locked build group.
+```
+
+<!-- BEGIN TBD INTEGRATION format=f06 surface=agents-md -->
 ## tbd
 
 This repository uses **tbd** for git-native issue tracking (beads), spec-driven
 planning, and on-demand engineering guidelines.
-As the agent, you operate tbd on the user’s behalf — translate their requests into tbd
+As the agent, you operate tbd on the user’s behalf: translate their requests into tbd
 actions rather than telling them to run commands.
 
 - Run `tbd prime` to load current project state and the full tbd workflow.
@@ -32,7 +41,7 @@ Auto-format Markdown with `flowmark` for clean, semantic git diffs.
 - Run `flowmark --auto <files>` on Markdown you create or edit.
 - Run `flowmark --docs` for full usage and `flowmark --skill` for the skill.
 - If `flowmark` is not on `PATH`, use a pinned `uvx` runner (never `@latest`).
-- Fast Rust port (recommended): `uvx --from flowmark-rs==0.3.1 flowmark`.
-- Python build (library / newest patch): `uvx --from flowmark==0.7.2 flowmark`.
+- Fast Rust port (recommended): `uvx --from flowmark-rs==0.3.2 flowmark`.
+- Python build (library / newest patch): `uvx --from flowmark==0.7.3 flowmark`.
 
 <!-- END FLOWMARK INTEGRATION -->

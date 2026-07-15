@@ -27,7 +27,7 @@ skill.
 Prefer the Rust port through `uvx`:
 
 ```makefile
-FLOWMARK := uvx --from flowmark-rs==0.3.1 flowmark
+FLOWMARK := uvx --from flowmark-rs==0.3.2 flowmark
 
 .PHONY: format-docs
 format-docs:
@@ -63,7 +63,7 @@ pre-commit:
   commands:
     flowmark:
       glob: "*.{md,mdc,markdown}"
-      run: uvx --from flowmark-rs==0.3.1 flowmark --auto --force-exclude {staged_files}
+      run: uvx --from flowmark-rs==0.3.2 flowmark --auto --force-exclude {staged_files}
       stage_fixed: true
 ```
 
@@ -79,7 +79,7 @@ repos:
     hooks:
       - id: flowmark
         name: flowmark
-        entry: uvx --from flowmark-rs==0.3.1 flowmark --auto --force-exclude
+        entry: uvx --from flowmark-rs==0.3.2 flowmark --auto --force-exclude
         language: system
         files: '\.(md|mdc|markdown)$'
 ```
