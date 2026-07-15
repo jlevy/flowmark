@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "simple-modern-uv": {
+      "source": "jlevy/simple-modern-uv",
+      "sourceType": "github",
+      "skillPath": "skills/simple-modern-uv/SKILL.md",
+      "computedHash": "30c9a519d80805f349f847730ca58bc5b2141ce5e3017b1cf7798f69afa72ec0"
+    },
+    "tbd": {
+      "source": "jlevy/simple-modern-uv",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/tbd/SKILL.md",
+      "computedHash": "55d79a458b1d7874a682eec02887a76a1c893a7f84549d54805ccfa45ea31e9f"
+    }
+  }
+}
