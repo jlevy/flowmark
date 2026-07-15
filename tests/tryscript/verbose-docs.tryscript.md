@@ -8,7 +8,6 @@ path:
 before: |
   cp -r $TRYSCRIPT_TEST_DIR/fixtures/. fixtures/
 ---
-
 # Verbose, Docs, and Skill Tests
 
 Tests for --skill, --install-skill, and --docs output.
@@ -21,7 +20,7 @@ behavior.
 $ flowmark --skill | sed -n '1,6p'
 ---
 name: flowmark
-description: Fast, consistent Markdown auto-formatter for typographic cleanup (smart quotes, ellipses), normalized formatting, and optional clean line wrapping for small, readable git diffs. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM-generated Markdown, or when the user mentions flowmark or formatting Markdown.
+description: Fast, consistent Markdown auto-formatter for typographic cleanup, normalization, and clean semantic line breaks. Use when creating, editing, or cleaning Markdown; formatting LLM-generated docs; adopting Flowmark in a repository; adding Markdown format scripts or commit hooks; or replacing Prettier or another Markdown formatter.
 allowed-tools: Bash(flowmark:*), Bash(uvx:*), Read, Write
 ---
 # Flowmark - Markdown Auto-Formatter
@@ -57,7 +56,7 @@ nested dirs created
 
 ```console
 $ flowmark --skill | grep -F -- "the full guide:" | sed 's/^- //'
-`flowmark --docs` — the full guide: editor on-save setup (VS Code/Cursor), project
+`flowmark --docs` — the full guide: configuration, file discovery, editor setup, the
 ```
 
 ## V6: Install skill project-local default writes all three surfaces

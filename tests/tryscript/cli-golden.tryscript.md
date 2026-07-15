@@ -14,11 +14,10 @@ before: |
   printf '# Also excluded\n' > project/.venv/lib/README.md
   printf 'not markdown\n' > project/code.py
 ---
-
 # Flowmark CLI Golden Tests
 
-End-to-end tests for the Flowmark CLI, covering formatting, file discovery,
-error handling, and agent skills.
+End-to-end tests for the Flowmark CLI, covering formatting, file discovery, error
+handling, and agent skills.
 
 ## Version
 
@@ -139,7 +138,7 @@ $ printf 'drafts/\n' > project/.flowmarkignore && flowmark --list-files project 
 $ flowmark --skill | head -3
 ---
 name: flowmark
-description: Fast, consistent Markdown auto-formatter for typographic cleanup (smart quotes, ellipses), normalized formatting, and optional clean line wrapping for small, readable git diffs. Use when creating, editing, or normalizing Markdown (.md) files, cleaning up LLM-generated Markdown, or when the user mentions flowmark or formatting Markdown.
+description: Fast, consistent Markdown auto-formatter for typographic cleanup, normalization, and clean semantic line breaks. Use when creating, editing, or cleaning Markdown; formatting LLM-generated docs; adopting Flowmark in a repository; adding Markdown format scripts or commit hooks; or replacing Prettier or another Markdown formatter.
 ```
 
 ## Docs: print documentation

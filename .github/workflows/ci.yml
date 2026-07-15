@@ -95,7 +95,7 @@ jobs:
         run: npx tryscript@0.1.7 run tests/tryscript/*.tryscript.md
 
       - name: Validate published skill frontmatter
-        # Runs `npx skills-ref validate skills/flowmark` to catch a malformed
+        # Runs a pinned `skills-ref validate skills/flowmark` to catch a malformed
         # `name`/`description`/`allowed-tools` on the public discovery copy before
-        # `npx skills add jlevy/flowmark` users hit it.
+        # `npx skills add jlevy/flowmark@flowmark` users hit it.
         run: make validate-skill

@@ -1,12 +1,12 @@
 # Feature: Comprehensive Cross-Agent Skill Support (Self-Documenting, Self-Installing)
 
-**Date:** 2026-05-27 (last updated 2026-05-27)
+**Date:** 2026-05-27 (last updated 2026-07-14)
 
 **Author:** Flowmark maintainers
 
 **Status:** Implemented and merged (PR #49); release-pin hardening and in-repo
-dogfooding follow in PR #53. Will move to `docs/project/specs/done/` after the v0.7.1
-release.
+dogfooding follow in PR #53. A Rust-first repository-migration reference and bundled
+resource installation were added in the `fm-rfnx` follow-up.
 
 ## Overview
 
@@ -14,8 +14,9 @@ Flowmark already ships an agent skill (`src/flowmark/skills/SKILL.md`) and a Cla
 installer (`flowmark --install-skill` writes to a single Claude agent base, default
 `~/.claude`). This spec extends that into **genuine cross-agent** support: one
 `flowmark` invocation installs a portable, self-documenting skill that Claude Code,
-Codex, Gemini CLI, and other agents can discover, plus a public discovery copy so
-`npx skills add jlevy/flowmark` works.
+Codex, Gemini CLI, and other agents can discover, plus a public discovery bundle so
+`npx skills add jlevy/flowmark@flowmark` works without proliferating separate skills for
+formatting and repository setup.
 
 It follows the tbd guideline `cli-agent-skill-patterns` (run
 `tbd guidelines cli-agent-skill-patterns`), verified current against tbd v0.1.30.
@@ -45,12 +46,16 @@ deterministic, formatter-stable output.
   `uvx --from flowmark==<version>`), never an unpinned `@latest` (§6.7, §9; aligns with
   this repo’s `SUPPLY-CHAIN-SECURITY.md`). Also note the Rust port (`flowmark-rs`) as an
   alternative.
-- **Public discovery**: generate a repo-root `skills/flowmark/SKILL.md` from the same
-  source (drift-tested) so `npx skills add jlevy/flowmark` and GitHub skill indexers
-  pick it up (§6.8).
+- **Public discovery**: generate a repo-root `skills/flowmark/` bundle from the same
+  sources (drift-tested) so `npx skills add jlevy/flowmark@flowmark` and GitHub skill
+  indexers pick it up (§6.8). The main Flowmark repository is the sole public
+  skill-distribution and documentation source; flowmark-rs provides the recommended
+  executable implementation.
 - **One source of truth**: every surface (portable, Claude mirror, repo-root discovery
   copy, `AGENTS.md` block) is generated from a single authored body so they cannot
-  drift.
+  drift. The Rust port vendors that authored bundle only for `--skill` /
+  `--install-skill` compatibility and tests it byte-for-byte against its pinned Flowmark
+  submodule; it does not publish a second repo-root discovery bundle.
 
 ## Non-Goals
 
@@ -68,6 +73,9 @@ deterministic, formatter-stable output.
 - **Global/user installs by default.** Writing `~/.claude`, `~/.agents/skills/`, etc.
   stays an explicit, separately-flagged action, never something the project-local
   default does silently.
+- **A second public skill bundle in flowmark-rs.** The Rust CLI may install its vendored
+  runtime mirror, but discovery, `npx skills add`, and the main documentation all point
+  to `jlevy/flowmark`.
 
 ## Background
 
@@ -108,7 +116,7 @@ match the `surface=` field on every generated artifact’s format stamp.
     pinned version into the invocation examples.
     Deterministic.
   - `agents_md_block(version) -> str`: the compact marker-bounded block
-    (`<!-- BEGIN FLOWMARK INTEGRATION format=f02 surface=agents-md -->` … `END`),
+    (`<!-- BEGIN FLOWMARK INTEGRATION format=f03 surface=agents-md -->` … `END`),
     emitted in flowmark’s own canonical format so `flowmark --auto` is a no-op on it.
     All generated artifacts (SKILL.md mirrors and this block) share a single
     monotonically-increasing `format=fNN` stamp; the `surface=` field distinguishes
@@ -121,8 +129,11 @@ match the `surface=` field on every generated artifact’s format stamp.
   - A **forward-compatibility guard**: if an existing artifact’s `format=fNN` is newer
     than this build understands, stop and tell the user to upgrade flowmark rather than
     clobber it.
-- **`skills/flowmark/SKILL.md`** (repo root): generated discovery copy for
-  `npx skills add` / indexers, produced from `compose_skill` at build/lint time; opens
+- **`src/flowmark/skills/references/project-setup.md`**: concise repository-adoption
+  guidance for a pinned Rust runner, one project command, `.flowmarkignore`, auto-fixing
+  commit hooks, CI policy, and disabling competing Markdown formatters.
+- **`skills/flowmark/`** (repo root): generated discovery bundle for `npx skills add` /
+  indexers, produced from the authored skill and reference at build/lint time; opens
   with a pinned bootstrap line so a registry install (Markdown only, no binary) still
   works.
 - **CLI (`src/flowmark/cli.py`):** add `--surfaces=<list>`, a comma-separated subset of
@@ -148,9 +159,9 @@ match the `surface=` field on every generated artifact’s format stamp.
 
 ### Generated-Artifact Handling
 
-Use **commit and drift test** (the tbd mode): the authored source lives in
-`src/flowmark/skills/SKILL.md`; the generated `skills/flowmark/SKILL.md` (and any other
-generated surface) is committed and a test regenerates and fails on drift.
+Use **commit and drift test** (the tbd mode): the authored sources live in
+`src/flowmark/skills/`; the generated `skills/flowmark/` bundle (and any other generated
+surface) is committed and a test regenerates and fails on drift.
 Output must be byte-deterministic and flowmark-stable.
 
 ## Implementation Plan
@@ -191,7 +202,19 @@ Output must be byte-deterministic and flowmark-stable.
 - [x] Drift test: regenerate all committed generated artifacts and fail on difference;
   assert `flowmark --auto` over the generated `AGENTS.md` block is a no-op.
 - [x] Update README “Agent Use” section and `docs/` to document cross-agent install and
-  `npx skills add jlevy/flowmark`.
+  `npx skills add jlevy/flowmark@flowmark`.
+
+### Phase 3: Rust-first formatting and repository adoption
+
+- [x] Keep one Flowmark skill and route repository adoption to one bundled reference.
+- [x] Prefer pinned `uvx --from flowmark-rs==<version> flowmark` examples while
+  retaining the Python reference for its library API or newer unported patches.
+- [x] Cover one-file `--auto`, whole-tree migration, `.flowmarkignore`, Makefile wiring,
+  auto-fixing commit hooks, and disabling Prettier or other competing Markdown owners.
+- [x] Make ordinary Markdown formatting a local auto-fix rather than a main-build gate;
+  retain drift checks for generated or byte-exact documentation contracts.
+- [x] Install and forward-compatibility-check the complete skill bundle on portable,
+  Claude, and explicit-base surfaces in both Python and Rust implementations.
 
 ## Testing Strategy
 

@@ -23,7 +23,7 @@ format-docs:
 
 # Regenerate checked-in generated docs from their sources:
 #   README.md            <- docs/shared + docs/templates (generate-python-readme.py)
-#   skills/flowmark/SKILL.md (published discovery copy) <- generate-skill-discovery.py
+#   skills/flowmark/ (published skill bundle) <- generate-skill-discovery.py
 #   .agents/.claude/AGENTS.md skill surfaces <- `flowmark --install-skill` (dogfood)
 # The skill drift test (tests/test_skill_artifacts.py) fails if any pin is stale.
 generate: generate-readme generate-skill generate-skill-install
@@ -43,7 +43,7 @@ generate-skill-install:
 
 # Validate the published skill against the Agent Skills spec (needs network/npx).
 validate-skill:
-	npx skills-ref validate skills/flowmark
+	npx --yes skills-ref@0.1.5 validate skills/flowmark
 
 # Verify the skill's uvx bootstrap pin is consistent across all shipped artifacts.
 # Pass VERSION=X.Y.Z to also assert it matches the release being cut; with no VERSION

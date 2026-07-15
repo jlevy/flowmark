@@ -27,19 +27,17 @@ Both Python and Rust versions are best installed with
 No install needed for one-off usage:
 
 ```shell
-uvx flowmark-rs --help                  # For native-binary Rust
-uvx flowmark-rs --auto somefile.md
-uvx flowmark --help                     # For Python
-uvx flowmark --auto somefile.md
+uvx --from flowmark-rs==__FLOWMARK_RS_VERSION__ flowmark --help
+uvx --from flowmark-rs==__FLOWMARK_RS_VERSION__ flowmark --auto somefile.md
+uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --help  # Python reference
 ```
 
 ### Install as a Global CLI
 
 ```shell
-uv tool install --upgrade flowmark-rs   # For native-binary Rust
-uv tool install --upgrade flowmark      # For Python
-flowmark --auto somefile.md             # One file
-flowmark --auto .                       # Whole tree (respects .gitignore / .flowmarkignore)
+uv tool install flowmark-rs==__FLOWMARK_RS_VERSION__  # Native Rust CLI
+flowmark --auto somefile.md                         # One file
+flowmark --auto .                                   # Whole tree
 ```
 
 Run `flowmark --help`, `flowmark --docs`, or `flowmark --skill` for more.
@@ -49,11 +47,16 @@ Run `flowmark --help`, `flowmark --docs`, or `flowmark --skill` for more.
 Hand your agent this one instruction:
 
 > Set up Flowmark to keep this project’s Markdown auto-formatted.
-> Run `uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --skill` for details.
+> Install the Flowmark skill with `npx skills add jlevy/flowmark@flowmark` and follow
+> it.
 
-Or run `uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --install-skill` to manually
-install the skill into `.agents/`, `.claude/`, and `AGENTS.md` (see
-[How to Install the Skill](#how-to-install-the-skill)).
+Or install the skill into `.agents/`, `.claude/`, and `AGENTS.md` directly:
+
+```bash
+uvx --from flowmark-rs==__FLOWMARK_RS_VERSION__ flowmark --install-skill
+```
+
+See [How to Install the Skill](#how-to-install-the-skill) for the available surfaces.
 
 For consistency across users and supply chain security, it’s recommended to pin the
 version when installing within a skill or project build.
@@ -515,104 +518,20 @@ For batch formatting an entire project, use `flowmark --auto .` from the termina
 
 ## Recommended Project Setup
 
-To keep a repo’s Markdown consistently formatted across contributors and CI, **pin a
-flowmark version** and wire it into your existing build/hook plumbing.
-The same pattern works whether you reach for the Python build or the Rust port.
+Use one pinned Rust command everywhere:
 
-### 1. Pick a pinned invocation
-
-Avoid unpinned `flowmark@latest`: different contributors then silently run different
-versions and produce noisy diffs.
-
-- **Rust port (fastest)**: install the
-  [`flowmark-rs`](https://github.com/jlevy/flowmark-rs) binary at a specific release.
-  Identical formatting to the Python version; great when speed matters in hooks/CI.
-- **Python via `uvx` (zero-install)**: invoke as
-  `uvx --from flowmark==<X.Y.Z> flowmark --auto`. First call caches the wheel;
-  subsequent calls are fast.
-- **Python tool install**: `uv tool install flowmark==<X.Y.Z>` (or
-  `pip install flowmark==<X.Y.Z>` in a venv) puts `flowmark` on `PATH`.
-
-### 2. Add one project entry point
-
-A single command everyone (and CI) runs.
-Makefile target:
-
-```makefile
-FLOWMARK := uvx --from flowmark==__FLOWMARK_VERSION__ flowmark
-
-format-docs:
-	$(FLOWMARK) --auto .
+```bash
+uvx --from flowmark-rs==__FLOWMARK_RS_VERSION__ flowmark --auto .
 ```
 
-Or as an npm script in `package.json`:
+Keep generated, vendored, and byte-exact Markdown in `.flowmarkignore`; disable Markdown
+in Prettier and other competing formatters; and run Flowmark as an auto-fixing commit
+hook. Ordinary Markdown style drift should not fail the main build when the commit hook
+can fix it locally.
 
-```json
-{
-  "scripts": {
-    "format:docs": "uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --auto ."
-  }
-}
-```
-
-### 3. Run on pre-commit
-
-[lefthook](https://lefthook.dev) example (`lefthook.yml`):
-
-```yaml
-pre-commit:
-  commands:
-    flowmark:
-      glob: "*.{md,mdc,markdown}"
-      run: uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --auto {staged_files}
-      stage_fixed: true
-```
-
-Flowmark also ships [pre-commit](https://pre-commit.com) hooks, so you can use it
-directly from your `.pre-commit-config.yaml` without writing a `local` hook:
-
-```yaml
-repos:
-  - repo: https://github.com/jlevy/flowmark
-    rev: v__FLOWMARK_VERSION__
-    hooks:
-      - id: flowmark          # auto-format Markdown in place
-      # - id: flowmark-check  # or: check only, fail if files would change (for CI)
-```
-
-These run via the [pre-commit](https://pre-commit.com) framework (not GitHub-specific):
-install it once with `pre-commit install`, and it builds Flowmark in an isolated
-environment on first use — no global install or extra dependency needed.
-Both hooks pass `--force-exclude`, so your `.flowmarkignore` and other exclusions are
-respected on the staged files pre-commit hands them (the same approach `ruff-pre-commit`
-uses); the `flowmark-check` hook also mirrors `--auto` so it validates exactly what the
-auto-fix hook would write.
-
-A `husky` setup works the same way; the key is the pinned invocation.
-
-### 4. Add a CI check
-
-Use `--check` (or the `flowmark-check` pre-commit hook) to fail if anything would
-change, without writing.
-Pair it with `--auto` so CI validates the same formatting the auto-fix path applies:
-
-```yaml
-- run: uvx --from flowmark==__FLOWMARK_VERSION__ flowmark --auto --check .
-```
-
-### 5. Exclude generated and vendored Markdown
-
-Add a `.flowmarkignore` (same syntax as `.gitignore`) so batch formatting only touches
-files you own:
-
-```
-docs/api/_generated/
-attic/
-third_party/
-```
-
-`flowmark --auto .` always respects `.flowmarkignore` and `.gitignore`. For editor-side
-on-save formatting, see [Use in VSCode/Cursor](#use-in-vscodecursor) above.
+For a migration checklist and copyable Makefile, Lefthook, `pre-commit`, and Prettier
+examples, see
+[Project Setup and Migration](skills/flowmark/references/project-setup.md).
 
 ## Agent Use (Claude Code and Other AI Coding Agents)
 
@@ -626,22 +545,27 @@ own.
 
 ### How to Install the Skill
 
+The main [Flowmark repository](https://github.com/jlevy/flowmark) owns the public skill
+bundle and its documentation.
+The Rust repository supplies the recommended fast implementation, not a second skill
+distribution.
+
 There are three install paths, ordered by what most users want first:
 
-**1. Cross-agent package manager (no flowmark prerequisite).** If you just want the
-skill on disk for any supported agent and don’t already have flowmark, use the
-`skills.sh` installer.
+**1. Install from the main Flowmark repository (recommended).** If you just want the
+skill on disk for any supported agent, use the `skills.sh` installer.
 It copies the published discovery copy into `.agents/skills/` and symlinks it into each
 agent’s native location (Claude Code, Codex, Cursor, Copilot, Gemini, …). The discovery
 copy bootstraps its own pinned `uvx` invocation, so no prior flowmark install is
 required:
 
 ```bash
-npx skills add jlevy/flowmark
+npx skills add jlevy/flowmark@flowmark
 ```
 
-**2. Direct install via the flowmark CLI (recommended once you have flowmark).** Run
-from the repo root.
+**2. Direct install via either flowmark CLI.** Run from the repo root.
+The Python and Rust CLIs install the same skill bundle; this path is useful when either
+implementation is already available.
 By default this writes all three project-local surfaces: the portable
 `.agents/skills/flowmark/` (read by Codex, Gemini CLI, pi, and others), the
 `.claude/skills/flowmark/` mirror (Claude Code reads only that path), and a compact
@@ -701,8 +625,7 @@ In ephemeral or cloud agent environments where nothing is installed, run it via 
 a newer release):
 
 ```bash
-uvx --from flowmark==<version> flowmark --auto README.md   # Python
-# or use the Rust binary (flowmark-rs) for maximum speed
+uvx --from flowmark-rs==__FLOWMARK_RS_VERSION__ flowmark --auto README.md
 ```
 
 ## How Does Flowmark Compare to Other Markdown Auto-Formatters?

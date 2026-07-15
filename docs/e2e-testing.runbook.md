@@ -263,10 +263,10 @@ and agents take.
 
 2. **Version coherence: the pinned release must actually contain this skill.** The
    committed discovery copy pins `uvx --from flowmark==<DISCOVERY_VERSION>`, and
-   `npx skills add jlevy/flowmark` ships that copy to agents who have no other flowmark.
-   So the release `DISCOVERY_VERSION` points at must itself ship the skill behavior the
-   committed copy describes; otherwise an agent reads the new skill text but the pinned
-   binary behaves like an older one.
+   `npx skills add jlevy/flowmark@flowmark` ships that copy to agents who have no other
+   flowmark. So the release `DISCOVERY_VERSION` points at must itself ship the skill
+   behavior the committed copy describes; otherwise an agent reads the new skill text
+   but the pinned binary behaves like an older one.
    New cross-agent features (pinned `uvx` bootstrap, the three install surfaces, format
    stamps) land in commits *after* a tag, so they are absent from any release cut before
    them. Verify the pinned release matches:
