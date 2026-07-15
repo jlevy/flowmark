@@ -83,10 +83,12 @@ jobs:
       - name: Audit dependencies (pip-audit)
         # Audit the locked deps with a pinned, isolated pip-audit so the scanner's own
         # (large) transitive tree never enters uv.lock or our cool-off/audit surface.
+        # The export is complete and hashed, so disable pip resolution and its temporary
+        # venv; this also avoids executing ensurepip under the managed Python matrix.
         # See SUPPLY-CHAIN-SECURITY.md and upstream guidelines/hardening-pypi.md.
         run: |
           uv export --frozen --no-emit-project --all-extras --all-groups --format requirements-txt > /tmp/reqs.txt
-          uvx --from "pip-audit==2.10.0" pip-audit -r /tmp/reqs.txt
+          uvx --from "pip-audit==2.10.0" pip-audit --disable-pip -r /tmp/reqs.txt
 
       - name: Check golden coverage
         run: bash scripts/check-golden-coverage.sh
