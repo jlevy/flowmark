@@ -671,6 +671,9 @@ latency-sensitive agent loops).
 
 ## Project Docs
 
+For the definitive specification of supported Markdown syntax and how each construct is
+formatted or preserved, see [markdown-support.md](docs/markdown-support.md).
+
 For development workflows, see [development.md](docs/development.md).
 
 <!-- This document follows common-doc-guidelines.md.

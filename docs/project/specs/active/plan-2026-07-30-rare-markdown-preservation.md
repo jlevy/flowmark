@@ -628,6 +628,10 @@ green. No test logic needs translating.
   against the ledger.
 - [ ] README + changelog: preservation guarantees, the principle statement, and the
   house-style table.
+- [ ] Flip the **(planned)** status markers in
+  [docs/markdown-support.md](../../../markdown-support.md) — the long-lived, definitive
+  syntax-support specification — as each construct lands; that document and this spec
+  must never disagree.
 - [ ] flowmark-rs porting notes (files to copy, parity regeneration steps) recorded in
   the PR description and a short doc under `docs/project/research/`.
 
@@ -666,6 +670,9 @@ green. No test logic needs translating.
 
 ## References
 
+- [docs/markdown-support.md](../../../markdown-support.md) — the long-lived, user-facing
+  specification of supported syntax that this plan implements; its **(planned)** markers
+  track this spec’s ledger.
 - Issues: [#67](https://github.com/jlevy/flowmark/issues/67),
   [#62](https://github.com/jlevy/flowmark/issues/62),
   [#35](https://github.com/jlevy/flowmark/issues/35),

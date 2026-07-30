@@ -27,6 +27,12 @@ Other docs give background but it includes essential project developer docs.
 - `publishing.md`: How to cut and publish a release to PyPI, including the
   `DISCOVERY_VERSION` bump in the pre-release checklist.
 
+- `markdown-support.md`: The definitive specification of Markdown syntax Flowmark
+  supports — CommonMark core, GFM extensions, and preserved dialect constructs — with
+  the treatment (normalized, preserved, protected, atomic) for each construct.
+  This is the long-lived behavioral contract, verified by the test suite; update it in
+  the same change as any formatting behavior change.
+
 ### `docs/general/`: Cross-project rules and templates
 
 General rules that apply to all projects:
