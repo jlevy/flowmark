@@ -1,5 +1,9 @@
 # Markdoc/Jinja/Nunjucks Tag Support in Flowmark
 
+> **Note:** this is the historical design/implementation record for template-tag
+> support. The current, definitive statement of all supported syntax (template tags
+> included) is [markdown-support.md](markdown-support.md).
+
 ## Implementation Status
 
 **✅ Phase 1 Complete** - Template tags are now kept as atomic units during line

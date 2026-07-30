@@ -84,6 +84,7 @@ customized parser.
 | Backslash escapes | `\*`, `1\.` | Preserved, minimized where provably unnecessary (e.g. escaped periods that cannot start a list) |
 | HTML entities | `&amp;`, `&copy;` | Preserved |
 | Inline (raw) HTML | `<sup>1</sup>` | Preserved; tags atomic at wrap |
+| CJK-Latin boundaries | `中文和English` | Normalized: pangu-style spacing inserted (`中文和 English`) — see the note in the Normalization reference |
 
 ## GFM extensions
 
@@ -106,6 +107,18 @@ with fixes where the stock behavior is wrong.
 | YAML | `---` … `---` | Preserved verbatim, never formatted; the blank line (or none) after the closing fence preserved (planned; today it is removed) |
 | YAML, Pandoc close | `---` … `...` | Recognized and preserved (planned; today unrecognized) |
 | TOML (Hugo) | `+++` … `+++` | Preserved verbatim (planned; today reflowed as prose) |
+
+## Document-level behavior
+
+- Output line endings are always LF; CRLF input is normalized on parse.
+- A leading UTF-8 byte-order mark is preserved.
+- Files end with exactly one trailing newline (planned; today a trailing heading gains
+  an extra blank line).
+- Frontmatter is recognized only at the very start of the document.
+- `--width N` wraps at N columns (default 88); `--width 0` disables wrapping (one line
+  per paragraph) while every other treatment in this document still applies.
+- `--plaintext` skips Markdown parsing entirely and only wraps plain text; none of the
+  Markdown treatments in this document apply in that mode.
 
 ## Template and tag constructs
 
@@ -218,9 +231,30 @@ Each is locked by a regression test asserting the normalized output:
 10. Link/image title quotes to `"…"`.
 11. Unnecessary backslash escapes removed (conservatively).
 12. Blank lines collapsed to one between blocks; heading spacing normalized.
+13. Pangu-style spacing inserted at CJK-Latin boundaries (`中文和English混排` →
+    `中文和 English 混排`, including digits and headings, never inside code spans or code
+    blocks).
+
+Item 13 is the one rewrite that is *not* render-identical: the inserted spaces are
+visible in output. It is unconditional today; if byte fidelity for mixed-script prose
+matters to your documents, raise it in the issue tracker — it is a candidate for
+becoming opt-in.
 
 If any of these ever becomes semantically significant in a real dialect, it moves to the
 preservation set — that is the standing rule.
+
+## Out of scope
+
+Flowmark formats Markdown and the Markdown dialects listed above, nothing else:
+
+- **MDX**: JSX components are not modeled.
+  Inline components survive as atomic HTML-like tags, and multi-line component blocks
+  get only the HTML-block protection above; there is no MDX-specific guarantee.
+- **Other markup languages** (reStructuredText, AsciiDoc, Textile, Org) are not
+  supported at all; do not run Flowmark on them.
+- **CLI-level behavior** (file discovery, `.flowmarkignore`, configuration files, editor
+  integration, caching) is documented in the README (`flowmark --docs`), not here — this
+  document covers syntax treatment only.
 
 ## Verification
 

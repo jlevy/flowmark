@@ -560,6 +560,12 @@ flowmark-rs today:
    outputs are *generated from the Python implementation* — Python is the source of
    truth, so behavior defined here flows to the Rust port mechanically.
 
+The corpus these tests form is also the enforcement mechanism for
+[docs/markdown-support.md](../../../markdown-support.md), the long-lived, user-facing
+specification of supported syntax: every treatment that document states (normalized,
+preserved, protected, atomic) must correspond to a fixture and assertion here, and its
+**(planned)** markers flip exactly when the corresponding assertions land.
+
 New test assets, all plain Markdown/fixture files:
 
 - `tests/tryscript/fixtures/rare/` — one minimal fixture per ledger family (~30 files),

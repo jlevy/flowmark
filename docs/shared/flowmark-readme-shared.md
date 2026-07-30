@@ -672,7 +672,10 @@ latency-sensitive agent loops).
 ## Project Docs
 
 For the definitive specification of supported Markdown syntax and how each construct is
-formatted or preserved, see [markdown-support.md](docs/markdown-support.md).
+formatted or preserved, see
+[markdown-support.md](https://github.com/jlevy/flowmark/blob/main/docs/markdown-support.md).
+(The absolute link is deliberate: this shared content is rendered from both repos, from
+PyPI, and by `flowmark --docs`, where a relative path would not resolve.)
 
 For development workflows, see [development.md](docs/development.md).
 
