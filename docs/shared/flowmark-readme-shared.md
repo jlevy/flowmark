@@ -505,11 +505,15 @@ Then add to your `settings.json`:
     "commands": [
         {
             "match": "(\\.md|\\.md\\.jinja|\\.mdc)$",
-            "cmd": "flowmark --auto ${file}"
+            "cmd": "flowmark --auto \"${file}\""
         }
     ]
   }
 ```
+
+The quotes around `${file}` matter: the command runs through a shell, so an unquoted
+path containing spaces splits into multiple arguments and the save silently skips
+formatting.
 
 The `--auto` option is just the same as
 `--inplace --nobackup --semantic --cleanups --smartquotes --ellipses`.
