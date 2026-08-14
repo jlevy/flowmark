@@ -63,9 +63,10 @@ uv lock --upgrade-package "certifi==<pre-cutoff>" --upgrade-package "idna==<pre-
    `UV_NO_BUILD` for `uv sync` here**: it also blocks building this project’s own
    editable package and breaks the sync.
    Apply it to third-party installs instead.
-3. **Commit the lockfile; install frozen.** `uv.lock` is committed and CI runs
-   `uv sync --frozen`. Never let an upgrade slip in unreviewed: treat a `uv.lock` diff
-   like a code diff.
+3. **Commit the lockfile; install locked.** `uv.lock` is committed and CI runs
+   `uv sync --locked`, which installs from the lock and fails if `pyproject.toml` has
+   made it stale.
+   Never let an upgrade slip in unreviewed: treat a `uv.lock` diff like a code diff.
 4. **Audit after changes, with a pinned, isolated scanner.** Audit the locked deps, but
    do **not** add the scanner to this project (it drags a large transitive tree into
    `uv.lock` and under our own cool-off/audit surface).

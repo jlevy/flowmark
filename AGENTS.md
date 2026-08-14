@@ -18,6 +18,11 @@ make test        # Run pytest and golden tests.
 make build       # Build wheel and sdist from the locked build group.
 ```
 
+Or call uv directly with the checked-in configuration:
+`UV_CONFIG_FILE=uv.toml uv run pytest tests/test_cleanups.py`,
+`UV_CONFIG_FILE=uv.toml uv add --exclude-newer "14 days" some-package`, or
+`UV_CONFIG_FILE=uv.toml uv run python -m flowmark`.
+
 <!-- BEGIN TBD INTEGRATION format=f06 surface=agents-md -->
 ## tbd
 
@@ -45,3 +50,17 @@ Auto-format Markdown with `flowmark` for clean, semantic git diffs.
 - Python build (library / newest patch): `uvx --from flowmark==0.7.3 flowmark`.
 
 <!-- END FLOWMARK INTEGRATION -->
+
+## Template Maintenance
+
+This project was built from
+[simple-modern-uv](https://github.com/jlevy/simple-modern-uv).
+Routine project work uses the instructions above; do not fetch the upstream template for
+every task.
+
+For toolchain changes, selective adoption of another template feature, or a Copier
+update, use the portable
+[simple-modern-uv skill](https://github.com/jlevy/simple-modern-uv/tree/main/skills/simple-modern-uv).
+It preserves project-specific choices and distinguishes selective changes from full
+template management.
+`.copier-answers.yml` records this project’s update lineage.
