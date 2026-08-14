@@ -99,9 +99,10 @@ packages = ["src/flowmark"]
 [tool.ruff]
 # Set as desired, typically 88 (black standard) or 100 (wide).
 line-length = 100
-# Tryscript fixtures are exact input and output bytes; keep ruff's Markdown
-# code-block formatting (ruff 0.16+) from rewriting them, matching .flowmarkignore.
-exclude = ["tests/tryscript/fixtures/"]
+# Markdown is flowmark's domain (and fixtures are exact bytes); keep ruff off
+# .md files entirely. Ruff 0.16+ includes *.md by default and formats Python
+# code blocks inside Markdown.
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = [
