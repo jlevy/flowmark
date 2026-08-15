@@ -16,16 +16,18 @@ exception applies.
 Malicious releases are typically detected and yanked within minutes to
 days, so waiting costs only slightly staler dependencies.
 
-With `uv`, gate resolution by publish date:
+Within this repository, select the checked-in uv policy before running direct uv
+commands:
 
 ```bash
-export UV_EXCLUDE_NEWER="14 days"   # exclude anything published in the last 14 days
-uv lock --upgrade                   # re-resolve under the cool-off
+export UV_CONFIG_FILE="$PWD/uv.toml"
+uv lock --upgrade  # Re-resolve under the checked-in 14-day cool-off.
 ```
 
-The friendly duration needs **uv ≥ 0.9** (0.8.x rejects it and wants an absolute
-`YYYY-MM-DD` date instead, one more reason to keep uv current).
-This repo pins uv in CI, and that pin should track a recent-but-cooled-off uv release.
+Relative durations require uv 0.9.17 or later.
+This repository requires the reviewed uv 0.12 line in `uv.toml` and pins 0.12.0 in CI;
+older uv versions may fail while parsing the policy before they can report the version
+requirement.
 
 To check one version’s publish time before pinning it:
 
@@ -65,8 +67,8 @@ uv lock --upgrade-package "certifi==<pre-cutoff>" --upgrade-package "idna==<pre-
    Apply it to third-party installs instead.
 3. **Commit the lockfile; install locked.** `uv.lock` is committed and CI runs
    `uv sync --locked`, which installs from the lock and fails if `pyproject.toml` has
-   made it stale.
-   Never let an upgrade slip in unreviewed: treat a `uv.lock` diff like a code diff.
+   made it stale. Never let an upgrade slip in unreviewed: treat a `uv.lock` diff like a
+   code diff.
 4. **Audit after changes, with a pinned, isolated scanner.** Audit the locked deps, but
    do **not** add the scanner to this project (it drags a large transitive tree into
    `uv.lock` and under our own cool-off/audit surface).
