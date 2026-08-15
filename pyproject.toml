@@ -48,14 +48,14 @@ dependencies = [
 
 [dependency-groups]
 build = [
-    "hatchling==1.30.1",
+    "hatchling==1.31.0",
     "uv-dynamic-versioning==0.14.0",
 ]
 dev = [
     "pytest>=9.1.1",
     "pytest-sugar>=1.1.1",
-    "ruff>=0.15.20",
-    "codespell>=2.4.2",
+    "ruff>=0.16.1",
+    "codespell>=2.4.3",
     "rich>=15.0.0",
     "basedpyright>=1.39.9",
     "funlog>=0.2.1",
@@ -75,7 +75,7 @@ flowmark-py = "flowmark.cli:main"
 # https://github.com/ninoseki/uv-dynamic-versioning/
 
 [build-system]
-requires = ["hatchling==1.30.1", "uv-dynamic-versioning==0.14.0"]
+requires = ["hatchling==1.31.0", "uv-dynamic-versioning==0.14.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
@@ -94,19 +94,15 @@ bump = true
 packages = ["src/flowmark"]
 
 
-# ---- Settings ----
-
-[tool.uv]
-# Fail fast on old uv versions rather than misbehave. 0.9 is the floor where
-# exclude-newer accepts a relative duration like "14 days".
-required-version = ">=0.9"
-# Safe project-level default for every uv command. CI and the Makefile repeat it so
-# copied commands and tool execution outside project discovery retain the same policy.
-exclude-newer = "14 days"
+# ---- Tool Settings ----
 
 [tool.ruff]
 # Set as desired, typically 88 (black standard) or 100 (wide).
 line-length = 100
+# Markdown is flowmark's domain (and fixtures are exact bytes); keep ruff off
+# .md files entirely. Ruff 0.16+ includes *.md by default and formats Python
+# code blocks inside Markdown.
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = [

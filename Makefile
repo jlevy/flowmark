@@ -4,15 +4,14 @@
 
 .DEFAULT_GOAL := default
 
+# Use only the checked-in project configuration. Otherwise uv merges user- and
+# system-level settings into uv.lock, which can make it fail on another machine.
+UV_CONFIG_FILE := $(CURDIR)/uv.toml
+export UV_CONFIG_FILE
+
 # Safe default for every dependency resolution invoked through this Makefile.
 UV_EXCLUDE_NEWER ?= 14 days
 export UV_EXCLUDE_NEWER
-
-# Keep user-level uv settings (including package-specific cool-off exceptions) out of
-# the committed lockfile. Project metadata is still read from pyproject.toml; the
-# cool-off is supplied explicitly above.
-UV_NO_CONFIG ?= 1
-export UV_NO_CONFIG
 
 .PHONY: default install lint lint-check test test-golden test-golden-coverage upgrade build clean \
         format format-docs generate generate-readme generate-skill validate-skill \
