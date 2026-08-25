@@ -545,10 +545,32 @@ provenance is recorded nowhere, and that is worth fixing before more work leans 
 ### The undocumented one
 
 `scripts/corpus-parity-check.sh` defaults to `attic/test-docs`, 623 real-world files.
-`attic/` is gitignored, so the corpus is not checked in, and **no document in either
-repository records what those files are, where they came from, or how to rebuild the
-set.** Seven mentions exist across both repos; all of them are either the default path,
-the file count, the word "curated", or instructions for working around its absence.
+Two different things are worth separating here, because the convention is documented even
+though the contents are not.
+
+**What is documented: the `attic/` convention.** `attic/` is a gitignored, machine-local
+scratch directory — the same place third-party repository checkouts go under tbd's
+`checkout-third-party-repo` shortcut, which creates the directory and adds it to
+`.gitignore`. It persists across sessions on one machine and is never tracked. So
+`attic/test-docs` is by construction local to whoever assembled it.
+
+**What is not documented: the contents.** No document in flowmark, flowmark-rs, or
+`rust-porting-playbook` records which files those are, where they came from, or how to
+rebuild the set. Verified against git history as well as the working trees: nothing under
+`attic/` was ever committed (`git log --diff-filter=A -- "attic/*"` is empty), no download
+or assembly step appears anywhere, and `corpus-parity-check.sh` arrived on 2026-02-19
+already defaulting to the path with no accompanying creation step.
+
+**The consequence follows from the convention.** A container session cannot have that
+directory, so every fresh session finds it missing. That is exactly what the record shows:
+a senior review flagged the non-reproducibility on 2026-05-28 and the response documented
+a *substitute* (60 tracked repo files) rather than the original; two later syncs recorded
+the same substitution. The script itself fails loudly when the directory is absent
+(`exit 2`), so the degradation is a human decision to proceed with a smaller corpus, taken
+in the open each time — not a silent failure.
+
+The practical reading is that the corpus is a local directory on the maintainer's machine
+that predates the port, and the answer lives there rather than in any repository.
 
 The port-sync playbook documents the fallback honestly — substitute a repo-Markdown
 spot-check and say so — and two sync artifacts show it being taken: 60 tracked files on
@@ -556,8 +578,10 @@ spot-check and say so — and two sync artifacts show it being taken: 60 tracked
 than silently, but at roughly a tenth of its intended scale, and only one machine can run
 it at full strength.
 
-**Action:** record the provenance, then either check in a redistributable subset or
-document the reconstruction procedure. Tracked separately; it blocks nothing here, because
+**Action:** recover the contents from the maintainer's machine, then either check in a
+redistributable subset or document a reconstruction procedure. Note that the stalled
+CommonMark-seeded corpus below is the structural fix for this same problem: a corpus that
+is checked in and reproducible needs no provenance archaeology. Tracked separately; it blocks nothing here, because
 Track A's evidence is the checked-in `math.md`, not the external corpus. Treat a green
 `corpus-parity-check.sh` run as confirmation, and record which corpus it ran against.
 
