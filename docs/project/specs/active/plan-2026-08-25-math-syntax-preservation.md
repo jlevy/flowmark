@@ -343,10 +343,11 @@ dollars in different paragraphs, dollars inside code spans and code fences, and 
 
 **Class 1, span splitting** — `src/flowmark/linewrapping/atomic_patterns.py`. Add three
 `AtomicPattern` entries and place them in `ATOMIC_PATTERNS` with `$$` ahead of `$`.
-Ordering against `INLINE_CODE_SPAN` needs a decision pinned by a test: putting code
-spans first keeps today’s GitLab behaviour (the `$` glue happens in
-`iter_atomic_words`); putting math first makes `` $`…`$ `` a single math span.
-Either is acceptable; the test records which.
+Ordering against `INLINE_CODE_SPAN`: **keep code spans first.** Putting code spans first
+keeps today's GitLab behaviour, where the `$` glue happens in `iter_atomic_words`; putting
+math first would make `` $`…`$ `` a single math span. Because both constructs receive the
+same treatment, the two readings emit identical bytes, so the choice is behavioural
+no-op and the existing order wins on risk. A test pins it.
 
 These patterns also belong in `MARKDOWN_INLINE_PATTERNS`, since a sentence boundary
 should not fire inside a formula either.
@@ -378,6 +379,41 @@ currently records the collapsed form `$$ L = \frac{1}{2} \rho v^2 S C_L $$` as e
 output for a three-line input block. The corruption is baked into the test suite, so the
 golden must be regenerated as part of the fix and that diff is evidence the fix works,
 not a regression.
+
+### A math span and a code span are the same thing here
+
+Worth stating, because it is the justification for the whole design being three regexes
+rather than a subsystem. The two constructs differ in **recognition** and agree in
+**treatment**.
+
+Recognition is where the difficulty lives. A code span self-delimits: N backticks open,
+the next run of N closes, purely local and unambiguous. `$…$` is context-sensitive and
+collides with currency, shell variables and unmatched dollars, which is what the
+delimiter and body rules above exist for. GitLab's `` $`…`$ `` sits on the code-span side
+of that line by design, which is exactly why it is the one dollar-bearing form that
+already survives flowmark today.
+
+Treatment is the same for both: opaque interior, atomic for wrapping, exempt from
+escaping and from typographic transforms. Three qualifications:
+
+1. **Block siblings differ.** A code fence is already opaque; math's block forms are not
+   fenced and collapse (Class 4). That work has no code-span analogue.
+2. **The stakes of splitting differ.** Splitting a code span is semantically harmless in
+   CommonMark, where line endings become spaces; splitting math breaks renderers that
+   require single-line input, and breaks `grep`. flowmark already meets the stronger bar
+   for code spans, so this changes nothing in practice.
+3. **Byte-exactness differs, and math should be the stricter one.** Measured: flowmark
+   does not preserve a code span's interior byte-for-byte — `` `a    b` `` becomes
+   `` `a b` `` and `` `  a  ` `` becomes `` ` a ` ``. CommonMark converts line endings to
+   spaces and strips one leading/trailing pair, but internal runs are significant, so
+   this appears incidental rather than intended: it falls out of the paragraph-level
+   `\s+` normalization running before atomic protection, and no test pins it. Math spans
+   in this spec are specified byte-exact, which is stricter. That costs nothing — a span
+   emitted verbatim as a single token is byte-exact by default; the collapse only happens
+   because the interior currently flows through the normalizer first.
+
+Point 3 is a candidate separate issue against code spans, adjacent to #58. It is not in
+scope here.
 
 ### Rust port
 
@@ -503,8 +539,10 @@ non-math dollar cases.
 
 ## Outstanding Questions
 
-- [ ] Pattern ordering against `INLINE_CODE_SPAN` — does `` $`…`$ `` become one math span or a code span with glued dollars?
-  Either works; the test should pin the choice.
+- [x] Pattern ordering against `INLINE_CODE_SPAN` — **resolved: keep code spans first.**
+  A math span and a code span get identical treatment (see below), so the two readings of
+  `` $`…`$ `` produce identical bytes. Code-span-first is current behaviour and already
+  correct, so it is the zero-risk choice. A test still pins it.
 - [ ] Should the typography guard’s side effect (no smartquotes inside code spans and
   links, if that is a change) ship in this spec or be split out?
 - [ ] Fixture mirroring between the repos is manual.
