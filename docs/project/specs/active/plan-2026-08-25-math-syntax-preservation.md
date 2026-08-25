@@ -443,7 +443,17 @@ machinery that already exists in `flowmark-rs`:
    across; the tryscript that consumes it is mirrored too, and the goldens must match.
 5. **`scripts/corpus-parity-check.sh`** runs both binaries over a corpus and requires
    zero differences, against the Python version pinned in `Cargo.toml`
-   `[package.metadata.parity]`.
+   `[package.metadata.parity]`. **With a caveat worth knowing before relying on it:**
+   its default corpus is `attic/test-docs`, 623 real-world files that are not checked in
+   (`attic/` is gitignored) and whose provenance is not recorded anywhere in either
+   repository. The port-sync playbook documents the fallback — substitute a
+   repo-Markdown spot-check and say so — and two sync artifacts show that fallback being
+   taken, against 60 files on 2026-05-28 and a repo-Markdown spot-check on 2026-05-30.
+   So this gate is honest about degrading but can run at roughly a tenth of its intended
+   scale depending on whose machine it runs on. For math specifically the checked-in
+   `math.md` corpus covers the cases that matter, so nothing here depends on
+   `attic/test-docs` being present; treat a green corpus-parity run as confirmation
+   rather than as the primary evidence.
 
 So the answer to “how does the Rust port get the same coverage” is: it already has an
 enforcement gate, and this work only has to feed it.
@@ -535,7 +545,8 @@ non-math dollar cases.
 - [ ] Port the three fixes to `atomic_patterns.rs`, `filling.rs`, and typography.
 - [ ] Regenerate `admin/port-coverage-mapping/*.yaml`; bump the counts in
   `python/tests/test_smoke.py`; drive `test_no_unmapped_entries` back to zero.
-- [ ] Run `scripts/corpus-parity-check.sh` for byte parity.
+- [ ] Run `scripts/corpus-parity-check.sh` for byte parity, recording which corpus it
+      ran against (see the caveat above).
 
 ## Outstanding Questions
 
