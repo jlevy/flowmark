@@ -1403,11 +1403,13 @@ def _definition_term_sequence(
     terms = 0
     while index < len(lines):
         line = lines[index]
-        if opaque[index] or line.lazy or line.frames != frames:
+        if opaque[index] or line.lazy or _content_under_frames(source, line, frames) is None:
             return None
         payload = _definition_payload(source, line, frames)
         if payload == "":
             break
+        if line.frames != frames:
+            return None
         marker_column = _definition_marker(source, line, frames)
         if marker_column is not None:
             return (index, marker_column) if terms else None

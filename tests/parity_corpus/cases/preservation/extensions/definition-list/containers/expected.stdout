@@ -11,3 +11,8 @@
 
   ~ Definition in list with ``code  span``.
     lazy list continuation.
+
+  Next B
+
+  :
+      block-only list definition.
