@@ -3,9 +3,9 @@ type: is
 id: is-01m0y08zeydjc34a7dyd0feamy
 title: "P0 vertical slice: definition lists"
 kind: feature
-status: open
+status: closed
 priority: 2
-version: 6
+version: 8
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -21,7 +21,11 @@ dependencies:
     target: is-01m0y0a2zv7qvhbw4pfwhxkn8h
 parent_id: is-01kyss8ewf9ys49pyefybdyyw9
 created_at: 2026-08-26T03:02:02.459Z
-updated_at: 2026-08-26T03:02:38.842Z
+updated_at: 2026-08-26T12:23:17.839Z
+closed_at: 2026-08-26T12:23:17.838Z
+close_reason: Pandoc definition lists are specified and source-exact in Python 30de4c0 and Rust 14cb570 under FM-EXT-DEFINITION-LIST-001. Four shared cases cover term/marker/continuation/container/opaque/fallback boundaries; native scanner tests, both selectors, full shared conformance, and both tryscript layers pass.
+resolution: null
+duplicate_of: null
 ---
 Add definition-list preservation as one shared-to-Rust vertical slice.
 

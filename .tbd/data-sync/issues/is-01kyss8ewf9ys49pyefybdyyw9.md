@@ -3,9 +3,9 @@ type: is
 id: is-01kyss8ewf9ys49pyefybdyyw9
 title: "Phase 4A: P0 opaque-extension vertical slices"
 kind: feature
-status: open
+status: closed
 priority: 2
-version: 9
+version: 11
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -19,7 +19,11 @@ child_order_hints:
   - is-01m0y08z09p26pakg08h937pfd
   - is-01m0y08zeydjc34a7dyd0feamy
 created_at: 2026-07-30T15:11:04.078Z
-updated_at: 2026-08-26T03:03:47.855Z
+updated_at: 2026-08-26T12:23:18.240Z
+closed_at: 2026-08-26T12:23:18.239Z
+close_reason: "All five P0 opaque-extension vertical slices are implemented in Python and Rust: Pandoc multiline tables, Obsidian callouts, colon containers/fenced divs, TOML frontmatter, and Pandoc definition lists. Shared corpus result is Python 487 active passes and Rust 452 exact passes plus 35 unchanged ledgered CommonMark divergences; Python 143 tryscript cases and Rust 13 tryscript documents pass."
+resolution: null
+duplicate_of: null
 ---
 Parent for the highest-risk extension registry families after math and code parity: Pandoc multiline tables, Obsidian callouts, colon containers/fenced divs, TOML frontmatter, and definition lists.
 
