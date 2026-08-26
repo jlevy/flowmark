@@ -1,0 +1,37 @@
+schema_version = 1
+
+[[fixture]]
+id = "schema.unknown-field"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/unknown-field.toml"
+outcome = "manifest-error"
+code = "unknown-field"
+
+[[fixture]]
+id = "schema.unsupported-version"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/unsupported-version.toml"
+outcome = "manifest-error"
+code = "unsupported-schema-version"
+
+[[fixture]]
+id = "schema.duplicate-case-id"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/duplicate-case-id.toml"
+outcome = "manifest-error"
+code = "duplicate-case-id"
+
+[[fixture]]
+id = "schema.kind-field-conflict"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/kind-field-conflict.toml"
+outcome = "manifest-error"
+code = "invalid-kind-fields"
+
+[[fixture]]
+id = "schema.parent-traversal"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/parent-traversal.toml"
+outcome = "manifest-error"
+code = "invalid-path"
+
+[[fixture]]
+id = "comparison.stdout-mismatch"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/stdout-mismatch.toml"
+outcome = "case-failure"
+code = "stdout-mismatch"

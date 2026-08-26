@@ -1,0 +1,34 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[defaults.env]
+NO_COLOR = "1"
+LC_ALL = "C"
+TZ = "UTC"
+
+[[case]]
+id = "cli.stdin.wrap"
+change_id = "FM-CONFORMANCE-001"
+description = "Stdin formatting captures exact output and reaches a fixed point."
+kind = "stdin"
+tags = ["cli", "current-behavior", "stdin", "wrapping"]
+args = ["--width", "36", "-"]
+stdin = "tests/parity_corpus/cases/cli/stdin-wrap/input.md"
+expected_stdout = "tests/parity_corpus/cases/cli/stdin-wrap/expected.stdout"
+expected_stderr = "tests/parity_corpus/cases/cli/stdin-wrap/expected.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "cli.files.inplace-backup"
+change_id = "FM-CONFORMANCE-001"
+description = "In-place formatting writes the formatted file and an exact original backup."
+kind = "files"
+tags = ["backup", "cli", "current-behavior", "files", "inplace"]
+args = ["--inplace", "workspace/input.md"]
+before_tree = "tests/parity_corpus/cases/cli/inplace-backup/before"
+after_tree = "tests/parity_corpus/cases/cli/inplace-backup/after"
+expected_stdout = "tests/parity_corpus/cases/cli/inplace-backup/expected.stdout"
+expected_stderr = "tests/parity_corpus/cases/cli/inplace-backup/expected.stderr"
+expected_exit = 0
+idempotent = false

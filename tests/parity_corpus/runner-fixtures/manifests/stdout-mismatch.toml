@@ -1,0 +1,15 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "fixture.stdout-mismatch"
+change_id = "FM-CONFORMANCE-001"
+description = "The committed stdout intentionally differs from formatter output."
+kind = "stdin"
+tags = ["fixture"]
+args = ["-"]
+stdin = "tests/parity_corpus/runner-fixtures/payloads/input.md"
+expected_stdout = "tests/parity_corpus/runner-fixtures/payloads/intentionally-wrong.stdout"
+expected_stderr = "tests/parity_corpus/runner-fixtures/payloads/expected.stderr"
+expected_exit = 0
+idempotent = false
