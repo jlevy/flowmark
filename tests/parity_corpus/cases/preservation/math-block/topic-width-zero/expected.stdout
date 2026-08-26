@@ -360,7 +360,6 @@ Text after a mismatched closer must not disappear into an opaque suffix.
 ### E10. Unmatched outer environment with a closed nested environment
 
 \begin{outer}
-
 \begin{inner}
 a + b = c
 \end{inner}

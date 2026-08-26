@@ -1014,9 +1014,12 @@ This is
 another.
 ```
 
-<div align="center"> <img src="images/rounds.png" alt="awesome"> <br> Example of company
-valuation, shares, fundraising, and dilution
-(<a href="http://ownyourventure.com/equitySim.html">source</a>) <br> </div>
+<div align="center">
+	<img src="images/rounds.png" alt="awesome">
+  <br>
+  Example of company valuation, shares, fundraising, and dilution (<a href="http://ownyourventure.com/equitySim.html">source</a>)
+  <br>
+</div>
 
 | Specific AWS Services | Basics | Tips | Gotchas |
 | --- | --- | --- | --- |
@@ -1452,11 +1455,9 @@ Closing tags should NOT be merged onto list item lines:
 {% /field %}
 
 <!-- f:field kind="select" id="choice" -->
-
 - Option 1 <!-- #opt1 -->
 - Option 2 <!-- #opt2 -->
 - Option 3 <!-- #opt3 -->
-
 <!-- /f:field -->
 
 ### Issue 3: Same-Line Tag Pairs
@@ -1524,12 +1525,10 @@ lines):
 Tables inside HTML comment tags without blank lines:
 
 <!-- f:table id="comparison" -->
-
 | Feature | Product A | Product B |
 | --- | --- | --- |
 | Speed | Fast | Faster |
 | Cost | Low | Medium |
-
 <!-- /f:table -->
 
 Tables inside Jinja variable tags (edge case):
@@ -1610,11 +1609,9 @@ Self-closing tags with tables:
 {% spacer height="20" /%}
 
 <!-- separator -->
-
 | Item | Value |
 | --- | --- |
 | X | 1 |
-
 <!-- end-section -->
 
 ### Issue 7: Multi-Line Opening Tags (GitHub Issue #17)

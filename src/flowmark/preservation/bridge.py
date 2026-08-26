@@ -42,6 +42,7 @@ class ProtectedSource:
     text: str
     regions: tuple[ProtectedRegion, ...]
     tokens: tuple[str, ...]
+    synthetic_block_prefixes: tuple[bool, ...]
 
 
 def _escape_authored_markers(text: str) -> str:
@@ -122,6 +123,16 @@ def protect_source(
     """Replace exact protected slices with parser-inert tokens and retain a side table."""
     validate_regions(source, regions)
     tokens = tuple(encode_token(region.index) for region in regions)
+    synthetic_block_prefixes = tuple(
+        region.form is RegionForm.block
+        and source.scalar_index(region.start) > 0
+        and source.text[source.scalar_index(region.start) - 1] == "\n"
+        and (
+            source.scalar_index(region.start) < 2
+            or source.text[source.scalar_index(region.start) - 2] != "\n"
+        )
+        for region in regions
+    )
     parts: list[str] = []
     previous_end = 0
     for region, token in zip(regions, tokens, strict=True):
@@ -136,12 +147,14 @@ def protect_source(
             parts.append(token)
         previous_end = region.end
     parts.append(_escape_authored_markers(source.text[source.scalar_index(previous_end) :]))
-    return ProtectedSource("".join(parts), regions, tokens)
+    return ProtectedSource("".join(parts), regions, tokens, synthetic_block_prefixes)
 
 
 def restore_source(rendered: str, protected: ProtectedSource) -> str:
     """Validate the complete parser token stream, then restore exact source slices."""
-    if len(protected.regions) != len(protected.tokens):
+    if len(protected.regions) != len(protected.tokens) or len(protected.regions) != len(
+        protected.synthetic_block_prefixes
+    ):
         raise InvalidTokenError("protected side table lengths do not match")
     for expected_index, (region, token) in enumerate(
         zip(protected.regions, protected.tokens, strict=True)
@@ -156,6 +169,10 @@ def restore_source(rendered: str, protected: ProtectedSource) -> str:
         raise InvalidTokenError("preservation tokens are reordered or duplicated")
     for expected_index, region in enumerate(protected.regions):
         if region.form is RegionForm.block:
+            if protected.synthetic_block_prefixes[expected_index] and gaps[expected_index].endswith(
+                "\n\n"
+            ):
+                gaps[expected_index] = gaps[expected_index][:-1]
             if gaps[expected_index] and not gaps[expected_index].endswith("\n"):
                 raise InvalidTokenError("protected block token is not at a line boundary")
             if not gaps[expected_index + 1].startswith("\n"):

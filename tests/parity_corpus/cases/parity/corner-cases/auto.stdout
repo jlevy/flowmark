@@ -93,9 +93,7 @@ Blockquote with blank separator preserved:
 
 ## D9: Empty and whitespace input
 
-<!-- D9 is tested separately (empty string input).
-This section tests near-empty.
--->
+<!-- D9 is tested separately (empty string input). This section tests near-empty. -->
 
 Just a single paragraph.
 

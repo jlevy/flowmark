@@ -58,6 +58,7 @@ ALTERNATE_EXAMPLES = (
 MIXED_HTML_INTEGRATION_EXAMPLES = frozenset(
     {91, 110, 148, 183, 184, 185, 187, 191, 195, 201, 309, 494, 621}
 )
+WIKILINK_EXAMPLES = frozenset({559})
 
 
 def _sha256(data: bytes) -> str:
@@ -116,6 +117,12 @@ def _contains_active(markdown: str, token: str) -> bool:
 def _deferral(markdown: str, section: str, number: int) -> tuple[str, str, str] | None:
     if section == "Code spans":
         return "fm-ocpw", "FM-CODE-SPAN-001", "exercises CommonMark code-span syntax"
+    if number in WIKILINK_EXAMPLES:
+        return (
+            "fm-5vlb",
+            "FM-EXT-MYST-WIKILINK-001",
+            "contains a complete double-bracket wikilink span",
+        )
     if number in MIXED_HTML_INTEGRATION_EXAMPLES:
         return (
             "fm-w467",

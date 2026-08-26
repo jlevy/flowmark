@@ -941,6 +941,7 @@ def _starts_block_structure(text: str, start: int, end: int) -> bool:
         or _consume_list_marker(text, start, end, 0)
         or re.match(r"(`{3,}|~{3,})", content)
         or _THEMATIC_BREAK.fullmatch(content)
+        or _html_block_start(content, allow_type_seven=False) is not None
         or content in {"$$", "\\[", "\\]"}
         or content.startswith(("\\begin{", "\\end{"))
     )

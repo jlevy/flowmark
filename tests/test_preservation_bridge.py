@@ -127,6 +127,14 @@ def test_an_inline_token_on_its_own_line_does_not_become_a_block() -> None:
     assert restore_source(markdown.render(document), protected) == "$x$\n"
 
 
+def test_restoration_removes_only_a_parser_synthesized_block_prefix_blank() -> None:
+    protected = _protected("Before\n$$\nbody\n$$\nAfter")
+    token = protected.tokens[0]
+    rendered = protected.text.replace(f"Before\n{token}", f"Before\n\n{token}")
+
+    assert restore_source(rendered, protected) == "Before\n$$\nbody\n$$\nAfter\n"
+
+
 def test_protected_code_supplies_immutable_context_to_cross_inline_rewrites() -> None:
     protected = _protected("The ``config``'s value and `` x ``'s type.")
     markdown = flowmark_markdown(_identity_wrapper, _protected_source=protected)

@@ -7466,10 +7466,10 @@ idempotent = true
 
 [[case]]
 id = "commonmark.default.0559"
-change_id = "FM-COMMONMARK-001"
+change_id = "FM-EXT-MYST-WIKILINK-001"
 description = "CommonMark 0.31.2 example 559: Links."
 kind = "stdin"
-tags = ["commonmark", "default", "section-links"]
+tags = ["commonmark", "default", "section-links", "deferred", "owner-fm-5vlb"]
 args = ["-"]
 stdin = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0559/input.md"
 expected_stdout = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0559/expected.default.md"

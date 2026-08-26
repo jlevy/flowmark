@@ -325,7 +325,7 @@ def test_grid_tables_require_compatible_outer_borders() -> None:
 def test_raw_html_uses_explicit_and_blank_line_end_conditions() -> None:
     source = normalize_source(
         "<!-- raw\n\n-->\n\n<div>\n*raw*\n</div>\n\nFollowing\n\n"
-        "paragraph\n<x-card>\nnot type seven"
+        "paragraph\n<x-card>\nnot type seven\n\n- item\n<!-- closing -->"
     )
     regions = scan_protected_regions(source)
 
@@ -333,10 +333,13 @@ def test_raw_html_uses_explicit_and_blank_line_end_conditions() -> None:
         RegionKind.raw_html_block,
         RegionKind.raw_html_block,
         RegionKind.raw_html_inline,
+        RegionKind.raw_html_block,
     ]
     assert regions[0].source == "<!-- raw\n\n-->\n"
     assert regions[1].source == "<div>\n*raw*\n</div>\n"
     assert regions[2].source == "<x-card>"
+    assert regions[3].source == "<!-- closing -->\n"
+    assert regions[3].container.list_depth == 0
 
 
 def test_unmatched_outer_block_retains_closed_inner_and_not_sibling_closers() -> None:
