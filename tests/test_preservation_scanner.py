@@ -192,6 +192,17 @@ def test_multiline_table_requires_a_complete_structural_pair() -> None:
     assert regions[0].source.endswith("next       row\n-----\n")
 
 
+def test_callout_marker_must_be_the_first_line_of_its_quote() -> None:
+    source = normalize_source(
+        "> ordinary first line\n> [!note] too late\n\n> [!tip]- valid\ncontinued lazily"
+    )
+
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [RegionKind.obsidian_callout]
+    assert regions[0].source == "> [!tip]- valid\ncontinued lazily\n"
+
+
 def test_unmatched_outer_block_retains_closed_inner_and_not_sibling_closers() -> None:
     source = normalize_source("\\begin{outer}\n\\begin{inner}\nbody\n\\end{inner}\n\n- $$\n- $$")
 

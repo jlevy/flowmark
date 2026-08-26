@@ -30,6 +30,7 @@ _ATX_HEADING = re.compile(r" {0,3}#{1,6}(?:[ \t]+|$)")
 _THEMATIC_BREAK = re.compile(r"(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})\Z")
 _MULTILINE_TABLE_RULE = re.compile(r"-{3,}(?:[ \t]+-{3,})*\Z")
 _TABLE_CAPTION = re.compile(r"(?:(?:Table|table):|:)(?:[ \t]+|\Z)")
+_OBSIDIAN_CALLOUT = re.compile(r"\[![A-Za-z0-9][A-Za-z0-9_-]*\][+-]?(?:[ \t]+.*)?\Z")
 
 
 class _DollarState(Enum):
@@ -1173,6 +1174,48 @@ def scan_pandoc_multiline_tables(
     return tuple(candidates)
 
 
+def _line_within_frames(line: ContainerLine, frames: tuple[_ContainerFrame, ...]) -> bool:
+    return len(line.frames) >= len(frames) and line.frames[: len(frames)] == frames
+
+
+def scan_obsidian_callouts(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+    opaque_blocks: tuple[OpaqueBlock, ...] = (),
+) -> tuple[Candidate, ...]:
+    """Preserve a complete quote block whose first logical line is a callout marker."""
+    views = build_container_view(source) if lines is None else lines
+    opaque = _opaque_line_flags(views, opaque_blocks)
+    candidates: list[Candidate] = []
+    for opener_index, opener in enumerate(views):
+        if opaque[opener_index] or opener.lazy or not opener.frames:
+            continue
+        if opener.frames[-1].kind is not _ContainerKind.quote:
+            continue
+        if _OBSIDIAN_CALLOUT.fullmatch(_line_payload(source, opener)) is None:
+            continue
+        if opener_index > 0 and views[opener_index - 1].frames == opener.frames:
+            continue
+
+        final_index = opener_index
+        for candidate_index in range(opener_index + 1, len(views)):
+            candidate = views[candidate_index]
+            if not _line_within_frames(candidate, opener.frames):
+                break
+            final_index = candidate_index
+        candidates.append(
+            Candidate(
+                RegionKind.obsidian_callout,
+                RegionForm.block,
+                opener.start,
+                views[final_index].end,
+                opener.context,
+                _scaffold_prefix(source, opener),
+            )
+        )
+    return tuple(candidates)
+
+
 def resolve_candidate_tree(
     source: NormalizedSource, candidates: tuple[Candidate, ...]
 ) -> tuple[Candidate, ...]:
@@ -1398,6 +1441,7 @@ def scan_protected_regions(
         source,
         (
             *scan_pandoc_multiline_tables(source, lines, opaque_blocks),
+            *scan_obsidian_callouts(source, lines, opaque_blocks),
             *scan_display_math(source, lines, opaque_blocks),
             *scan_environment_blocks(source, lines, opaque_blocks),
         ),
