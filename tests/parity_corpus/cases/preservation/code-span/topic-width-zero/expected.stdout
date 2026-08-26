@@ -161,11 +161,14 @@ Short [`a    b`](http://example.com) tail.
 
 ### D8. In a definition list
 
-Code term : A definition with `a    b` inside.
+Code term
+: A definition with `a    b` inside.
 
 ### D9. In a colon container
 
-::: note Container text with `a    b` and ``has ` tick`` inside. :::
+::: note
+Container text with `a    b` and ``has ` tick`` inside.
+:::
 
 ## Part E: Wrapping
 
