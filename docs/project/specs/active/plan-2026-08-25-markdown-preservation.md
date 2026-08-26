@@ -2,10 +2,10 @@
 
 **Date:** 2026-08-25
 
-**Status:** Active. Track A (math) is measured and its corpus is written; Track B is
-planned from the verified ledger in #62.
+**Status:** Active. Tracks A (math) and C (inline code) are measured with corpora
+written; Track B is planned from the verified ledger in #62.
 
-**Consolidates:** this is the single spec for both tracks. It absorbed an earlier
+**Consolidates:** this is the single spec for all three tracks. It absorbed an earlier
 math-only draft, now deleted rather than left to rot alongside it, and it supplies the
 plan that `fm-drjv`, `fm-7vmg` and `fm-w467` referenced from July onward but which was
 never written. Those three beads now point here. No other spec covers this ground —
@@ -19,17 +19,22 @@ is designed to be "safe to run automatically on save or at any stage of a docume
 pipeline," the goal is **preservation**: round-trip these constructs verbatim, even where
 flowmark cannot and should not fully parse every dialect.
 
-This is one problem with one mechanism, so it gets one spec. It has two tracks:
+This is one problem with one mechanism, so it gets one spec. It has three tracks:
 
 - **Track A — mathematics.** Highest priority, and scheduled first. Measured end to end,
   with a checked-in corpus that reproduces every defect.
 - **Track B — the rest of the ledger.** The twelve construct families in
   [#62](https://github.com/jlevy/flowmark/issues/62), empirically verified there.
+- **Track C — inline code.** Fourteen measured defects in the construct flowmark already
+  believed it handled correctly. Scheduled *first among the fixes*, because it owns the
+  span code path the other two tracks build on.
 
-Track A goes first not only because it is the priority but because it is the ideal proving
-slice: math alone exercises **all three** mechanisms Track B needs — block-level opaque
-passthrough, inline atomic spans, and a typography guard. Getting math green de-risks
-everything after it.
+**Sequencing.** Track A is the priority and its corpus lands first, because math alone
+exercises all three mechanisms Track B needs — block-level opaque passthrough, inline
+atomic spans, and a typography guard. But the *fixes* start with Track C, because inline
+code owns the span code path everything else builds on: once a span is emitted
+byte-for-byte, math inherits that instead of needing a stricter path of its own. So the
+order is Track A's corpus, then Track C's fixes, then Track A's fixes, then Track B.
 
 **The principle throughout: preserve, do not parse.** Several of these constructs have no
 single standard — `:::` has at least four mutually incompatible dialects — so there is no
@@ -50,7 +55,7 @@ correct "parse it," only "do not break it."
 
 ## The Unifying Rule
 
-Every row in both tracks reduces to one statement:
+Every row in all three tracks reduces to one statement:
 
 > A construct flowmark does not model must be recognised well enough to be bounded, then
 > emitted byte-for-byte. Recognition may be conservative and may miss cases. Treatment
@@ -63,7 +68,7 @@ Two consequences worth stating because they settle most design arguments:
    and collides with prose. Once bounded, both are atomic, both are exempt from escaping,
    both are exempt from typographic rewriting, and both must be byte-exact inside. Any
    place where they currently differ in *treatment* is a bug, not a distinction to
-   preserve. See **Defect M5** below, which is exactly such a bug.
+   preserve. **Track C** below is the fourteen such bugs this claim turned up.
 2. **False positives are cheap; false negatives corrupt.** Wrongly deciding a run of text
    is opaque costs at most an overlong line. Wrongly deciding it is prose changes bytes.
    This asymmetry argues for erring toward recognition throughout.
@@ -81,7 +86,8 @@ A 39-case battery was run against **flowmark 0.7.3 (Python)** and **flowmark-rs 
 behaviour rather than a port regression.
 Sixteen cases corrupt content.
 The failures fall into four mechanisms, M1 through M4; M3 and M4 are not in #70, and M3 is in
-neither issue. A fifth, M5, is on the code-span side and is described after them.
+neither issue. Two further defects, C1 and C2, are on the code-span side and are
+described in Track C.
 
 **Defect M1 — span splitting.** `$…$`, one-line `$$…$$`, and `` `\(…\)` `` are absent from
 `ATOMIC_PATTERNS`, so a wrap boundary falling inside one splits it.
@@ -184,35 +190,83 @@ Turning that file into a real, exercised corpus is the largest single piece of t
 work.
 
 
-### Defect M5 — code span interiors lose whitespace, progressively
+## Track C: Inline Code Correctness
 
-Found while writing this spec, by asking whether math and code spans really are treated
-identically. They are not, and the difference is a bug on the code-span side.
+Found by testing the Unifying Rule's claim that code spans and math spans get identical
+treatment. They do not, and every difference is a bug on the code-span side. Track C is
+scheduled **before** the math fixes because it owns the shared span code path: once a span
+is emitted byte-for-byte, math inherits that rather than needing a stricter path of its
+own.
+
+Measured with a 30-case battery against flowmark 0.7.3. Sixteen cases change; two of those
+changes are correct, leaving **fourteen defects** in two families.
+
+### Defect C1 — delimiter runs are collapsed regardless of content
+
+flowmark shortens a multi-backtick delimiter to a single backtick unconditionally. That is
+harmless when the content has no backticks and **structurally corrupting** when it does,
+because the shortened delimiter is then closed early by a backtick inside the content.
 
 ```text
-source            pass 1        pass 2        pass 3
-`a    b`     →    `a b`         `a b`         `a b`
-`  a  `      →    ` a `         `a`           `a`
+IN                              OUT
+``simple``                 →    `simple`                  (correct: same render)
+``has ` tick``             →    `has ` tick`              (broken: span ends at the inner tick)
+``code with `backtick` in``→    `code with `backtick` in` (broken: becomes two spans)
+```outer with `` inner```  →    `outer with `` inner`     (broken)
 ```
 
-Byte counts, since a Markdown renderer hides this: the first interior goes from 6 bytes
-to 3. The second is worse — it is **not idempotent**, losing one space per pass for two
-passes before it settles.
+The corruption is silent and idempotent — stable after one pass, so it is a one-time
+structural change rather than runaway. It fires in every context including table cells.
 
-Per CommonMark 0.31.2 §6.1, a code span's content has line endings converted to spaces
-and, if it both begins and ends with a space and is not all spaces, one space stripped
-from each end. Internal runs are significant. So `` `a    b` `` must keep its four
-spaces, and rewriting source `` `  a  ` `` to `` ` a ` `` changes what a renderer
-produces (` a ` becomes `a`).
+This is what mangled this spec's own table cells while it was being written, and it is
+almost certainly the same root as [#58](https://github.com/jlevy/flowmark/issues/58).
 
-The cause is ordering, not intent: the paragraph-level `re.sub(r"\s+", " ", text)` in
-`wrap_paragraph_lines` runs before atomic protection, so the interior is normalised
-before anything declares it untouchable. No test pins the current behaviour.
+### Defect C2 — whitespace inside a span is normalised
 
-This is adjacent to [#58](https://github.com/jlevy/flowmark/issues/58) and it belongs in
-this spec rather than beside it, because the Unifying Rule says code spans and math spans
-get identical treatment. Fixing it is a precondition for math spans being byte-exact by
-the same code path, rather than math getting a special stricter path.
+```text
+`a    b`   →  `a b`      6 bytes of content become 3; internal runs are significant
+`  a  `    →  ` a `      then `a` on a second pass — not idempotent
+`   `      →  ` `        all-space content is exempt from the strip rule
+`a<TAB>b`  →  `a b`      tabs inside a span are significant
+```
+
+CommonMark 0.31.2 §6.1 converts line endings to spaces and strips one space from each end
+only when the content both begins and ends with a space **and is not entirely spaces**.
+Internal runs and tabs are significant. Rewriting source `` `  a  ` `` to `` ` a ` ``
+also changes what a renderer produces, since ` a ` then strips to `a`.
+
+The cause is ordering rather than intent: the paragraph-level `re.sub(r"\s+", " ", text)`
+in `wrap_paragraph_lines` runs before atomic protection, so a span's interior is
+normalised before anything declares it untouchable. No test pins the current behaviour.
+
+**The context asymmetry is the diagnostic.** C2 fires in paragraphs, list items,
+blockquotes and link text, but **not** in table cells or headings — which take a different
+emit path that never reaches that normaliser. C1, by contrast, fires everywhere including
+tables. So the two defects are independent, and C2's fix belongs at the point the
+paragraph path diverges from the others.
+
+### What is already correct
+
+Regression cover, confirmed by the same battery: a line ending inside a span becomes a
+space (CommonMark-correct); backslashes, emphasis markers, HTML, entities and block
+markers all survive literally; no typographic transform fires inside a span, so straight
+quotes, apostrophes, ellipses and double hyphens are left alone; and spans are atomic for
+wrapping, including one whose content begins with a list marker and one longer than the
+wrap column.
+
+### The corpus
+
+`tests/tryscript/fixtures/content/code-inline.md`, which — exactly like `math.md` —
+already existed in both repos, was referenced by **no test in either**, and whose final
+line was already the C1 reproducer:
+
+```text
+Multiple backticks: ``code with `backtick` inside``.
+```
+
+The shipped fixture corrupts itself on that line. It is now a five-part corpus on the same
+shape as the math one: delimiter runs, whitespace, literal content, block contexts, and
+wrapping. It reproduces all fourteen defects.
 
 ## The delimiter rule
 
@@ -619,10 +673,30 @@ E7) and 6 whose display block collapses (B1–B4, B7, E3). Everything else passe
 is regression cover: GitLab and MyST inline forms, both fenced block forms, all twelve
 Part D non-math dollar cases.
 
-### Phase 2 — Track A fixes (`jlevy/flowmark`)
+### Phase 2 — Track C: inline code correctness (`jlevy/flowmark`)
 
-- [ ] M5 first: stop normalising inside atomic spans, so code spans become byte-exact.
-      This is the shared code path; math inherits it.
+Scheduled ahead of the math fixes because it owns the shared span code path.
+
+- [x] Replace `tests/tryscript/fixtures/content/code-inline.md` with Parts A–E.
+- [ ] Add `tests/test_code_spans.py` asserting content and delimiter integrity.
+- [ ] Wire the fixture into `formatting.tryscript.md` and the idempotency check.
+- [ ] C1: choose the delimiter run from the content — the shortest run strictly longer
+      than the longest backtick run inside — instead of collapsing to one. Normalising a
+      wider delimiter down is fine only when the content holds no backticks.
+- [ ] C2: stop normalising whitespace inside atomic spans. Fix at the point the paragraph
+      emit path diverges from the table and heading paths, which already behave.
+- [ ] Regenerate goldens; survey which existing fixtures change.
+
+Baseline measured against flowmark 0.7.3: 16 of 30 sections change, of which two are
+correct (a wider delimiter narrowing with no backticks inside, and a line ending becoming
+a space). **Fourteen defects** remain: A3–A5, A7, A8 and D6 for C1; B1, B2, B4, B5 and
+D1–D4 for C2.
+
+### Phase 3 — Track A: math fixes (`jlevy/flowmark`)
+
+Depends on Phase 2. Math spans become byte-exact by inheriting the span path rather than
+getting a stricter one.
+
 - [ ] M3: route smartquotes and ellipses through `iter_atomic_spans`.
 - [ ] M1: add the three inline math patterns; confirm M2 falls out.
 - [ ] M4: make `$$`, `` `\[…\]` `` and `` `\begin{}` `` opaque deliberately.
@@ -630,22 +704,23 @@ Part D non-math dollar cases.
       records the collapsed `$$` form as expected output.
 - [ ] Changelog: output changes for math-bearing and code-span-bearing documents.
 
-### Phase 3 — Track A port and parity (`jlevy/flowmark-rs`)
+### Phase 4 — Track A port and parity (`jlevy/flowmark-rs`)
 
-- [ ] Mirror `math.md` and the tryscript changes.
-- [ ] Port the fixes to `atomic_patterns.rs`, `filling.rs`, and typography.
+- [ ] Mirror `math.md`, `code-inline.md` and the tryscript changes.
+- [ ] Port the Phase 2 and Phase 3 fixes to `atomic_patterns.rs`, `filling.rs`, and
+      typography.
 - [ ] Regenerate `admin/port-coverage-mapping/*.yaml`; bump the counts in
       `python/tests/test_smoke.py`; drive `test_no_unmapped_entries` back to zero.
 - [ ] Run `scripts/corpus-parity-check.sh`, recording which corpus it ran against.
 
-### Phase 4 — Track B P0 rows: real data loss
+### Phase 5 — Track B P0 rows: real data loss
 
 - [ ] Block-level opaque passthrough reusing the Phase 2 mechanism.
 - [ ] Rows 1–5: multiline tables, Obsidian callouts, `:::` containers, `+++`
       frontmatter, definition lists.
 - [ ] Extend the corpus with a `preservation.md` fixture on the same Part A–E shape.
 
-### Phase 5 — Track B P1 and P2 rows, goldens and parity
+### Phase 6 — Track B P1 and P2 rows, goldens and parity
 
 - [ ] Rows 7–10 and 12.
 - [ ] Rare-syntaxes end-to-end goldens; Rust porting notes; regenerate.
@@ -665,8 +740,9 @@ Part D non-math dollar cases.
 - **File format compatibility**: N/A. **Server API**: N/A. **Database schema**: N/A.
 
 **Output compatibility** is the one that matters. This changes flowmark's output for
-documents containing math, and — via M5 — for documents containing code spans with
-internal multiple spaces. Both are one-time reflows and both are the fix. Documents with
+documents containing math, and — via Track C — for documents containing code spans with
+internal whitespace or with backticks inside a wide delimiter. All are one-time changes
+and all are the fix. Documents with
 neither must be byte-identical, which the corpus parity machinery can demonstrate.
 
 ## Outstanding Questions
@@ -674,11 +750,12 @@ neither must be byte-identical, which the corpus parity machinery can demonstrat
 - [x] Pattern ordering against `INLINE_CODE_SPAN` — **resolved: keep code spans first.**
       Treatment is identical, so the two readings of `` $`…`$ `` emit identical bytes;
       the existing order wins on risk. A test pins it.
-- [ ] M5 fix placement: exclude atomic spans from the paragraph-level whitespace
-      normalisation, or protect them before it runs? The second is likely cleaner but
-      touches the wrapping entry point.
-- [ ] Does fixing M5 change any existing golden? Expected yes for any fixture with
-      multiple spaces inside a code span; needs a survey before Phase 2.
+- [ ] C2 fix placement: exclude atomic spans from the paragraph-level whitespace
+      normalisation, or protect them before it runs? Table and heading emit paths already
+      behave, so the divergence point is where to look.
+- [ ] Which existing goldens do the Track C fixes change? Expected: any fixture with
+      multiple spaces inside a code span, or a wide delimiter around backticks. Survey at
+      the start of Phase 2.
 - [ ] `\begin{}…\end{}` — restrict to a known environment list, or accept any
       `\begin{word}`? Accepting any matches preserve-don't-parse.
 - [ ] Fixture mirroring between the repos is manual. Sync script, or accept the step?
@@ -688,8 +765,9 @@ neither must be byte-identical, which the corpus parity machinery can demonstrat
 - Closes [#70](https://github.com/jlevy/flowmark/issues/70) (Track A, M1–M2).
 - Closes [#62](https://github.com/jlevy/flowmark/issues/62) across both tracks. Its
   "already robustly safe" list needs the `$…$` interior entry corrected.
-- Overlaps [#58](https://github.com/jlevy/flowmark/issues/58): M5 shares its area but is
-  a distinct defect (whitespace normalisation, not backtick mis-pairing).
+- Very likely closes [#58](https://github.com/jlevy/flowmark/issues/58): C1 is delimiter
+  collapse producing exactly the backtick mis-pairing that issue reports. C2 is a distinct
+  defect in the same area.
 - Contributes the two math forms to
   [#67](https://github.com/jlevy/flowmark/issues/67) (GitLab Flavored Markdown).
 
