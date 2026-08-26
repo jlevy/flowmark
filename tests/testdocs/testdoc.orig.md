@@ -996,35 +996,35 @@ GitHub-flavored Markdown supports alert blocks (callouts) for highlighting impor
 > - Second item
 > - Third item
 
-### Lowercase Alert Type (normalized to uppercase)
+### Lowercase Callout Type (preserved exactly)
 
 > [!note]
-> This lowercase alert should be normalized to uppercase.
+> This lowercase type spelling should remain unchanged.
 
-### Non-standard Alert Types (preserved as regular quotes)
+### Custom Callout Types (preserved exactly)
 
-Non-standard alert types like `[!FOO]` are not recognized by GitHub but should be
-preserved as regular block quotes without losing any content.
+Obsidian accepts custom callout types even though GitHub alerts do not. Flowmark should
+preserve their exact type spelling and content without deciding whether a type is standard.
 
 > [!FOO]
-> This uses a non-standard alert type.
-> It should be preserved as a regular quote.
+> This uses a custom callout type.
+> It should be preserved exactly.
 
 > [!CUSTOM]
-> Another non-standard type that should be preserved.
+> Another custom type that should be preserved.
 
 > [!INFO]
-> Info is not a standard GitHub alert type.
+> Info is not a standard GitHub alert type but is valid custom syntax.
 
-### Misspelled Alert Types (preserved as regular quotes)
+### Unknown Callout Types (preserved exactly)
 
-Misspelled standard types should also be preserved as regular quotes.
+Flowmark should not treat unknown type names as spelling errors.
 
 > [!NOOT]
-> This misspelled NOTE should be a regular quote.
+> This possible misspelling should remain unchanged.
 
 > [!WARNNG]
-> This misspelled WARNING should be a regular quote.
+> This possible misspelling should also remain unchanged.
 
 ### Malformed Alert Syntax (preserved as regular quotes)
 
