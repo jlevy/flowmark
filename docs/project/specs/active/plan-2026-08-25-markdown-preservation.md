@@ -5,9 +5,11 @@
 **Status:** Active. Track A (math) is measured and its corpus is written; Track B is
 planned from the verified ledger in #62.
 
-**Consolidates:** this spec replaces `plan-2026-08-25-math-syntax-preservation.md` (math
-only) and supplies the missing `plan-2026-07-30-rare-markdown-preservation.md` that
-`fm-drjv`, `fm-7vmg` and `fm-w467` reference but which was never written.
+**Consolidates:** this is the single spec for both tracks. It absorbed an earlier
+math-only draft, now deleted rather than left to rot alongside it, and it supplies the
+plan that `fm-drjv`, `fm-7vmg` and `fm-w467` referenced from July onward but which was
+never written. Those three beads now point here. No other spec covers this ground —
+verified against every bead's `spec_path`, open and closed.
 
 ## Purpose
 
