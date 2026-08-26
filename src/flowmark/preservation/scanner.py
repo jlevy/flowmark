@@ -28,6 +28,8 @@ _END_PREFIX = "\\end{"
 _TABLE_DELIMITER_CELL = re.compile(r":?-{3,}:?\Z")
 _ATX_HEADING = re.compile(r" {0,3}#{1,6}(?:[ \t]+|$)")
 _THEMATIC_BREAK = re.compile(r"(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})\Z")
+_MULTILINE_TABLE_RULE = re.compile(r"-{3,}(?:[ \t]+-{3,})*\Z")
+_TABLE_CAPTION = re.compile(r"(?:(?:Table|table):|:)(?:[ \t]+|\Z)")
 
 
 class _DollarState(Enum):
@@ -1065,6 +1067,112 @@ def scan_environment_blocks(
     return tuple(candidates)
 
 
+def _multiline_table_rule(payload: str) -> tuple[str, ...] | None:
+    """Return a Pandoc dash-rule signature, or None for ordinary prose."""
+    if _MULTILINE_TABLE_RULE.fullmatch(payload) is None:
+        return None
+    return tuple(re.findall(r"-{3,}", payload))
+
+
+def _caption_extent_after(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...],
+    closer_index: int,
+    opener: ContainerLine,
+) -> int:
+    """Include one compatible following Pandoc caption paragraph when present."""
+    index = closer_index + 1
+    if index < len(lines):
+        content = _content_under_frames(source, lines[index], opener.frames)
+        if content is None:
+            return closer_index
+        if _line_payload(source, lines[index], frames=opener.frames) == "":
+            index += 1
+    if index >= len(lines):
+        return closer_index
+    line = lines[index]
+    content = _content_under_frames(source, line, opener.frames)
+    if (
+        content is None
+        or _TABLE_CAPTION.match(_line_payload(source, line, frames=opener.frames)) is None
+    ):
+        return closer_index
+    final_index = index
+    index += 1
+    while index < len(lines):
+        line = lines[index]
+        if _content_under_frames(source, line, opener.frames) is None:
+            break
+        if _line_payload(source, line, frames=opener.frames) == "":
+            break
+        final_index = index
+        index += 1
+    return final_index
+
+
+def scan_pandoc_multiline_tables(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+    opaque_blocks: tuple[OpaqueBlock, ...] = (),
+) -> tuple[Candidate, ...]:
+    """Recognize complete Pandoc multiline tables without parsing their cells."""
+    views = build_container_view(source) if lines is None else lines
+    opaque = _opaque_line_flags(views, opaque_blocks)
+    candidates: list[Candidate] = []
+    opener_index = 0
+    while opener_index < len(views):
+        opener = views[opener_index]
+        opener_payload = _line_payload(source, opener)
+        opener_rule = (
+            None if opaque[opener_index] or opener.lazy else _multiline_table_rule(opener_payload)
+        )
+        if opener_rule is None:
+            opener_index += 1
+            continue
+
+        headered = len(opener_rule) == 1
+        header_separator_seen = False
+        body_content_seen = False
+        body_blank_seen = False
+        closer_index: int | None = None
+        scan_index = opener_index + 1
+        while scan_index < len(views):
+            line = views[scan_index]
+            if opaque[scan_index] or _content_under_frames(source, line, opener.frames) is None:
+                break
+            payload = _line_payload(source, line, frames=opener.frames)
+            rule = _multiline_table_rule(payload)
+            if payload == opener_payload and body_content_seen:
+                if (headered and header_separator_seen) or (not headered and body_blank_seen):
+                    closer_index = scan_index
+                break
+            if headered and not header_separator_seen and rule is not None and len(rule) >= 2:
+                header_separator_seen = True
+            elif payload == "":
+                if body_content_seen:
+                    body_blank_seen = True
+            elif not headered or header_separator_seen:
+                body_content_seen = True
+            scan_index += 1
+
+        if closer_index is None:
+            opener_index += 1
+            continue
+        final_index = _caption_extent_after(source, views, closer_index, opener)
+        candidates.append(
+            Candidate(
+                RegionKind.pandoc_multiline_table,
+                RegionForm.block,
+                opener.start,
+                views[final_index].end,
+                opener.context,
+                _scaffold_prefix(source, opener),
+            )
+        )
+        opener_index = final_index + 1
+    return tuple(candidates)
+
+
 def resolve_candidate_tree(
     source: NormalizedSource, candidates: tuple[Candidate, ...]
 ) -> tuple[Candidate, ...]:
@@ -1289,6 +1397,7 @@ def scan_protected_regions(
     block_candidates = resolve_candidate_tree(
         source,
         (
+            *scan_pandoc_multiline_tables(source, lines, opaque_blocks),
             *scan_display_math(source, lines, opaque_blocks),
             *scan_environment_blocks(source, lines, opaque_blocks),
         ),

@@ -181,6 +181,17 @@ def test_existing_opaque_blocks_win_before_math_scanning() -> None:
     ]
 
 
+def test_multiline_table_requires_a_complete_structural_pair() -> None:
+    source = normalize_source(
+        "-----\nHeader A   Header B\n--- ---\nvalue      value\n\nnext       row\n-----\n\n---"
+    )
+
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [RegionKind.pandoc_multiline_table]
+    assert regions[0].source.endswith("next       row\n-----\n")
+
+
 def test_unmatched_outer_block_retains_closed_inner_and_not_sibling_closers() -> None:
     source = normalize_source("\\begin{outer}\n\\begin{inner}\nbody\n\\end{inner}\n\n- $$\n- $$")
 

@@ -16,6 +16,7 @@ COMPOSITE_INLINE_PRIORITY = 10
 CODE_SPAN_PRIORITY = 20
 UNAMBIGUOUS_INLINE_PRIORITY = 30
 DOLLAR_INLINE_PRIORITY = 40
+OPAQUE_EXTENSION_BLOCK_PRIORITY = 45
 BLOCK_MATH_PRIORITY = 50
 
 
@@ -25,6 +26,7 @@ class BlockRuleKind(StrEnum):
     yaml_frontmatter = "yaml_frontmatter"
     fenced_code = "fenced_code"
     indented_code = "indented_code"
+    pandoc_multiline_table = "pandoc_multiline_table"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -44,6 +46,7 @@ class BlockRecognizerDescriptor:
         if type(self.priority) is not int or self.priority < 0:
             raise InvalidRegionError("block rule priority must be a nonnegative integer")
         if self.region_kind is not None and self.region_kind not in {
+            RegionKind.pandoc_multiline_table,
             RegionKind.math_dollar_block,
             RegionKind.math_bracket_block,
             RegionKind.math_environment_block,
@@ -113,6 +116,12 @@ BUILTIN_RECOGNIZERS: Final[tuple[RecognizerDescriptor, ...]] = (
         "FM-MATH-INLINE-001",
     ),
     RecognizerDescriptor(
+        RegionKind.pandoc_multiline_table,
+        RegionForm.block,
+        OPAQUE_EXTENSION_BLOCK_PRIORITY,
+        "FM-EXT-MULTILINE-TABLE-001",
+    ),
+    RecognizerDescriptor(
         RegionKind.math_dollar_block,
         RegionForm.block,
         BLOCK_MATH_PRIORITY,
@@ -151,6 +160,11 @@ BUILTIN_BLOCK_RECOGNIZERS: Final[tuple[BlockRecognizerDescriptor, ...]] = (
     BlockRecognizerDescriptor(BlockRuleKind.yaml_frontmatter, 10, None),
     BlockRecognizerDescriptor(BlockRuleKind.fenced_code, 20, None),
     BlockRecognizerDescriptor(BlockRuleKind.indented_code, 20, None),
+    BlockRecognizerDescriptor(
+        BlockRuleKind.pandoc_multiline_table,
+        25,
+        RegionKind.pandoc_multiline_table,
+    ),
     BlockRecognizerDescriptor(
         BlockRuleKind.math_dollar_block,
         30,

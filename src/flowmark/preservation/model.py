@@ -32,6 +32,7 @@ class RegionKind(StrEnum):
     math_environment_inline = "math_environment_inline"
     math_dollar_inline = "math_dollar_inline"
     math_double_dollar_inline = "math_double_dollar_inline"
+    pandoc_multiline_table = "pandoc_multiline_table"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -57,6 +58,7 @@ _INLINE_REGION_KINDS = frozenset(
 )
 _BLOCK_REGION_KINDS = frozenset(
     {
+        RegionKind.pandoc_multiline_table,
         RegionKind.math_dollar_block,
         RegionKind.math_bracket_block,
         RegionKind.math_environment_block,
