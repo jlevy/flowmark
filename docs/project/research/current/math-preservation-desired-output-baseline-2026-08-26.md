@@ -94,7 +94,7 @@ together.
 
 ## Golden review corrections
 
-Review caught and corrected four traps before implementation:
+Review caught and corrected five traps before implementation:
 
 1. Registry fragments live outside `cases/`; otherwise reachability treats TOML as an
    unreferenced payload.
@@ -105,6 +105,8 @@ Review caught and corrected four traps before implementation:
 4. Unmatched block openers render as ordinary Markdown.
    A valid closed inner environment remains protected, with the unmatched outer opener
    outside that slice.
+5. Escape-parity and malformed-dollar examples use separate blank-line scopes so an
+   unmatched delimiter in one scanner vector cannot pair with a delimiter in the next.
 
 The topic source and reviewed expected file have different whole-file digests by design;
 their protected slices match.
