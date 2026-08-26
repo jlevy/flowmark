@@ -3,15 +3,19 @@ type: is
 id: is-01m0y0a2fn4je9ddv5s4h8aa5b
 title: "P2 vertical slice: Pandoc line blocks"
 kind: feature
-status: open
+status: closed
 priority: 2
-version: 1
+version: 2
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
 parent_id: is-01kyss8fvgc7k0yb2xqjz8b0h2
 created_at: 2026-08-26T03:02:38.324Z
-updated_at: 2026-08-26T03:02:38.324Z
+updated_at: 2026-08-26T13:08:40.319Z
+closed_at: 2026-08-26T13:08:40.317Z
+close_reason: null
+resolution: null
+duplicate_of: null
 ---
 After P0 parity, add Pandoc line-block preservation from shared cases through Python and Rust.
 
