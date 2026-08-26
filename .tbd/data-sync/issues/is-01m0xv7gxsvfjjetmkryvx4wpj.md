@@ -3,9 +3,9 @@ type: is
 id: is-01m0xv7gxsvfjjetmkryvx4wpj
 title: "Address review: PR #71 — senior review of the preservation spec"
 kind: task
-status: open
+status: closed
 priority: 1
-version: 9
+version: 10
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
@@ -19,5 +19,9 @@ child_order_hints:
   - is-01m0xv7ka05y737bj012y5fj5f
   - is-01m0xwqg0hf3zsw7jsqqv3g69a
 created_at: 2026-08-26T01:33:51.917Z
-updated_at: 2026-08-26T02:00:03.856Z
+updated_at: 2026-08-26T02:45:43.823Z
+closed_at: 2026-08-26T02:45:43.818Z
+close_reason: Takeover audit completed. Replaced the draft with a normative portable preservation design, added the shared-first language-neutral conformance architecture, expanded the math/code integration seeds, updated the PR description and review response, pushed commit 3867808, and verified all local and GitHub checks.
+resolution: null
+duplicate_of: null
 ---
