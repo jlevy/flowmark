@@ -23,6 +23,7 @@ from flowmark.preservation.registry import (
     RECOGNIZER_BY_KIND,
     RecognizerDescriptor,
 )
+from flowmark.preservation.scanner import scan_protected_regions
 
 __all__ = [
     "BUILTIN_RECOGNIZERS",
@@ -41,5 +42,6 @@ __all__ = [
     "normalize_source",
     "scalar_width",
     "scalar_widths",
+    "scan_protected_regions",
     "validate_regions",
 ]
