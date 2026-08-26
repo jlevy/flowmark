@@ -3,9 +3,9 @@ type: is
 id: is-01m0y01fj6agpjn5srgykswtbh
 title: Implement Python source normalization, region types, and recognizer registry
 kind: task
-status: open
+status: closed
 priority: 1
-version: 3
+version: 5
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -15,7 +15,11 @@ dependencies:
     target: is-01m0xse3xhcna7jm56zb5vj4hk
 parent_id: is-01m0xn1kf4s20aga85f298dzww
 created_at: 2026-08-26T02:57:56.804Z
-updated_at: 2026-08-26T02:58:29.172Z
+updated_at: 2026-08-26T07:54:16.171Z
+closed_at: 2026-08-26T07:54:16.151Z
+close_reason: Committed portable normalization/model/registry in 3d4b065; 483 pytest tests and lint/type gates pass.
+resolution: null
+duplicate_of: null
 ---
 Create the portable data and boundary layer before recognizers.
 
