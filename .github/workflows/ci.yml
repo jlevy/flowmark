@@ -100,6 +100,8 @@ jobs:
         run: bash scripts/check-golden-coverage.sh
 
       - name: Run golden tests
+        env:
+          FLOWMARK_BIN_DIR: ${{ github.workspace }}/.venv/bin
         run: npx tryscript@0.1.7 run tests/tryscript/*.tryscript.md
 
       - name: Validate published skill frontmatter

@@ -637,8 +637,10 @@ beads do not create parent-child deadlocks.
 2. `fm-4cfe` (**complete**) implements the Python built-binary runner after `fm-ltof`.
 3. `fm-0agl` adds selective acceptance, reachability, Makefile, and CI gates after
    `fm-4cfe`.
-4. `fm-okli` makes upstream tryscript and topic fixtures executable-neutral after
-   `fm-ltof`.
+4. `fm-okli` (**complete**) makes upstream tryscript executable-neutral after `fm-ltof`.
+   The exact `math.md` and `code-inline.md` workflows activate in `fm-ucy8` and
+   `fm-ocpw`, respectively, so known-corrupt output is never committed as an intermediate
+   baseline.
 5. `fm-shou` imports and registers shared reference/CommonMark assets after `fm-ltof` and
    `fm-4cfe`.
 6. `fm-gc8d` implements all Rust shared-test adapters after the runner, gates, tryscript,

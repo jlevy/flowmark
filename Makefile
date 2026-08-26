@@ -13,6 +13,10 @@ export UV_CONFIG_FILE
 UV_EXCLUDE_NEWER ?= 14 days
 export UV_EXCLUDE_NEWER
 
+# Tryscript resolves the implementation under test through this injected directory.
+# Rust supplies its Cargo binary directory when it consumes the same upstream scripts.
+FLOWMARK_BIN_DIR ?= $(CURDIR)/.venv/bin
+
 .PHONY: default install lint lint-check test test-golden test-golden-coverage upgrade build clean \
         format format-docs generate generate-readme generate-skill validate-skill \
         check-release-pin benchmark profile reset-ref-docs
@@ -75,7 +79,7 @@ test:
 	$(MAKE) test-golden
 
 test-golden:
-	npx tryscript@0.1.7 run tests/tryscript/*.tryscript.md
+	FLOWMARK_BIN_DIR="$(FLOWMARK_BIN_DIR)" npx tryscript@0.1.7 run tests/tryscript/*.tryscript.md
 
 test-golden-coverage:
 	bash scripts/check-golden-coverage.sh

@@ -1,0 +1,20 @@
+schema_version = 1
+
+# A topic fixture is active when a tryscript workflow or the shared manifest references
+# it. Deferred fixtures name the implementation bead that will activate desired output;
+# this prevents known corruption from becoming an intermediate golden.
+
+[[deferred]]
+path = "tests/tryscript/fixtures/content/math.md"
+owner = "fm-ucy8"
+reason = "Activate with the Python math preservation fix."
+
+[[deferred]]
+path = "tests/tryscript/fixtures/content/code-inline.md"
+owner = "fm-ocpw"
+reason = "Activate with the Python code-span preservation fix."
+
+[[deferred]]
+path = "tests/tryscript/fixtures/content/html-blocks.md"
+owner = "fm-w1tn"
+reason = "Current formatting collapses raw multiline HTML."

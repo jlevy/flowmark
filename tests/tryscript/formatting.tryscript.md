@@ -4,7 +4,7 @@ env:
   NO_COLOR: "1"
   LC_ALL: C
 path:
-  - $TRYSCRIPT_GIT_ROOT/.venv/bin
+  - $FLOWMARK_BIN_DIR
 before: |
   cp -r $TRYSCRIPT_TEST_DIR/fixtures/. fixtures/
 ---
@@ -225,7 +225,117 @@ $ flowmark --semantic --cleanups fixtures/content/headings.md
 Regular paragraph after headings.
 ```
 
-## F10: Comprehensive default formatting
+## F10: Alert blocks
+
+```console
+$ flowmark fixtures/content/alerts.md
+# Alert Blocks
+
+> [!NOTE]
+> This is a note alert with some useful information.
+
+> [!WARNING]
+> This is a warning alert about something important.
+
+> [!TIP]
+> This is a tip with "quotes" and it's got apostrophes.
+
+Regular text after alerts.
+```
+
+## F11: Nested and multi-paragraph blockquotes
+
+```console
+$ flowmark fixtures/content/blockquotes.md | sed 's/ $/[SPACE]/'
+# Blockquotes
+
+A simple blockquote:
+
+> This is a blockquote with some text that might be long enough to wrap at certain
+> widths.
+
+A nested blockquote:
+
+> Outer quote.
+>[SPACE]
+> > Inner quote with more text here.
+
+A blockquote with a paragraph:
+
+> First paragraph in the quote.
+>[SPACE]
+> Second paragraph in the quote.
+```
+
+## F12: Footnotes remain in source position
+
+```console
+$ flowmark fixtures/content/footnotes.md
+# Footnotes
+
+This text has a footnote reference[^1] and another[^note].
+
+More text in the document.
+
+[^1]: This is the first footnote.
+
+[^note]: This is a named footnote with more details.
+
+```
+
+## F13: YAML frontmatter
+
+```console
+$ flowmark fixtures/content/frontmatter.md
+---
+title: Test Document
+author: Test Author
+date: 2024-01-15
+tags:
+  - test
+  - markdown
+---
+# Document with Frontmatter
+
+This document has YAML frontmatter that should be preserved.
+
+The content below the frontmatter is normal Markdown.
+```
+
+## F14: Links, images, and emphasis
+
+```console
+$ flowmark fixtures/content/links-emphasis.md
+# Links and Emphasis
+
+An [inline link](https://example.com) in text.
+
+A [reference link][ref1] in text.
+
+[ref1]: https://example.com "Example"
+
+An image: ![Alt text](https://example.com/image.png)
+
+**Bold text** and *italic text* and ~~strikethrough text~~.
+
+Combined ***bold italic*** text here.
+```
+
+## F15: Pipe tables
+
+```console
+$ flowmark fixtures/content/tables.md
+# Tables
+
+| Column A | Column B | Column C |
+| --- | --- | --- |
+| Cell 1 | Cell 2 | Cell 3 |
+| Cell 4 | Cell 5 | Cell 6 |
+
+Text after the table.
+```
+
+## F16: Comprehensive default formatting
 
 Tests that ALL Markdown structures are preserved through formatting.
 Asserts full output with no truncation. This test validates:
@@ -347,7 +457,7 @@ $$ \sum_{i=1}^{n} i = \frac{n(n+1)}{2} $$
 Final paragraph of the comprehensive document.
 ````
 
-## F11: Width 2 (edge case — very small width does not crash)
+## F17: Width 2 (edge case — very small width does not crash)
 
 ```console
 $ flowmark --width 2 fixtures/content/simple.md
@@ -367,14 +477,14 @@ paragraph
 here.
 ```
 
-## F12: Idempotency — running twice produces identical output
+## F18: Idempotency — running twice produces identical output
 
 ```console
 $ flowmark fixtures/content/comprehensive.md > /tmp/first.md && flowmark /tmp/first.md > /tmp/second.md && diff /tmp/first.md /tmp/second.md && echo "idempotent"
 idempotent
 ```
 
-## F13: Short alias `-w` matches `--width`
+## F19: Short alias `-w` matches `--width`
 
 ```console
 $ flowmark -w 30 fixtures/content/simple.md
@@ -386,7 +496,7 @@ some text.
 Another paragraph here.
 ```
 
-## F14: Short alias `-p` for plaintext mode
+## F20: Short alias `-p` for plaintext mode
 
 ```console
 $ printf 'This is plain text and should wrap cleanly without markdown parsing.\n' | flowmark -p - && echo ""
@@ -394,7 +504,7 @@ This is plain text and should wrap cleanly without markdown parsing.
 
 ```
 
-## F15: Short aliases `-s -c` for semantic + cleanups
+## F21: Short aliases `-s -c` for semantic + cleanups
 
 ```console
 $ flowmark -s -c fixtures/content/headings.md

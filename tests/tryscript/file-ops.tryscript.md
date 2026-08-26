@@ -4,7 +4,7 @@ env:
   NO_COLOR: "1"
   LC_ALL: C
 path:
-  - $TRYSCRIPT_GIT_ROOT/.venv/bin
+  - $FLOWMARK_BIN_DIR
 before: |
   cp -r $TRYSCRIPT_TEST_DIR/fixtures/. fixtures/
 ---

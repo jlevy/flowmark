@@ -4,7 +4,7 @@ env:
   NO_COLOR: "1"
   LC_ALL: C
 path:
-  - $TRYSCRIPT_GIT_ROOT/.venv/bin
+  - $FLOWMARK_BIN_DIR
 before: |
   mkdir -p project/docs project/node_modules/pkg project/.venv/lib project/drafts
   printf '# Root\n' > project/README.md
