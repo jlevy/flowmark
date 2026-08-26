@@ -95,3 +95,6 @@ def test_ellipses():
     assert ellipses('word..."next') == 'word …"next'
     assert ellipses("He said '...'") == "He said '…'"
     assert ellipses('She said "..."') == 'She said "…"'
+    assert ellipses("word...”") == "word …”"
+    assert ellipses("word...’") == "word …’"
+    assert ellipses("“changes”...") == "“changes”…"

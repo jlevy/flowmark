@@ -2,7 +2,7 @@ import re
 from re import Pattern
 
 ELLIPSIS_PATTERN: Pattern[str] = re.compile(
-    r"(^|[\w\"\'“‘])(\s*)(\.\.\.)([.,:;?!)\-—\"\'”’]?)(\s*)",
+    r"(^|[\w\"\'“”‘’])(\s*)(\.\.\.)([.,:;?!)\-—\"\'”’]?)(\s*)",
     re.MULTILINE,
 )
 
@@ -16,7 +16,7 @@ def ellipses(text: str) -> str:
     - `...` must be followed by word character (with optional space) OR punctuation OR end of line
     - If immediately before the `...` is a word character (no whitespace), a space is inserted before it.
     - If immediately after the `...` is a word character (no whitespace), a space is inserted after it.
-    - If the punctuation [\"\'“‘] immediately precedes the ellipsis, there is no space between the
+    - If quote punctuation immediately precedes the ellipsis, there is no space between the
       punctuation and the ellipsis.
     - If punctuation [.,:;?!)\-—] follows the ellipsis, there is no space between the ellipsis and
       the punctuation.
