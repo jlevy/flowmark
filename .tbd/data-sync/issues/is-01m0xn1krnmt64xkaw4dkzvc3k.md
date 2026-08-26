@@ -3,9 +3,9 @@ type: is
 id: is-01m0xn1krnmt64xkaw4dkzvc3k
 title: "Phase 2: port the preservation core and math directly to Rust"
 kind: feature
-status: open
+status: closed
 priority: 1
-version: 9
+version: 10
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
@@ -17,7 +17,11 @@ child_order_hints:
   - is-01m0y77hm73p235cm8keb26w2m
   - is-01m0y8gztfkha3mss2n1wn55f5
 created_at: 2026-08-25T23:45:46.773Z
-updated_at: 2026-08-26T17:58:29.379Z
+updated_at: 2026-08-26T19:18:45.260Z
+closed_at: 2026-08-26T19:18:45.258Z
+close_reason: "The idiomatic Rust preservation port is complete at 90d24c1 against Python 783b445: 476 exact shared passes, only 34 inherited ledgered CommonMark divergences, all shared tryscript/reference/CommonMark layers, 679-test inventory, 670-file zero-diff audit, package smokes, and cross-platform CI pass."
+resolution: null
+duplicate_of: null
 ---
 Parent for an idiomatic Rust implementation driven by the pinned upstream manifest and change IDs. Port the normalized byte model, registry, scanners, bridge, structured wrapping, comrak adapter, and CLI failure boundaries; then prove zero-new-divergence parity through shared conformance, tryscript, topic, reference, and CommonMark layers.
 

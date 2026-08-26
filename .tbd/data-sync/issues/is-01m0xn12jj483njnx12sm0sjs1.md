@@ -3,9 +3,9 @@ type: is
 id: is-01m0xn12jj483njnx12sm0sjs1
 title: "Markdown preservation: never corrupt what the parser does not model"
 kind: epic
-status: open
+status: closed
 priority: 1
-version: 15
+version: 18
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
@@ -20,8 +20,14 @@ child_order_hints:
   - is-01kyss8gskyz68yaky5j8vrnpx
   - is-01m0xn1zpgf7kqp6wz03ngqega
   - is-01m0y0gk7fpnyp7bhqrmpfq89x
+  - is-01m0zmyzfgvp8tzae95j5gyypg
+  - is-01m0zmyzfstg6v37gam69kvcpn
 created_at: 2026-08-25T23:45:29.170Z
-updated_at: 2026-08-26T17:58:29.717Z
+updated_at: 2026-08-26T19:18:45.623Z
+closed_at: 2026-08-26T19:18:45.622Z
+close_reason: "The shared-first Markdown preservation program is complete across Python PR #71 and Rust PR #81. Math, inline code, opaque extensions, exact CLI/filesystem behavior, fixed points, mapping, external audit, clean-clone reproduction, and both hosted matrices are validated with no new divergences."
+resolution: null
+duplicate_of: null
 ---
 Top-level implementation epic for the accepted lossless-preservation and language-neutral conformance architecture.
 
