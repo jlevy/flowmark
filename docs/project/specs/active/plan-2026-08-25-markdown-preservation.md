@@ -4,8 +4,8 @@
 
 **Status:** Active. Math is the first implementation target.
 
-**Trackers:** Epic `fm-7vtx`; shared corpus `fm-o5vk`; portable scanner contract
-`fm-2tto`; math corpus `fm-9jtc`.
+**Trackers:** Epic `fm-7vtx`; shared foundation `fm-o5vk`; math behavior `fm-9jtc`;
+Python implementation `fm-ar24`; Rust math port `fm-wkve`; inline code `fm-zgte`.
 
 **Cross-repository contract:**
 [Language-Neutral Flowmark Conformance Corpus](../../architecture/current/language-neutral-conformance-corpus.md).
@@ -120,6 +120,15 @@ have one meaning:
    Python must not expose code-point indices as if they were byte offsets. Wrapping width
    remains the existing count of Unicode scalar values in both ports; it is not terminal
    display width.
+
+The CLI and the Markdown path through `reformat_text()` do not implicitly call
+`textwrap.dedent()` or globally strip the document before scanning. Those operations can
+turn an indented code block into prose or remove significant whitespace from a protected
+region at a document boundary. `fill_markdown(dedent_input=True)` remains an explicit
+docstring convenience; when requested, dedenting occurs before the normalization above,
+and the preservation contract applies to the resulting buffer. Ordinary parsing and
+rendering may still normalize unprotected leading blank lines according to the committed
+goldens.
 
 These rules are tested with stdin and files. The test runner itself performs no newline or
 encoding normalization.
@@ -552,69 +561,161 @@ Golden updates are never automatic during tests. For a behavior fix, desired out
 committed or reviewed as part of the Python implementation; the Rust port consumes that
 same expected output from the pinned upstream commit.
 
+## File and function map
+
+The following boundaries are part of the implementation design. New file names may change
+only if this map and the owning bead are updated before implementation; parser-specific
+helpers must not absorb scanner authority by accident.
+
+### Shared test system
+
+| File | Responsibility |
+| --- | --- |
+| `tests/parity_corpus/manifest.toml` | Versioned case registry, stable `change_id` mapping, selectors, and exact process expectations. |
+| `tests/parity_corpus/cases/**` | Minimal stdin and file-tree inputs plus exact stdout, stderr, and final-tree bytes. |
+| `tests/parity_corpus/runner-fixtures/**` | Shared malformed schemas and intentional failures that constrain both native runners. |
+| `tests/parity_corpus/spec/**` | Pinned CommonMark 0.31.2 source, provenance, license, and reviewed expected outputs. |
+| `devtools/conformance.py` | `load_manifest()`, `validate_manifest()`, `select_cases()`, `materialize_case()`, `run_case()`, `compare_result()`, and selected `accept_cases()`. |
+| `tests/test_conformance.py` | Pytest collection against the installed Python `flowmark` command; it never calls `fill_markdown()` as its oracle. |
+| `scripts/check-golden-coverage.sh` | Manifest/path validation, payload reachability, topical-fixture reachability, and implementation-path rejection. |
+| `Makefile` and `.github/workflows/ci.yml` | Read-only conformance targets, explicit selected acceptance, installed-binary injection, and CI gates. |
+| `tests/tryscript/**` | One executable-neutral workflow suite using `FLOWMARK_BIN_DIR`; `math.md` and `code-inline.md` remain canonical topic inputs. |
+| `tests/testdocs/**` and `tests/test_ref_docs.py` | One upstream whole-document input/expected set and a readable Python integration adapter. |
+
+The Python runner uses the repository's existing `tomllib`/`tomli` compatibility. The Rust
+runner uses the existing `toml` crate. The conformance design introduces no dependency.
+
+### Python preservation pipeline
+
+| File | Responsibility |
+| --- | --- |
+| `src/flowmark/preservation/model.py` | Typed region, candidate, container, normalized-source, and invariant records using UTF-8 byte offsets. |
+| `src/flowmark/preservation/normalization.py` | `normalize_source()`, `finalize_output()`, BOM/newline handling, and scalar-width helpers. |
+| `src/flowmark/preservation/registry.py` | Stable built-in recognizer kinds, precedence, and future extension registration. |
+| `src/flowmark/preservation/scanner.py` | `scan_protected_regions()`, inline-scope and block scans, container views, delimiter state machines, candidate arbitration, and fallback. |
+| `src/flowmark/preservation/bridge.py` | `choose_sentinel()`, token encoding/parsing, side-table substitution, and validated exact restoration. |
+| `src/flowmark/linewrapping/markdown_filling.py::fill_markdown()` | Pipeline integration: optional explicit dedent, normalize, scan/protect, parse/transform/render, restore, and finalize. |
+| `src/flowmark/formats/flowmark_markdown.py` | Thin Marko inline-token and opaque-block nodes plus renderer paths that carry tokens without recognizing their source syntax. |
+| `src/flowmark/linewrapping/text_wrapping.py` | Structured fragments and unbreakable clusters with side-table widths and authored internal-line handling. |
+| `src/flowmark/linewrapping/line_wrappers.py` | Width and semantic wrappers that never collapse protected gaps or measure token spelling. |
+| `src/flowmark/transforms/doc_transforms.py` and typography modules | Walkers that skip typed protected nodes/tokens. |
+| `src/flowmark/reformat_api.py` | Strict UTF-8 byte I/O for stdin/files, no implicit document dedent, deterministic errors, and atomic no-partial writes. |
+| `tests/test_preservation_*.py` | Small native tests for byte offsets, scanner states, arbitration, parser-token round trips, width metadata, and fail-closed invariants only. |
+
+`atomic_patterns.py` and `block_heuristics.py` may keep their existing public or diagnostic
+roles. They are not extended into a second preservation scanner. `iter_atomic_spans()`,
+`ATOMIC_PATTERNS`, and `MARKDOWN_INLINE_PATTERNS` keep their compatibility contracts.
+
+### Rust port
+
+| File | Responsibility |
+| --- | --- |
+| `src/preservation/{model,normalization,registry,scanner,bridge}.rs` | Idiomatic Rust implementation of the same normative records, algorithms, and invariants. |
+| `src/formatter/filling.rs::fill_markdown()` | Comrak-side protection pipeline and replacement of overlapping ad hoc PUA workarounds. |
+| `src/formatter/markdown.rs` | Thin protected-node/parser-renderer adapter; comrak is not the syntax-recognition authority. |
+| `src/wrapping/text_wrapping.rs` | Structured protected fragments and logical widths; replace preservation uses of NUL placeholder-length approximation. |
+| `src/lib.rs` and `src/main.rs` | Library and CLI normalization, strict byte I/O, deterministic failure, and atomic output semantics. |
+| `tests/support/conformance.rs` and `tests/test_conformance.rs` | Independent native runner against `repos/flowmark/tests/parity_corpus/` and the shared runner fixtures. |
+| `tests/test_tryscript_golden.rs` | Run upstream scripts with `FLOWMARK_BIN_DIR`; retain only genuinely Rust-specific workflows locally. |
+| `tests/test_ref_docs.rs` and CommonMark tests | Read upstream assets directly below `repos/flowmark`; do not maintain synchronized copies. |
+| `admin/port-coverage-mapping/**` and `repos/rust-porting-playbook` | Report the pinned upstream commit, stable change IDs, case IDs, and explicit temporary divergences. |
+
+The Rust checkout inspected for this plan already has unrelated changes to
+`repos/flowmark` and `repos/rust-porting-playbook`. Implementation must preserve or
+coordinate those changes rather than overwriting them.
+
 ## Implementation plan
 
-### Phase 0: shared conformance foundation
+The tbd graph is the executable form of this plan. Parent beads group work; leaf beads own
+files, functions, tests, and validation. Dependencies are attached to leaves so grouping
+beads do not create parent-child deadlocks.
 
-- [ ] Implement `tests/parity_corpus/`, strict schema validation, stdin and file-tree cases,
-  and the Python built-binary runner (`FM-CONFORMANCE-001`).
-- [ ] Add fixture and payload reachability checks to the golden-coverage gate.
-- [ ] Replace implementation-specific paths in upstream tryscript frontmatter with an
-  injected binary-directory value, then make the Rust runner execute
-  `repos/flowmark/tests/tryscript/` and its fixtures directly.
-- [ ] Make the Rust reference-document and CommonMark runners read upstream inputs and
-  expected files through `repos/flowmark` rather than synchronized copies.
-- [ ] Add the Rust native conformance runner against `repos/flowmark` and register portable
-  existing Rust `tests/parity/` cases upstream. Retain only Rust tests that provide a
-  distinct native diagnostic.
-- [ ] Mark the older Rust shared-corpus draft superseded and update the port-sync playbook
-  to use manifest `change_id` reports.
+### Phase 0: shared conformance foundation (`fm-o5vk`)
 
-The foundation may land with reviewed current-behavior cases. It must be green before the
-math implementation changes expected behavior.
+1. `fm-ltof` defines schema version 1, payload layout, shared runner fixtures, and reviewed
+   current-behavior seeds.
+2. `fm-4cfe` implements the Python built-binary runner after `fm-ltof`.
+3. `fm-0agl` adds selective acceptance, reachability, Makefile, and CI gates after
+   `fm-4cfe`.
+4. `fm-okli` makes upstream tryscript and topic fixtures executable-neutral after
+   `fm-ltof`.
+5. `fm-shou` imports and registers shared reference/CommonMark assets after `fm-ltof` and
+   `fm-4cfe`.
+6. `fm-gc8d` implements all Rust shared-test adapters after the runner, gates, tryscript,
+   and document assets are stable.
 
-### Phase 1: math corpus and Python implementation
+The foundation may contain reviewed current-behavior cases, but never a golden known to
+encode corruption. Both native runners and all runner-conformance fixtures must be green
+before math changes expected output.
 
-- [x] Expand the topic-level `math.md` seed and record the measured M1–M4 defects.
-- [ ] Add minimal desired-output cases for the complete math matrix under
-  `FM-MATH-INLINE-001` and `FM-MATH-BLOCK-001`.
-- [ ] Implement input normalization, the source scanner, side table, parser bridge, token-
-  aware transformations, and fail-closed restoration in Python.
-- [ ] Make all math cases, the integration fixture, and affected whole-document goldens
-  pass and remain idempotent.
-- [ ] Confirm documents without recognized protected syntax have no unexplained golden
-  churn.
+### Phase 1A: shared desired-output math behavior (`fm-9jtc`)
 
-### Phase 2: direct Rust math port
+- `fm-9m7k` adds preservation-core and inline-math cases after `fm-0agl`.
+- `fm-8rmy` adds display/container/I/O/adversarial math cases after `fm-0agl`.
 
-- [ ] Bump `repos/flowmark` to the exact Phase 1 commit.
-- [ ] Run the native Rust corpus adapter and group failures by `change_id`.
-- [ ] Implement the same scanner contract idiomatically in Rust. Do not translate Python
-  regexes or test functions.
-- [ ] Require every `FM-PRESERVE-CORE-001`, `FM-MATH-INLINE-001`, and
-  `FM-MATH-BLOCK-001` case to pass with no new divergence entries.
-- [ ] Run existing Rust tryscript, parity, CommonMark, and real-world diagnostic sweeps for
-  regressions.
+These are red tests against exact desired output. They deliberately overlap `math.md`,
+tryscript, reference documents, and CommonMark only where another layer exercises a
+distinct boundary.
 
-The Rust port is complete when the submodule pin and shared case results prove it, not when
-a manually translated test count matches.
+### Phase 1B: Python preservation core and math (`fm-ar24`)
 
-### Phase 3: inline code
+1. `fm-k581` implements normalization, typed regions, and the recognizer registry after
+   both shared math case groups exist.
+2. `fm-felt` implements the inline scanner and arbitration after `fm-k581` and `fm-9m7k`.
+3. `fm-6erm` implements container-aware block scanning after `fm-k581` and `fm-8rmy`.
+4. `fm-idkl` implements the collision-safe bridge and thin Marko adapter after both
+   scanners.
+5. `fm-bsan` makes wrapping and transforms token-aware after `fm-idkl`.
+6. `fm-ybpd` integrates `fill_markdown()`, public formatting paths, strict byte I/O, and
+   fail-closed atomic output after `fm-bsan`.
+7. `fm-ucy8` reviews all Python golden layers and adversarial behavior after `fm-ybpd`,
+   `fm-okli`, and `fm-shou`.
 
-- [x] Expand `code-inline.md` around delimiter and whitespace failures.
-- [ ] Add shared source-exact cases for arbitrary delimiter lengths, every body relation,
-  contexts, malformed spans, Unicode, modes, and idempotence.
-- [ ] Route valid code spans through the protection layer in Python, then port by
-  `FM-CODE-SPAN-001` in Rust.
-- [ ] Keep public atomic-span API behavior unchanged unless a separate compatibility change
-  is approved.
+The closed experimental regex beads `fm-q32c` and `fm-mu4s` are historical evidence, not
+implementation prerequisites. Their proposed post-parse fixes are superseded.
+
+### Phase 2: direct Rust math port (`fm-wkve`)
+
+1. `fm-fpbj` bumps the upstream submodule and ports the model, registry, scanners, and
+   bridge after `fm-gc8d` and `fm-ucy8`.
+2. `fm-1mq0` integrates protected nodes, structured wrapping, and byte-safe Rust I/O after
+   `fm-fpbj`.
+3. `fm-s0bl` proves every preservation-core/math change ID at all shared layers and updates
+   the port ledger after `fm-1mq0`.
+
+The Rust port is complete when the pinned upstream commit and shared case results prove it,
+not when translated test names or counts match.
+
+### Phase 3: inline code (`fm-zgte`)
+
+1. `fm-uzvf` defines source-exact shared code-span cases after Rust math parity
+   (`fm-s0bl`).
+2. `fm-fa8p` adds the Python code-span recognizer after `fm-uzvf`; it closes the mechanism
+   behind C1 (`fm-dq8n`).
+3. `fm-9ey6` routes spans through exact restoration and structured wrapping after
+   `fm-fa8p`; it closes the mechanism behind C2 (`fm-bj2c`).
+4. `fm-ocpw` reviews all Python golden layers after both fixes.
+5. `fm-82vu` ports `FM-CODE-SPAN-001` to Rust and proves exact parity after `fm-ocpw`.
 
 ### Phase 4: extension registry
 
-- [ ] Add P0 recognition rules and cases one family at a time: multiline tables, callouts,
-  colon containers, TOML frontmatter, and definition lists.
-- [ ] Port each completed change ID to Rust before beginning the next severity tier.
-- [ ] Add P1 and P2 families after P0 parity is green.
+After `fm-82vu`, each syntax family is a vertical slice: shared case matrix and desired
+output, Python registry/scanner rule, direct Rust port, integration review, and zero new
+divergence.
+
+- P0 parent `fm-drjv`: Pandoc multiline tables (`fm-kr0a`), Obsidian callouts
+  (`fm-aq78`), colon containers (`fm-dvl6`), TOML frontmatter (`fm-bl2j`), and definition
+  lists (`fm-663e`).
+- P1/P2 parent `fm-7vmg`, blocked on all P0 leaves: Pandoc grid tables (`fm-z8xh`), raw
+  multiline HTML (`fm-w1tn`), attribute groups (`fm-c57j`), line blocks (`fm-mw49`), and
+  MyST roles/wikilinks (`fm-5vlb`).
+- `fm-w467` is the final cross-family integration and parity closeout after both parent
+  groups.
+
+Every behavior bead begins with shared desired-output cases, adds only the native tests
+needed to diagnose internal invariants, and closes only after its exact golden diffs and
+full relevant layers are reviewed. The Python commit and `change_id` set are the Rust
+porting handoff.
 
 ## Backward compatibility
 
