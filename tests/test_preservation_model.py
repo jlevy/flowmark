@@ -48,6 +48,11 @@ def test_normalization_rejects_invalid_utf8_and_surrogates() -> None:
         normalize_source("before\ud800after")
 
 
+def test_region_enums_render_stable_values_on_every_supported_python() -> None:
+    assert str(RegionKind.math_dollar_inline) == "math_dollar_inline"
+    assert str(RegionForm.inline) == "inline"
+
+
 def test_scalar_width_and_utf8_boundaries_are_distinct() -> None:
     normalized = normalize_source("a水😀")
 

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from bisect import bisect_left
 from dataclasses import dataclass, field
-from enum import StrEnum
+from enum import Enum
+
+from typing_extensions import override
 
 
 class PreservationError(ValueError):
@@ -22,7 +24,15 @@ class InvalidRegionError(PreservationError):
     """A protected-region record violates the portable data contract."""
 
 
-class RegionKind(StrEnum):
+class _StableStrEnum(str, Enum):
+    """Python 3.10-compatible string enum with StrEnum's value rendering."""
+
+    @override
+    def __str__(self) -> str:
+        return self.value
+
+
+class RegionKind(_StableStrEnum):
     """Stable recognizer kinds shared with the Rust port."""
 
     math_gitlab_inline = "math_gitlab_inline"
@@ -50,7 +60,7 @@ class RegionKind(StrEnum):
     math_environment_block = "math_environment_block"
 
 
-class RegionForm(StrEnum):
+class RegionForm(_StableStrEnum):
     """Whether a region participates in inline wrapping or block rendering."""
 
     inline = "inline"
