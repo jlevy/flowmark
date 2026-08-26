@@ -57,6 +57,9 @@ Project-specific specifications, architecture, and research docs:
 - @docs/project/architecture/: System design references and long-lived architecture docs
   (templates and output go here)
 
+  - [Language-neutral conformance corpus](project/architecture/current/language-neutral-conformance-corpus.md):
+    The shared golden corpus, native runner, and Python-to-Rust parity contract.
+
 - @docs/project/research/: Research notes and technical investigations
 
 <!-- This document follows common-doc-guidelines.md.

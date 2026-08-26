@@ -3,15 +3,14 @@
 A corpus of inline code span forms, covering delimiter runs, whitespace, literal content,
 and the block contexts a span can appear in.
 
-Formatting this document must not change the content of any code span, must not change a
-span's delimiter run length when the content contains backticks, and must not collapse
-whitespace inside a span. Reflowing the surrounding prose is expected and fine.
+Formatting this document must preserve the complete authored source slice of every valid
+code span: delimiters, padding, internal whitespace, tabs, and existing line endings.
+Reflowing surrounding prose is expected.
 
-The governing reference is CommonMark 0.31.2 §6.1: a code span's content has line endings
-converted to spaces, and — only if it both begins and ends with a space and is not
-entirely spaces — one space is stripped from each end. Everything else inside is
-significant, including runs of spaces and tabs. Nothing inside is parsed as Markdown, and
-backslash escapes do not apply.
+CommonMark 0.31.2 §6.1 defines how a renderer interprets code-span content. Flowmark is a
+source formatter and intentionally adopts the safer source-exact policy instead of
+canonicalizing equivalent spellings. Nothing inside is parsed as Markdown, and backslash
+escapes do not apply.
 
 ## Part A: Delimiter Runs
 
@@ -47,13 +46,29 @@ The backtick character is `` ` `` on its own.
 
 A ``a`` and ``b ` c`` on the same line.
 
-### A8. A single delimiter around a triple-backtick run
+### A8. A four-backtick delimiter around a triple-backtick run
 
-Use ` ```math ` as a fenced-block info string.
+Use ```` ```math ```` as a fenced-block info string.
 
-### A9. Escaped backtick before a span
+### A9. A backslash before a backtick run
 
-See `\`` and more text here.
+A backslash precedes \``code`` and does not deactivate the two-backtick opener.
+
+### A10. Five-backtick delimiter with a four-backtick run inside
+
+A `````wide with ```` inner````` span.
+
+### A11. An interior run longer than the delimiter
+
+A `body with `` a longer run` span.
+
+### A12. Several delimiter widths on one line
+
+A `one` span, then ``two ` wide``, and then ```three `` wide```.
+
+### A13. No whitespace at either boundary
+
+The source pre`code`post remains one wrapping cluster without invented spaces.
 
 ## Part B: Whitespace Inside a Span
 
@@ -79,10 +94,16 @@ Short `a	b` tail.
 
 ### B6. A line ending inside the source span
 
-Line endings inside a span become spaces, which is correct and expected here.
+The source formatter preserves this authored line ending even though a CommonMark renderer
+interprets it as a space.
 
 Short `a +
 b` tail.
+
+### B7. A multiline span in a list item
+
+- List prose before `a +
+  b` continues after the authored break.
 
 ## Part C: Literal Content
 
@@ -115,7 +136,7 @@ Short `# not a heading` and `- not a bullet` and `> not a quote` tail.
 
 ## Part D: Block Contexts
 
-The same span in each context flowmark can place one in. Whitespace handling must not
+The same span in each context Flowmark can place one in. Whitespace handling must not
 depend on the surrounding block.
 
 ### D1. In a paragraph
@@ -145,6 +166,21 @@ Short [`a    b`](http://example.com) tail.
 | padded | `a    b` |
 | wide | ``has ` tick`` |
 
+### D7. In a footnote definition
+
+[^code]: A definition with `a    b` and ``has ` tick`` inside.
+
+### D8. In a definition list
+
+Code term
+: A definition with `a    b` inside.
+
+### D9. In a colon container
+
+::: note
+Container text with `a    b` and ``has ` tick`` inside.
+:::
+
 ## Part E: Wrapping
 
 A code span is atomic: a wrap boundary moves it whole rather than splitting it, and its
@@ -161,3 +197,32 @@ Filler words to push the code span across the wrap column boundary here now x `+
 ### E3. A span longer than the wrap column
 
 Filler words to push the code span across the wrap column boundary here now ok `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` tail.
+
+## Part F: Malformed and Ambiguous Runs
+
+Malformed runs must be deterministic, idempotent, and unable to expose an internal
+placeholder. Exact goldens define their output.
+
+### F1. Unmatched single-backtick opener
+
+This paragraph has an unmatched ` opener and enough prose after it to exercise wrapping.
+
+### F2. Unmatched five-backtick opener
+
+This paragraph has an unmatched ````` opener and enough prose after it to exercise
+wrapping.
+
+### F3. Equal-length run closes immediately
+
+The first equal run closes by definition: ``alpha``beta`` remains deterministic.
+
+### F4. Empty-looking and all-backtick runs
+
+These ambiguous sources remain safe: `` and ```` and ``````.
+
+### F5. Code-looking delimiters in a fence
+
+````markdown
+`not an inline opener
+``has ` content``
+````

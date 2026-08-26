@@ -1,920 +1,685 @@
-# Plan Spec: Markdown Preservation — Never Corrupt What the Parser Does Not Model
+# Plan Spec: Lossless Markdown Preservation
 
 **Date:** 2026-08-25
 
-**Status:** Active, revised after the senior review on
-[#71](https://github.com/jlevy/flowmark/pull/71). Tracks A (math) and C (inline code) are
-measured with corpora written; Track B is planned from the verified ledger in #62. The
-review's blocker changed the architecture from post-parse to pre-parse, the recognition
-rule from an intersection to a superset, the test contract from language-specific to
-language-neutral, and the phase order back to math-first. Sections carrying those
-revisions say so inline.
+**Status:** Active. Math is the first implementation target.
 
-**Consolidates:** this is the single spec for all three tracks. It absorbed an earlier
-math-only draft, now deleted rather than left to rot alongside it, and it supplies the
-plan that `fm-drjv`, `fm-7vmg` and `fm-w467` referenced from July onward but which was
-never written. Those three beads now point here. No other spec covers this ground —
-verified against every bead's `spec_path`, open and closed.
+**Trackers:** Epic `fm-7vtx`; shared corpus `fm-o5vk`; portable scanner contract
+`fm-2tto`; math corpus `fm-9jtc`.
+
+**Cross-repository contract:**
+[Language-Neutral Flowmark Conformance Corpus](../../architecture/current/language-neutral-conformance-corpus.md).
+
+## Decision summary
+
+Flowmark will protect syntax it cannot safely model before a Markdown parser can reinterpret
+it. A deterministic source scanner identifies typed regions, stores their normalized source
+slices in a side table, and presents collision-safe tokens to the parser and formatter.
+Transforms and wrapping operate only on unprotected text. Restoration is exact and fails
+closed.
+
+The design makes these decisions:
+
+- Math is highest priority and lands end to end in Python and Rust before the other
+  preservation work.
+- The default recognizer is preservation-biased. It accepts the broad union of common math
+  forms without dialect configuration, including intraword, whitespace-padded, and
+  soft-newline dollar math.
+- Protected math and extension blocks preserve their normalized UTF-8 source slices
+  exactly. Inline code preserves its authored source exactly as a formatter policy.
+- Recognition is a portable state machine over normalized UTF-8 bytes, not a Python regex
+  contract and not a parser-library feature.
+- One upstream manifest and exact golden corpus define shared behavior. The Rust port reads
+  it through `repos/flowmark`; it does not translate Python tests or run Python in CI.
+- Stable `change_id` and case IDs turn each upstream behavior change into an explicit Rust
+  porting queue.
 
 ## Purpose
 
-flowmark parses to an AST and re-emits with reflow. Any construct the parser does not
-model as opaque is treated as prose and reflowed — often corrupting it. Because flowmark
-is designed to be "safe to run automatically on save or at any stage of a document
-pipeline," the goal is **preservation**: round-trip these constructs verbatim, even where
-flowmark cannot and should not fully parse every dialect.
+Flowmark parses Markdown, transforms an AST, and re-emits source with clean line breaks.
+That works only when the parser models a construct faithfully. Syntax the parser treats as
+ordinary prose can be split, escaped, normalized, or reinterpreted before the formatter has
+a chance to protect it.
 
-This is one problem with one mechanism, so it gets one spec. It has three tracks:
+The product promise is therefore broader than support for one Markdown flavor:
 
-- **Track A — mathematics.** Highest priority, and scheduled first. Measured end to end,
-  with a checked-in corpus that reproduces every defect.
-- **Track B — the rest of the ledger.** The twelve construct families in
-  [#62](https://github.com/jlevy/flowmark/issues/62), empirically verified there.
-- **Track C — inline code.** Fourteen measured defects in the construct flowmark already
-  believed it handled correctly. Scheduled *first among the fixes*, because it owns the
-  span code path the other two tracks build on.
+> Flowmark should safely format documents that mix common Markdown dialects with little or
+> no configuration. When it cannot model a construct, it preserves that construct instead
+> of guessing at its semantics.
 
-**Sequencing.** Math is the critical path throughout. An earlier draft put Track C's
-fixes first, on the reasoning that inline code owned a shared span path math could
-inherit; review FM-PR71-01 disproved that, because the shared path runs *after* parsing
-and cannot carry math at all. The order is now: the shared contract, then math end to
-end in both ports, then Track C, then Track B. Track C stays tracked and tested but
-gates nothing.
+This plan has three tracks:
 
-**The principle throughout: preserve, do not parse.** Several of these constructs have no
-single standard — `:::` has at least four mutually incompatible dialects — so there is no
-correct "parse it," only "do not break it."
+- **Track A — mathematics:** inline and display forms used by GitHub, GitLab, MyST,
+  Pandoc, Quarto, Obsidian, MathJax, and raw LaTeX. This is the critical path.
+- **Track C — inline code:** source fidelity for arbitrary backtick delimiters and authored
+  whitespace. It uses the same protection infrastructure after math.
+- **Track B — other extensions:** the verified ledger from
+  [#62](https://github.com/jlevy/flowmark/issues/62), beginning with the data-loss cases.
+
+The order is the shared conformance gate, math in both ports, inline code in both ports,
+then the remaining extension registry. Code-span fixes do not block math: the current
+code-span path runs after parsing and cannot protect math from parser reinterpretation.
+
+## Goals
+
+- Preserve recognized math and opaque extension regions exactly after documented input
+  normalization.
+- Keep inline protected regions atomic for wrapping and exempt from typography, escaping,
+  cleanup, and whitespace normalization.
+- Preserve display-region line structure, container prefixes, labels, and attributes.
+- Support common dialect forms by default; configuration is reserved for genuinely custom
+  delimiters.
+- Use one scanner model and one shared black-box corpus in Python and Rust.
+- Keep recognition and formatting linear in input size, including malformed input.
+- Fail without partial output or file mutation if internal protection/restoration
+  invariants are violated.
+
+## Non-goals
+
+- Flowmark does not evaluate TeX, validate equations, or choose a renderer.
+- It does not resolve semantic ambiguity between currency, shell variables, and dollar
+  math. Conservative atomic treatment is acceptable because it preserves source.
+- It does not require Marko and comrak to build identical ASTs.
+- It does not expose scanner internals as a new public API in this change.
+- It does not replace the parser for Markdown constructs that already round-trip safely.
+- It does not promise to repair malformed Markdown. Malformed cases must remain safe,
+  deterministic, and idempotent according to committed goldens.
 
 ## Terminology
 
-- **span** — an inline run with its delimiters, living inside a paragraph.
-- **block** — a region occupying whole lines.
-- **atomic** — flowmark's existing wrapping guarantee: one indivisible word, so a wrap
-  boundary moves it whole rather than splitting it. `AtomicPattern` in
-  `src/flowmark/linewrapping/atomic_patterns.py`.
-- **opaque** — the block-level equivalent: the region round-trips verbatim, line
-  structure included, never reflowed.
-- **recognition vs treatment** — the distinction the whole design rests on. Recognising
-  where a construct starts and ends is the hard, dialect-specific part. What to do once
-  recognised is the same everywhere: leave it alone.
+- **Protected region:** a non-overlapping source range that transformations may not edit.
+- **Inline region:** a protected range inside paragraph content. It is atomic for wrapping.
+- **Opaque block:** a protected range occupying one or more physical lines. Its complete
+  normalized source slice is restored.
+- **Container view:** a logical line after recognizing blockquote and list prefixes while
+  retaining the raw source range.
+- **Recognition:** finding a safe boundary. Recognition does not imply understanding or
+  validating the body.
+- **Treatment:** preserving and restoring a recognized range.
+- **Normalized source:** decoded text after the input contract below has handled BOM and
+  line endings.
 
-## The Unifying Rule
+## Normative behavior
 
-Every row in all three tracks reduces to one statement:
+### Input and output normalization
 
-> A construct flowmark does not model must be recognised well enough to be bounded, then
-> emitted byte-for-byte. Recognition may be conservative and may miss cases. Treatment
-> may never alter a byte inside the bounds.
+The two implementations must share these boundary rules before byte-exact preservation can
+have one meaning:
 
-Two consequences worth stating because they settle most design arguments:
+1. Input is UTF-8. An optional leading UTF-8 BOM is recorded, removed before parsing, and
+   restored exactly once at output.
+2. CRLF and lone CR are normalized to LF. The terminal LF run is then canonicalized to
+   exactly one LF before scanning: add one when missing and collapse multiple terminal LFs
+   to one. Protected slices are exact slices of this fully normalized buffer, so output
+   finalization cannot silently change a protected region at end of file.
+3. A successful formatted document therefore ends with exactly one LF, including empty
+   input and input that lacked a final newline.
+4. Invalid UTF-8 is a CLI error. Stdout is empty, in-place files are not changed, and the
+   exit behavior is pinned by shared conformance cases.
+5. Scanner coordinates are half-open UTF-8 byte offsets into the normalized buffer.
+   Python must not expose code-point indices as if they were byte offsets. Wrapping width
+   remains the existing count of Unicode scalar values in both ports; it is not terminal
+   display width.
 
-1. **Inline code and inline math get identical treatment** — but only once both are
-   bounded *before* parsing. They differ in recognition: a code span self-delimits by
-   backtick runs, `$…$` is context-sensitive and collides with prose. Once bounded, both
-   are atomic, both are exempt from escaping and typographic rewriting, and both preserve
-   their interior per the contracts below. Testing this claim is what turned up Track C's
-   fourteen bugs; testing it *again*, at the review's prompting, is what turned up
-   FM-PR71-01 — the treatment cannot be shared at all where the current code path puts
-   it, because Marko has already rewritten the interior by then.
-2. **False positives are cheap; false negatives corrupt.** Wrongly deciding a run of text
-   is opaque costs at most an overlong line. Wrongly deciding it is prose changes bytes.
-   This asymmetry argues for erring toward recognition throughout — a principle the
-   earlier recognition rule stated and then applied backwards, which FM-PR71-02 caught.
+These rules are tested with stdin and files. The test runner itself performs no newline or
+encoding normalization.
 
-## Track A: Mathematics
+### Protected-region contract
 
-Highest priority. This track is measured, not estimated: a 39-case battery was run
-against both ports, and the corpus in `tests/tryscript/fixtures/content/math.md`
-reproduces every defect below.
+For every recognized protected region:
 
-### What was measured (Track A)
+- The emitted UTF-8 bytes equal the region's normalized source slice exactly.
+- Delimiters, indentation, container markers, labels, attributes, tabs, internal spaces,
+  and existing line endings are part of the slice.
+- Smart quotes, ellipses, cleanups, escaping, sentence splitting, and whitespace
+  normalization do not inspect or mutate its body.
+- An inline region is one wrapping unit. It may move as a whole; it is never split by a new
+  wrap boundary. Existing physical line endings inside a permissive multiline inline form
+  remain where authored.
+- A protected token is never separated from adjacent source text when there was no
+  whitespace at that boundary. Intraword forms such as `H$_2$O` remain one wrapping
+  cluster.
+- An opaque block retains its physical line structure and is not collapsed into a
+  paragraph.
 
-A 39-case battery was run against **flowmark 0.7.3 (Python)** and **flowmark-rs 0.3.2
-(Rust)** with `--auto`. Both ports produced identical classifications, confirming shared
-behaviour rather than a port regression.
-Sixteen cases corrupt content.
-The failures fall into four mechanisms, M1 through M4; M3 and M4 are not in #70, and M3 is in
-neither issue. Two further defects, C1 and C2, are on the code-span side and are
-described in Track C.
+Surrounding prose may be reformatted normally. Exact committed output, rather than a
+whitespace-stripped helper, determines whether that interaction is correct.
 
-**Defect M1 — span splitting.** `$…$`, one-line `$$…$$`, and `` `\(…\)` `` are absent from
-`ATOMIC_PATTERNS`, so a wrap boundary falling inside one splits it.
-A newline inside a formula defeats `grep` and breaks renderers that require inline math
-to stay on one line.
+### Inline-code policy
 
-**Defect M2 — escape injection.** Once a span is split, the fragment beginning the new
-line goes through `markdown_escape_word`
-(`src/flowmark/linewrapping/text_wrapping.py:70`), which prefixes a backslash to a word
-that is exactly `-`, `*`, `+`, `>`, `#+`, or `N.`/`N)`. So `$a + b + c + d$` becomes:
+Inline code uses source preservation, not renderer canonicalization. Once a valid code span
+is bounded, Flowmark emits the authored delimiter run and body exactly. This intentionally
+preserves source forms that render equivalently under CommonMark, including wider-than-
+necessary delimiters and authored spaces.
 
-```text
-… now ok $a + b + c
-\+ d$ tail.
-```
+This policy is safer for a source formatter, avoids a second-pass change, and gives math
+and code one treatment contract while retaining separate recognition rules.
 
-The `\+` is a character that was not in the input.
-This is content corruption, not layout.
-Note the escape is *correct behaviour for prose* — a bare `+` at line start would
-otherwise parse as a list bullet — which is why the fix belongs in math detection, not
-in the escaper.
+### Preservation-biased ambiguity
 
-**Defect M3 — typographic transforms inside math.** This one needs no wrap boundary at
-all:
+False negatives can change syntax bytes. False positives generally inhibit a wrap or
+typographic cleanup. Flowmark therefore recognizes a broad balanced dollar form by
+default.
 
-```text
-IN : Short $x'y$ tail.
-OUT: Short $x’y$ tail.
-```
+A pair such as `$100 and $200` or `$HOME and $PATH` may be treated atomically. Its bytes
+must remain unchanged even if it is not math. The accepted tradeoff is a possible overlong
+line, not content corruption. There is no strict-dollar option in this plan; one can be
+added later without weakening the default.
 
-Smartquotes curls the apostrophe inside the math span on a short line, and a curly quote
-is not valid TeX input.
+## Measured defects
 
-The trigger is narrow and worth stating exactly, because the obvious summary of it is
-wrong. Measured: the apostrophe curls only when it sits between two word characters —
-`$x'y$` and `$n'th$` are rewritten; `$f'(x)$`, `$a'$`, `$x' + y$` and
-`` `$\alpha'\beta$` `` are not. So this does not hit every derivative in a document, as
-a first look suggests; it hits the contraction-shaped subset, which includes real
-mathematics such as a transposed product.
+The initial batteries used Flowmark Python 0.7.3 and flowmark-rs 0.3.2 with `--auto`.
+The two ports showed the same defect classes, so these are upstream behavior gaps rather
+than Rust-only regressions. The batteries are seed evidence; the shared corpus defined
+below is the lasting contract.
 
-Straight double quotes inside a span are also curled. Because both are independent of
-wrapping, fixing M1 and M2 will **not** fix them; they need their own guard in
-`src/flowmark/typography/`.
-
-**Defect M4 — block collapse.** Every display form that is not a fenced code block is
-flattened onto a single line:
-
-```text
-IN                          OUT
-$$                          $$ \begin{aligned} a &= b + c \\
-\begin{aligned}              d &= e + f \end{aligned} $$
-a &= b + c \\
-d &= e + f
-\end{aligned}
-$$
-```
-
-This is #62's P1 item 6, and it applies equally to `` `\[…\]` ``,
-`` `\begin{equation}…\end{equation}` ``, and the MyST labelled form. Non-whitespace
-characters survive, so the formula usually still renders — but the line structure that
-makes an aligned environment readable is gone, and the git diff for any edit to such a
-block becomes whole-block noise. Only the fenced forms (` ```math `, ` ```{math} `)
-escape, because a code fence is already opaque.
-
-### Measured results by syntax
-
-Verified, not assumed.
-“Safe” means content and span integrity both held.
-
-| Syntax | Form | Result today |
+| ID | Construct | Current failure |
 | --- | --- | --- |
-| `$…$` | inline | **corrupt** (M1, M2, M3) |
-| `$$…$$` on one line | inline display | **corrupt** (M1, M2) |
-| `$$…$$` across lines | block display | **corrupt** (M4) |
-| `\(…\)` | inline | **corrupt** (M1, M2) |
-| `\[…\]` | block | **corrupt** (M4) |
-| `\begin{equation}…\end{equation}` | block | **corrupt** (M4) |
-| ` ```math ` fence | block (GitHub, GitLab) | safe — code fence |
-| `` $`…`$ `` | inline (GitLab) | safe — code span is already atomic |
-| ` ```{math} ` | block (MyST) | safe — code fence |
-| `` {math}`…` `` | inline (MyST) | safe — code span is already atomic |
-| `$$…$$ (label)` | labelled block (MyST) | **corrupt** (M4) |
+| M1 | Inline `$…$`, `$$…$$`, and `\(…\)` | A width boundary splits the formula. |
+| M2 | Split inline math | A fragment beginning with `+`, `-`, `>`, `#`, or a numeral marker receives a new backslash escape. |
+| M3 | Math containing prose-like punctuation or Markdown | Smart quotes, ellipses, emphasis, and other parser transforms alter the body even on short lines. |
+| M4 | Display math and LaTeX environments | Multiple source lines collapse into one line. |
+| C1 | Code spans whose body contains backticks | The renderer shortens the delimiter and can close the span early. |
+| C2 | Code spans containing spaces or tabs | Paragraph whitespace normalization changes the body and can be non-idempotent. |
 
-Every non-math dollar case tested is safe today and must stay that way: two currency
-amounts in one line, currency across a wrap boundary, escaped `\$`, `$HOME`/`$PATH`, a
-trailing lone `$`, an unclosed `$a + b`, dollars in separate paragraphs, and dollars
-inside code spans and fences.
+M3 proves that post-parse atomic patterns are insufficient. For example, a parser can turn
+the underscores in `\text{__init__}` into emphasis nodes before wrapping or typography
+runs. The original source is unrecoverable at that point.
 
-Only the two fenced forms are genuinely safe, and they are safe for a reason that has
-nothing to do with math: a code fence is already opaque. Everything else either splits
-(inline) or collapses (block).
+The topic fixtures
+`tests/tryscript/fixtures/content/math.md` and
+`tests/tryscript/fixtures/content/code-inline.md` reproduce the interacting forms. They
+were previously dead fixtures; the implementation must make them load-bearing through both
+the shared manifest and tryscript integration coverage.
 
-### Why the bug survived this long
+## Lossless protection architecture
 
-`tests/tryscript/fixtures/content/math.md` already exists in **both** repos and is
-referenced by **no test in either**. It is a dead fixture: nothing formats it, so
-nothing compares its output.
-It also contains only two short constructs, neither long enough to reach a wrap column.
-Turning that file into a real, exercised corpus is the largest single piece of this
-work.
+### Pipeline
 
-
-## Track C: Inline Code Correctness
-
-Found by testing the Unifying Rule's claim that code spans and math spans get identical
-treatment. They do not, and every difference is a bug on the code-span side. Track C is
-scheduled **before** the math fixes because it owns the shared span code path: once a span
-is emitted byte-for-byte, math inherits that rather than needing a stricter path of its
-own.
-
-Measured with a 30-case battery against flowmark 0.7.3. Sixteen cases change; two of those
-changes are correct, leaving **fourteen defects** in two families.
-
-### Defect C1 — delimiter runs are collapsed regardless of content
-
-flowmark shortens a multi-backtick delimiter to a single backtick unconditionally. That is
-harmless when the content has no backticks and **structurally corrupting** when it does,
-because the shortened delimiter is then closed early by a backtick inside the content.
+Both implementations follow the same observable stages:
 
 ```text
-IN                              OUT
-``simple``                 →    `simple`                  (correct: same render)
-``has ` tick``             →    `has ` tick`              (broken: span ends at the inner tick)
-``code with `backtick` in``→    `code with `backtick` in` (broken: becomes two spans)
-```outer with `` inner```  →    `outer with `` inner`     (broken)
+input bytes
+  -> UTF-8/BOM/newline normalization
+  -> block and inline source scan
+  -> sorted typed protected regions + side table
+  -> collision-safe parser bridge
+  -> Markdown parse, transforms, render, and wrapping of unprotected text
+  -> validated exact restoration
+  -> BOM/final-newline emission
 ```
 
-The corruption is silent and idempotent — stable after one pass, so it is a one-time
-structural change rather than runaway. It fires in every context including table cells.
+The scanner is a dedicated pre-parse component. Parser extensions may recognize the
+scanner's synthetic tokens, but parser-specific syntax recognition is not authoritative.
+This keeps Marko and comrak adapters thin and keeps the recognition algorithm portable.
 
-This is what mangled this spec's own table cells while it was being written, and it is
-almost certainly the same root as [#58](https://github.com/jlevy/flowmark/issues/58).
+### Region record
 
-### Defect C2 — whitespace inside a span is normalised
+Each region record contains:
 
 ```text
-`a    b`   →  `a b`      6 bytes of content become 3; internal runs are significant
-`  a  `    →  ` a `      then `a` on a second pass — not idempotent
-`   `      →  ` `        all-space content is exempt from the strip rule
-`a<TAB>b`  →  `a b`      tabs inside a span are significant
+index              monotonically increasing source-order integer
+kind               stable type such as math_dollar_inline or code_span
+start, end         half-open UTF-8 byte offsets in normalized source
+source             exact normalized UTF-8 slice
+form               inline or block
+logical_widths     Unicode-scalar width of each physical fragment for inline forms
+container          blockquote depth and list/content-column metadata when applicable
 ```
 
-CommonMark 0.31.2 §6.1 converts line endings to spaces and strips one space from each end
-only when the content both begins and ends with a space **and is not entirely spaces**.
-Internal runs and tabs are significant. Rewriting source `` `  a  ` `` to `` ` a ` ``
-also changes what a renderer produces, since ` a ` then strips to `a`.
+Records are sorted, non-overlapping, and cover only recognized regions. Outer opaque
+regions own their complete range; nested syntax inside them is not emitted as independent
+regions.
 
-The cause is ordering rather than intent: the paragraph-level `re.sub(r"\s+", " ", text)`
-in `wrap_paragraph_lines` runs before atomic protection, so a span's interior is
-normalised before anything declares it untouchable. No test pins the current behaviour.
+### Collision-safe parser bridge
 
-**The context asymmetry is the diagnostic.** C2 fires in paragraphs, list items,
-blockquotes and link text, but **not** in table cells or headings — which take a different
-emit path that never reaches that normaliser. C1, by contrast, fires everywhere including
-tables. So the two defects are independent, and C2's fix belongs at the point the
-paragraph path diverges from the others.
+Synthetic tokens use a deterministic sentinel that cannot occur in the source.
 
-### What is already correct
+1. In one pass, find the maximum number `m` of consecutive `U+F0000` scalars immediately
+   before any `U+F0001`.
+2. Let `S` be `m + 1` copies of `U+F0000` followed by `U+F0001`. No suffix of a longer
+   authored run can collide with it because `m` is maximal.
+3. Encode region `i` as `S`, `U+F0002`, lowercase base-36 `i` without leading zeros,
+   `U+F0003`, then `S`.
 
-Regression cover, confirmed by the same battery: a line ending inside a span becomes a
-space (CommonMark-correct); backslashes, emphasis markers, HTML, entities and block
-markers all survive literally; no typographic transform fires inside a span, so straight
-quotes, apostrophes, ellipses and double hyphens are left alone; and spans are atomic for
-wrapping, including one whose content begins with a list marker and one longer than the
-wrap column.
+The sentinel search terminates for every finite input and is linear. Supplementary private-
+use scalars are chosen because they are valid
+UTF-8 text and inert Markdown characters; corpus cases verify that Marko and comrak carry
+them unchanged. The collision case where the source already contains candidate private-use
+sequences is mandatory.
 
-### The corpus
+The literal token length never determines wrapping. The inline lexer carries explicit
+whitespace boundaries rather than rebuilding output by joining strings with spaces. Text
+and tokens separated by no source whitespace form one unbreakable cluster.
 
-`tests/tryscript/fixtures/content/code-inline.md`, which — exactly like `math.md` —
-already existed in both repos, was referenced by **no test in either**, and whose final
-line was already the C1 reproducer:
+A single-line inline token takes its width from the side table. For a multiline inline
+token, `logical_widths` records the scalar width of every source fragment separated by an
+authored LF, including any continuation container prefix inside the slice. The wrapper may
+insert a new break before the token as a whole. It then emits the first fragment at the
+current column, forces each authored internal LF, resets the column to the corresponding
+fragment width, and measures following text from the final fragment. It may not add,
+remove, or relocate an internal break. Restoration substitutes the complete source slice
+only after wrapping, so the parser never gets an opportunity to reinterpret a continuation
+line as a list, quote, or heading.
 
-```text
-Multiple backticks: ``code with `backtick` inside``.
-```
+Typography and cleanup walkers skip tokens. Block tokens are represented as opaque block
+nodes by the parser adapter so paragraph rendering cannot add or remove container
+structure. Shared intraword, multiline, list, quote, and width-boundary cases constrain
+both thin adapters; neither port may approximate token width with placeholder text length.
 
-The shipped fixture corrupts itself on that line. It is now a five-part corpus on the same
-shape as the math one: delimiter runs, whitespace, literal content, block contexts, and
-wrapping. It reproduces all fourteen defects.
+Restoration validates all invariants before producing output:
 
-## The Recognition Rule
+- every token index exists;
+- every region is restored exactly once and in source order;
+- no token is missing, duplicated, reordered, nested, or malformed; and
+- no sentinel remains in the result.
 
-Revised after [review FM-PR71-02](https://github.com/jlevy/flowmark/pull/71). The
-earlier version of this section described itself as "the union of the strictest
-constraints from Pandoc and GitHub," and that was the error: a union of *restrictions*
-is an intersection of *accepted forms*, so the rule recognised less than either dialect.
-Under this spec's own asymmetry — false positives are cheap, false negatives corrupt —
-that is backwards.
+An invariant failure returns a nonzero internal error with empty stdout. In-place writing
+uses the existing atomic commit boundary, so the original file remains unchanged. The
+formatter never emits a partial document or an internal token.
 
-### What the earlier rule got wrong, measured
+### Complexity
 
-Probed against pandoc 3.1.3:
+Delimiter scanning, sentinel selection, token replacement, and restoration are each
+O(n). Environment matching uses a stack bounded by source length. No rule backtracks over
+the body, recursively reparses substrings, or searches from every unmatched opener.
 
-| Source | Pandoc | Earlier rule here |
-| --- | --- | --- |
-| `H$_2$O` | math | **rejected** (opener follows an alphanumeric) |
-| `1$a$` | math | **rejected** (same) |
-| `$a$B` | math | **rejected** (closer precedes a letter) |
-| `x $a +`⏎`b$ y` | math | **rejected** (no-newline clause) |
-| `$$ a + b $$` | math | **declared out of scope** |
-| `$a$2` | not math | not math |
-| `$100 and $200` | not math | not math |
+## Recognition model
 
-The last two rows are the point. **Pandoc rejects the currency case using only its three
-documented rules**, with none of the restrictions this spec had added to justify exactly
-that protection. In `$100 and $200` the candidate closer is preceded by a space, which
-Pandoc's rule already rejects. The extra clauses bought nothing and cost five valid
-forms.
+### Global precedence
 
-### The rule
+Recognition is deterministic in two stages.
 
-Recognition is **preservation-biased**: a superset of the common dialects, with no
-configuration needed for standard forms. Inline `$…$`:
+First, the block scanner selects leading frontmatter and existing opaque Markdown blocks,
+then registered opaque blocks beginning with display math and LaTeX environments. These
+ranges are not searched for inline syntax.
 
-1. The opening `$` is not escaped (see parity below), and the character after it is not
-   whitespace.
-2. The character before the closing `$` is not whitespace.
-3. The character after the closing `$` is not a digit.
-4. The pair does not span a blank line — that is, never across a paragraph boundary. A
-   soft newline inside is permitted, because Pandoc accepts it.
+Second, each inline recognizer independently proposes complete candidates in the remaining
+inline scopes. A paragraph or heading is one scope. Each GFM pipe-table cell is a separate
+scope, split at active unescaped structural pipes before math matching; a dollar pair or
+code span may not hide a cell boundary from the Markdown parser. If a table's cell
+boundaries cannot be identified deterministically, the block scanner preserves the table
+as one opaque block. Arbitration repeatedly selects the candidate with the earliest start
+byte and discards every candidate that overlaps it. For candidates beginning at the same
+byte, this priority applies:
 
-That is Pandoc's documented rule plus the paragraph-boundary guard. It is deliberately
-*not* GitHub's stricter variant; where a dialect is narrower, recognising the wider form
-only risks an unbreakable span, while failing to recognise it corrupts content.
+1. GitLab dollar-backtick math and MyST role-plus-backtick math;
+2. general inline code spans;
+3. unambiguous inline math delimiters and environments;
+4. dollar runs; and
+5. other registered extension spans.
 
-Display `$$…$$` uses its own rule and does **not** inherit the inline whitespace
-restrictions: Pandoc accepts `$$ a + b $$`.
-
-`\(…\)` and `\[…\]` have unambiguous delimiters and need only the container and nesting
-rules in the block scanner contract.
+If candidates still tie, the longest complete range wins, then a fixed stable kind name.
+This leftmost-outer rule gives a dollar formula ownership of code-like text inside it and a
+code span ownership of dollar-like text inside it. It also handles the GitLab composite
+without changing the public `MARKDOWN_INLINE_PATTERNS` tuple or relying on regex-
+alternation order.
 
 ### Escape parity
 
-A single backslash escapes; two backslashes are a literal backslash and the `$` still
-opens. So the test is the **parity of the backslash run** immediately before the
-delimiter, not the one-character check the earlier draft specified:
+An ASCII delimiter is active when the immediately preceding run of backslashes has even
+length. An odd run escapes it. The delimiter's own backslash in `\(`, `\)`, `\[`, `\]`,
+`\begin`, or `\end` is not counted as a preceding escape.
+
+Examples:
 
 ```text
-\$a$      escaped, not math
-\\$a$     opens math
-\\\$a$    escaped again
+\$a$       first dollar is escaped
+\\$a$      first dollar is active
+\\\$a$     first dollar is escaped
+\\\\$a$    first dollar is active
 ```
 
-### The body rule
+The same parity rule applies to candidate closers and to escaped dollars inside a formula.
 
-The body may contain an escaped `\$` but never a bare `$`. This survives from the
-earlier draft and is still verified against the interleaved line in
-`tests/testdocs/testdoc.orig.md`: the permissive body finds 3 of 3 true spans and
-captures neither currency amount, while excluding `$` outright finds 1 of 3.
+### Dollar math
 
-### On false positives
+Dollar recognition has no whitespace, alphanumeric-adjacency, or following-digit
+restriction. This is deliberate: it includes Pandoc intraword math, MyST's optional
+space-padded form, soft newlines, and narrower GitHub-style forms without configuration.
 
-Restated because the earlier draft asserted this and then contradicted it. A false
-positive costs at most an unbreakable span and an overlong line; no character changes. A
-false negative changes bytes. Recognition should therefore err wide. Where a strict
-profile is genuinely wanted it belongs behind an option, not in the default — and this
-spec does not currently propose one.
+Scanning occurs independently inside each Markdown paragraph and never pairs across a
+blank-line boundary. Code and higher-precedence protected ranges are skipped.
 
+The scanner processes each active dollar run left to right with three states:
 
-### Desired behaviour, by construct
+```text
+NONE:
+  run length >= 2 -> open DOUBLE with two dollars
+  run length == 1 -> open SINGLE with one dollar
 
-**Inline spans — must become atomic, must not be typographically transformed.**
+SINGLE:
+  the next active dollar closes SINGLE with one dollar
+  any dollars remaining in that run are processed again from NONE
 
-| Construct | Dialects | Required behaviour |
+DOUBLE:
+  a run length >= 2 closes DOUBLE with two dollars
+  a run length == 1 is body content and participates in fallback SINGLE pairing
+  any dollars remaining after the closer are processed again from NONE
+```
+
+Every state transition consumes only the stated one or two dollars. Any remainder in the
+same run is processed immediately in the new state; thus `$$$$` is an empty double-dollar
+region. While DOUBLE is open, singleton runs are paired into fallback SINGLE candidates.
+If DOUBLE later closes, its outer candidate owns them. If DOUBLE is unmatched, completed
+fallback candidates survive, so an unmatched opener cannot suppress valid later math.
+
+Only a closed candidate becomes a protected region. An unclosed candidate is left as
+ordinary source. This rule makes `$a$$b$` two adjacent single-dollar regions while making
+`$$a$$` one double-dollar region. Escaped dollars remain body content. Existing soft
+newlines inside a closed region are preserved; a blank line terminates an unclosed inline
+candidate.
+
+The required forms include:
+
+- `$…$` and `$$…$$`, with or without interior spaces;
+- intraword forms such as `H$_2$O`, `1$a$`, and `$a$B`;
+- a closer followed by a digit, adjacent spans, empty bodies, Unicode adjacency, and tabs;
+- escaped dollars under one through four preceding backslashes; and
+- parser-collision bodies containing underscores, emphasis, links, images, entities, HTML,
+  backticks, TeX comments, straight quotes, ellipses, and block-marker text.
+
+Balanced currency and shell-variable pairs are allowed false positives under the
+preservation contract. Lone and unclosed dollars remain ordinary source and receive exact
+golden coverage for safe degradation.
+
+### Other inline math forms
+
+- `\(…\)` pairs with the next active `\)` in the same paragraph. Interior whitespace and
+  soft newlines are allowed; blank lines and unmatched openers end the candidate.
+- GitLab math begins with an active dollar immediately followed by a backtick run of length
+  N. It closes at the next run of exactly N backticks immediately followed by an active
+  dollar. The whole composite is one region.
+- MyST math begins with `{math}` immediately followed by a backtick run of length N and
+  closes at the next run of exactly N. The whole role and code span are one region.
+- A `\begin{name}` and matching `\end{name}` contained in a paragraph form one region.
+  Environment names are nonempty raw text up to the next `}` on the same logical line;
+  braces and line endings are not allowed in the name. Matching is exact and
+  case-sensitive, including `*`, `@`, punctuation, and custom names.
+
+### Inline code spans
+
+A run of N backticks opens a code span when the next backtick run of exactly N exists in
+the same paragraph. Runs of different lengths are body content. N has no implementation
+limit; one-through-four regex approximations are noncompliant. Backslash does not escape a
+backtick in CommonMark code-span recognition.
+
+The complete authored slice is protected. Internal spaces, tabs, line endings, backslashes,
+Markdown, HTML, entities, and typographic punctuation remain exact. An unmatched opener is
+ordinary source. The corpus includes delimiters longer than four, bodies with shorter,
+equal, and longer runs, all-space bodies, padded bodies, multiline bodies, adjacent spans,
+and every supported block context.
+
+### Container-aware block view
+
+The block scanner retains raw line ranges while deriving a logical container view. It
+recognizes:
+
+- zero to three leading spaces;
+- repeated blockquote markers with their optional following space;
+- unordered or one-to-nine-digit ordered list markers plus their content padding; and
+- continuation indentation relative to the opener's content column.
+
+An opener records blockquote depth, list nesting, and content column. A closer is compatible
+only in the same blockquote/list container at the recorded content column or a valid deeper
+continuation. It cannot close across a quote or list-item boundary. The raw prefixes stay
+inside the restored source slice.
+
+The algorithm is a small container stack with CommonMark marker widths, not a top-level
+regular expression. Required vectors cover top-level blocks, nested lists, nested quotes,
+quotes inside lists, lists inside quotes, lazy continuations, tabs in indentation, and
+delimiter-looking text in indented code.
+
+### Display math and environment blocks
+
+After removing the logical container prefix:
+
+- A line containing only active `$$` opens a dollar display block. A compatible line with
+  `$$` closes it. The closer may carry a MyST label in parentheses or a single attribute
+  group after whitespace; the suffix is part of the protected slice.
+- A line containing only active `\[` opens a bracket display block; only compatible
+  `\]` closes it.
+- `\begin{name}` opens an environment block. Environment openers nest. Only
+  `\end{name}` matching the top stack entry closes it. Starred and custom names match
+  exactly.
+- Dollar and bracket blocks do not nest. Delimiter-looking text inside them is body text;
+  the next compatible closer of the same type closes the block.
+- A mixed or mismatched closer never pops the current block. It remains body text if a
+  later valid closer completes the region.
+
+A candidate is committed only after its legal closer is found. An unmatched opener
+therefore cannot swallow trailing prose. Closed nested environments are retained as
+independent candidates if an unmatched outer environment is discarded; a candidate tree
+resolves outer ownership in one pass.
+
+Fenced and indented code win before math, so math-looking delimiters inside them are never
+considered. Matched block regions may contain blank lines. Every unmatched and mismatched
+case has an exact, idempotent golden and an adversarial linear-time case.
+
+## Track B: extension registry
+
+The same scanner grows through explicit, tested rules. Built-in recognition covers the
+common dialect union; users should not need to identify their Markdown flavor.
+
+| Priority | Family | Recognition and treatment |
 | --- | --- | --- |
-| `$…$` | GitHub, GitLab, Pandoc, MyST, Obsidian, Quarto | Atomic. Interior byte-identical. |
-| `$$…$$` on one line | GitHub, Pandoc | Atomic. Interior byte-identical. Matched before `$…$`. |
-| `\(…\)` | MathJax default, raw LaTeX | Atomic. Interior byte-identical. |
-| `` $`…`$ `` | GitLab | Already safe. Pin with a test; keep the whole thing one word. |
-| `` {math}`…` `` | MyST | Already safe. Pin with a test. |
+| P0 | Pandoc multiline tables | Detect caption/header/rule structure and preserve the complete table block. |
+| P0 | Obsidian callouts | Detect the first quote line `[!type]`, optional fold marker, and title; preserve the contiguous callout quote block exactly. |
+| P0 | Colon containers and fenced divs | A container-content line beginning with a run of at least three colons opens; a bare run closes. Maintain a nesting stack without requiring equal run lengths. |
+| P0 | TOML frontmatter | At document start after an optional BOM, `+++` pairs with `+++` exactly as YAML `---` does; preserve the complete region. |
+| P0 | Definition lists | Detect term lines followed by one or more definition markers in the same container; preserve the contiguous definition-list block. |
+| P1 | Pandoc grid tables | Detect compatible top/bottom border and row lines; preserve the complete table. |
+| P1 | Raw multiline HTML | Apply CommonMark HTML-block boundaries, then preserve the source block rather than re-rendering it. |
+| P1 | Attribute groups | Protect standalone `{.class #id …}` lines and inline attribute groups immediately following a compatible span. |
+| P2 | Line blocks | Preserve contiguous container-content lines beginning with an active vertical bar and required following space. |
+| P2 | MyST roles and wikilinks | Protect balanced role/backtick and double-bracket spans with explicit escape and nesting tests. |
 
-**Blocks — must be opaque, interior preserved line for line.**
+Each registry rule defines opener, closer or extent, precedence, container compatibility,
+nesting, unmatched behavior, and a case matrix before implementation. Parser support may
+replace a passthrough rule only after the same shared cases prove exact or intentionally
+canonical output in both ports.
 
-| Construct | Dialects | Required behaviour |
-| --- | --- | --- |
-| `$$` … `$$` on own lines | ubiquitous | Opaque. Line structure preserved. |
-| `\[` … `\]` | MathJax, LaTeX | Opaque. Line structure preserved. |
-| `\begin{env}` … `\end{env}` | LaTeX, MathJax | Opaque. Line structure preserved. |
-| ` ```math ` | GitHub, GitLab | Already safe as a fence. Pin with a test. |
-| ` ```{math} ` | MyST | Already safe as a fence. Pin with a test. |
-| `$$ … $$ (label)` | MyST | Opaque; the trailing label must survive. |
+Custom delimiter configuration is a later additive feature. It must register rules in the
+same scanner and cannot weaken built-in protection by default.
 
-**Non-math dollars — must never be captured.**
+## Language-neutral golden strategy
 
-Currency (single, multiple, and across a wrap boundary), escaped `\$`, shell variables
-`$HOME`/`$PATH`/`$1`, a lone `$`, a trailing `$`, an unclosed `$a + b` at end of line,
-dollars in different paragraphs, dollars inside code spans and code fences, and `$a+b$5`
-(closing `$` followed by a digit).
+The architecture document linked at the top is normative for layout, manifest schema,
+native runners, golden review, and Rust divergence policy. The following requirements are
+specific to preservation work.
 
+### Change map
 
-## Track B: The Rest of the Ledger
+The manifest is the porting ledger. These stable change IDs group the initial work:
 
-Twelve construct families, empirically verified in
-[#62](https://github.com/jlevy/flowmark/issues/62) against a round-trip battery. Severity
-is #62's. The math rows are struck through here because Track A owns them, and #62's
-"already robustly safe" list needs one correction: it names the interior of `$…$` inline
-math as safe, which [#70](https://github.com/jlevy/flowmark/issues/70) and Track A
-disprove.
-
-| # | Construct | Observed result | Sev |
+| Change ID | Contract | Python tracker | Required Rust result |
 | --- | --- | --- | --- |
-| 1 | Pandoc multiline tables | dashed rules became `* * *` breaks + `##` headings; rows merged | P0 |
-| 2 | Obsidian callouts | `> [!tip]+ My Title` → `> [!TIP]`; drops custom title and fold marker | P0 |
-| 3 | `:::` containers / Pandoc fenced divs | collapsed to prose; panels merged | P0 |
-| 4 | TOML `+++` frontmatter | reflowed into one prose line | P0 |
-| 5 | Definition lists | `Term` / `: Def` collapsed to `Term : Def` | P0 |
-| 6 | ~~`\[…\]` and `$$…$$` block math~~ | ~~collapsed onto one line~~ — **Track A** | P1 |
-| 7 | Pandoc grid tables | not recognised; body cells reflow | P1 |
-| 8 | Raw multi-line HTML blocks | collapsed onto one line | P1 |
-| 9 | `{.class #id}` attribute lists and spans | reflowed or splittable | P1 |
-| 10 | Line blocks (`\|`) | lone `\|` line reflows and loses the marker | P2 |
-| 11 | ~~LaTeX `\(…\)` inline~~ | ~~reflowed as prose~~ — **Track A** | P2 |
-| 12 | MyST roles and wikilinks | survive only when an adjacent atomic span covers them | P2 |
+| `FM-CONFORMANCE-001` | Shared manifest, strict runners, fixture reachability, idempotence | `fm-o5vk` | Native runner reads `repos/flowmark`; no Python runtime. |
+| `FM-PRESERVE-CORE-001` | Normalization, region records, sentinel bridge, fail-closed restoration | `fm-2tto` | Same golden outputs and failure semantics. |
+| `FM-MATH-INLINE-001` | Dollar, paren, GitLab, MyST, and inline environment recognition | `fm-9jtc` plus implementation beads | Zero new divergence entries. |
+| `FM-MATH-BLOCK-001` | Container-aware display and environment blocks | `fm-6erm` | Zero new divergence entries. |
+| `FM-CODE-SPAN-001` | Arbitrary delimiters and source-exact code spans | `fm-fa8p`, `fm-9ey6` | Same cases pass after the math port. |
+| `FM-OPAQUE-P0-001` | P0 extension registry families | Track B beads under `fm-7vtx` | Port family by family against shared IDs. |
 
-Rows 1–5 are real data loss and outrank everything in Track A except that Track A proves
-the mechanism they all depend on. That is the whole scheduling argument: Track A is small,
-fully measured, and exercises block passthrough, inline atomics and the typography guard
-together.
+Every behavior PR adds or updates manifest cases with one of these IDs or a new stable ID.
+The Rust submodule bump exposes the exact set with no separate hand-maintained test map.
 
-### Dialect-agnostic recognition rules
+### Math conformance matrix
 
-From #62, preferred because they are robust across flavours without parsing any dialect:
+The math suite covers these dimensions with minimal cases, deliberate pairwise
+interactions, and the topic-level `math.md` document:
 
-- **`:::` regions** — `^:{3,}` opener to a bare `:::`-run closer, counts need not match
-  (Pandoc's rule). Covers all four dialects without reading the info string.
-- **Attribute groups** — protect a line that is only `^\s*\{[.#][^}]*\}\s*$`, and
-  inline `]{…}` spans.
-- **`+++` frontmatter** — teach the frontmatter splitter the delimiter, mirroring `---`.
-- **Callouts, multiline and grid tables, definition lists, raw HTML blocks, line
-  blocks** — opaque-block passthrough, or enable and test a parser extension where one
-  exists and round-trips.
-
-### On waiting for the parser
-
-#62 records that comrak 0.52's `block_directive` covers `:::` only, does not handle
-`::: {.class}` info-string or nesting semantics, and that comrak still has no fields for
-attributes, Pandoc fenced divs, grid tables, Pandoc definition lists, line blocks, or
-TOML frontmatter. A parser upgrade alone fixes almost none of this. The pre-parse
-passthrough is both the faster and the more robust route.
-
-## Architecture
-
-### Protection must happen before parsing
-
-Revised after [review FM-PR71-01](https://github.com/jlevy/flowmark/pull/71), which is a
-**blocker against the earlier design** and is confirmed by measurement.
-
-The earlier draft put math recognition in the wrapping and typography stages — after
-Marko has parsed the source into inline nodes. That cannot work, because by then the
-formula may no longer be one string and the original bytes may already be gone:
-
-```text
-IN : Short math $\text{__init__}$ tail.
-OUT: Short math $\text{**init**}$ tail.
-```
-
-Marko converted `__init__` into a `StrongEmphasis` node before any renderer ran. No
-post-parse atomic pattern can recover it, because there is no longer a single text node
-spanning the formula. Two further probes confirm the same shape:
-
-```text
-Short math $\$1 + x'y$ tail.     ->  Short math $\$1 + x’y$ tail.
-Short math $a *b* ... c$ tail.   ->  Short math $a *b* … c$ tail.
-```
-
-The second is split around an `Emphasis` node, so a raw-text guard cannot see the whole
-span. Two claims the earlier draft made are therefore **false and are withdrawn**:
-
-- that M2 follows automatically from M1 — it does not, because escape injection is not
-  the only way the interior changes;
-- that math can become byte-exact by inheriting the code-span path — it cannot, because
-  that path runs after the damage.
-
-**Protection is a pre-parse facility.** Track B had already concluded this; Track A must
-use the same boundary rather than a second, weaker one. Two admissible designs:
-
-1. **Source scanner with a side table.** Extract protected regions into a collision-safe
-   side table before Markdown parsing, then restore the exact slices after rendering.
-   This is the mechanism the Rust port already uses for its PUA-marker passthrough.
-2. **Parser extension.** Recognise math before generic emphasis and link parsing and
-   retain the raw source slice on a dedicated opaque node.
-
-Either way the contract must state: placeholder collision handling, width accounting for
-the wrapper, index and encoding semantics, and exact restoration. Typography, escaping,
-cleanup and wrapping then consume **typed protected regions** rather than rediscovering
-them from already-parsed text.
-
-### The block scanner contract
-
-Revised after [review FM-PR71-04](https://github.com/jlevy/flowmark/pull/71). "A `$$`
-line opens an opaque region terminated by the next `$$` line" is not a specification —
-it leaves a scanner free to consume delimiters inside code fences, swallow the rest of a
-document after an unmatched opener, or close the wrong environment.
-
-The scanner is linear-time with explicit states and this precedence:
-
-- Already-opaque blocks win: fenced and indented code, frontmatter, and existing
-  passthrough regions are recognised **before** math.
-- Container prefixes and indentation (blockquote, list) are carried through opener and
-  closer matching. MyST supports display math and starred amsmath environments inside
-  lists and quotes, so top-level-only matching is insufficient.
-- Inline `$$` and block `$$` are distinguished.
-- `\[` matches only `\]`; `\begin{name}` matches only the same `\end{name}`, including
-  starred and custom names.
-- Nesting and mismatched-closer behaviour is defined, not incidental.
-- An unmatched opener has a stated fail-safe that does **not** consume unrelated trailing
-  prose.
-- Line endings and attached labels or attributes are preserved per the input-normalisation
-  contract below.
-- Behaviour stays O(n) on input with many unmatched delimiters.
-
-Specify this as language-neutral pseudocode with test vectors, not as a Python regex:
-Rust's `regex` crate supports neither backreferences nor lookaround, and flowmark's
-existing `INLINE_CODE_SPAN` pattern uses a backreference — `` (`+)(?:(?!\1).)+\1 `` — so
-the current Python mechanics are literally unportable. That is why the port contract is
-black-box (FM-PR71-03) rather than a source translation.
-
-### Recognition arbitration, and why ordering does not settle it
-
-Revised after [review FM-PR71-05](https://github.com/jlevy/flowmark/pull/71), which
-disproves the "keep code spans first" resolution this spec previously recorded as
-settled. Alternation order only decides between matches starting at the **same** offset.
-For `` $`a+b`$ `` the dollar candidate starts at offset 0 and the code span at offset 1,
-so leftmost-match wins regardless of order. Verified both ways: each produces a single
-math span at offset 0.
-
-The consequence is an API break, not just a byte question. Today
-`iter_atomic_spans(..., MARKDOWN_INLINE_PATTERNS)` yields three spans for that source — a
-non-atomic `$`, an atomic `inline_code_span`, and a non-atomic `$`. A generic dollar
-recogniser yields one. Output bytes may agree; public names, offsets and boundaries do
-not.
-
-So the GitHub/GitLab dollar-backtick form needs its **own** recogniser with a stated
-arbitration rule, not an ordering assumption. Add public-API conformance cases asserting
-exact span text, offsets, atomic flag and name. If the default tuple's behaviour changes,
-that is a break to classify and document honestly — a changelog line is not SUPPORT BOTH.
-
-### Normative preservation contracts
-
-Revised after [review FM-PR71-06](https://github.com/jlevy/flowmark/pull/71). The earlier
-draft said treatment never changes a byte, then allowed CommonMark normalisation of code
-spans, then proposed a "non-whitespace characters unchanged" test helper — which would
-pass exactly the whitespace corruption byte-exactness forbids. Three separate contracts,
-stated separately:
-
-- **Opaque constructs (math, and Track B's families).** Exact source-slice preservation,
-  after an explicitly defined decoding and newline-normalisation step.
-- **Code spans.** Either preserve the authored source exactly — the safest formatter
-  policy and the one this spec now prefers — or specify the exact CommonMark
-  canonicalisation and delimiter-emission algorithm. Not both.
-- **Surrounding prose.** May reflow, but only outside protected regions.
-
-Tests assert protected-slice equality and exact committed output bytes. **The
-non-whitespace helper is withdrawn as an oracle.** "Byte" also needs defining at the CLI
-boundary: Python currently reads and writes in text mode, which can normalise CRLF, and
-Python string indices are code points while Rust's are UTF-8 byte offsets. The contract
-must cover UTF-8, combining characters, tabs, LF/CRLF, a missing final newline, and
-invalid encoding.
-
-
-## Test Architecture: Language-Neutral by Construction
-
-Revised after [review FM-PR71-03](https://github.com/jlevy/flowmark/pull/71). The earlier
-draft leaned on `admin/port-coverage-mapping/` — test-name mapping plus literal discovery
-counts — and on manually copying fixtures between the repos. That is **inventory, not
-conformance**. It proves two test names were acknowledged; it proves nothing about the
-same bytes, arguments, configuration, stdout, stderr, exit status, or file mutations. And
-manual mirroring creates two sources of truth that drift silently.
-
-### The governing decision
-
-**The contract is language-neutral. Nothing that only one language can run is normative.**
-
-This is not a preference about style; it is forced by the code. Rust's `regex` crate
-supports neither backreferences nor lookaround, and flowmark's existing
-`INLINE_CODE_SPAN` is `` (`+)(?:(?!\1).)+\1 `` — a backreference. The Rust port already
-approximates code spans with separate one- through four-backtick patterns because it
-cannot express the Python one. A source-level regex port is therefore impossible, and any
-contract phrased in Python mechanics is unportable by construction.
-
-Two artifacts already in this repo are language-neutral, and both are the right shape:
-
-1. **The test documents.** `tests/tryscript/fixtures/content/*.md` are input bytes. They
-   carry no language.
-2. **The golden CLI tests.** `tests/tryscript/*.tryscript.md` are command plus expected
-   output. The Rust repo runs the same tryscript files today.
-
-Together they express the whole contract at the CLI boundary: given these input bytes and
-these arguments, produce exactly these output bytes and this exit status. Both ports run
-it; neither runs the other's language.
-
-### What is normative, and what is not
-
-| Artifact | Status | Why |
-| --- | --- | --- |
-| Corpus documents (`math.md`, `code-inline.md`, and Track B's) | **Normative** | input bytes, no language |
-| Tryscript golden CLI cases | **Normative** | command, args, expected stdout/stderr, exit status |
-| Shared parity corpus manifest | **Normative when it lands** | see below |
-| Python unit tests | **Non-normative** | scanner internals only; never the parity contract |
-| `test-mapping.yaml` and discovery counts | **Non-normative** | inventory, useful for coverage bookkeeping only |
-
-Concretely, `tests/test_code_spans.py` and any math unit tests are demoted: keep them for
-internals such as the scanner state machine, but **no behavioural guarantee may live only
-there**. Every behaviour this spec promises must be expressible as input bytes plus a
-golden CLI case.
-
-### Merge the shared parity corpus in, rather than beside
-
-`plan-2026-05-28-shared-parity-corpus.md` (tracker `fmr-bh2b`, still Draft) already
-designs exactly this: one checked-in `tests/parity_corpus/`, committed input/expected
-pairs, two thin native runners, and no Python runtime in Rust CI. The earlier draft of
-this spec acknowledged it and then chose manual mirroring anyway. That was the wrong
-trade, and it is reversed here: **landing the shared corpus is a prerequisite for the
-implementation work**, not a parallel nice-to-have.
-
-The manifest is the normative artifact, language-neutral and black-box:
-
-```toml
-schema_version = 1
-
-[[case]]
-id = "math.pandoc.multiline-inline"
-tags = ["math", "pandoc", "stdin", "idempotent"]
-args = ["--width", "40"]
-input = "cases/math/pandoc-multiline/input.md"
-expected_stdout = "cases/math/pandoc-multiline/expected.stdout"
-expected_stderr = "cases/math/pandoc-multiline/expected.stderr"
-exit_code = 0
-```
-
-It must support stdin/stdout cases and isolated file-tree cases; file cases declare
-expected output files, backups, files that must be unchanged, and files that must not
-exist. Both runners invoke a supplied executable at the CLI boundary and read the same
-manifest and the same bytes. Expected results are committed and reviewed. Rust never
-executes Python at test time.
-
-The workflow this buys: an intentional Python behaviour change updates the shared
-expected once, and Rust CI fails until the port matches. A temporary Rust
-known-divergence list may shrink but never silently grow — a new unreviewed divergence
-fails.
-
-### Assertions, per case
-
-For every passing case, assert exact stdout, stderr and file bytes and the exit status;
-idempotence `F(F(x,c),c) = F(x,c)`; no mutation inside any protected region; no pairing
-across a paragraph boundary; and Python/Rust equality against the same committed
-expected. Do not strip whitespace before comparing — that was the withdrawn oracle.
-
-### A gate against dead fixtures
-
-Both corpora shipped for months referenced by no test, which is the whole reason these
-defects survived. Add a fixture-inventory gate to
-`scripts/check-golden-coverage.sh`: every file under `tests/tryscript/fixtures/content/`
-must be referenced by at least one tryscript case, or CI fails. A dead fixture should be
-impossible to add, not merely unlucky.
-
-### The conformance matrix
-
-The current corpora are a seed, not the contract. Before either can serve as the math
-contract, these families are required — from the review, and each becomes corpus cases:
-
-| Family | Required cases |
+| Dimension | Required coverage |
 | --- | --- |
-| Dollar boundaries | `H$_2$O`, `1$a$`, `$a$B`, `$a$2`, adjacent `$a$$b$`, empty/unclosed/mismatched runs |
-| Escape parity | one to four backslashes before openers and closers; escaped dollars inside formulas |
-| Multiline | soft newline inside `$…$`, blank-line boundary, multiline and whitespace-padded `$$`, missing closer |
-| Parser collisions | `$\text{__init__}$`, emphasis/links/images/entities/HTML/backticks inside math, TeX comments |
-| Markdown contexts | paragraph, heading, list, blockquote, table, link text, footnote, definition list, container, raw HTML adjacency |
-| Block math | `$$`, `\[`, `equation`, `align*`, custom and nested environments, labels, container indentation |
-| Opaque precedence | math-like delimiters inside inline code, fenced and indented code, frontmatter, raw blocks |
-| Unicode and I/O | Unicode whitespace/digits/letters, CJK adjacency, combining marks, tabs, LF/CRLF, BOM and final-newline policy |
-| Modes and boundaries | default, semantic, smartquotes, ellipses, auto, width 0/1 and N−1/N/N+1, stdin, file, in-place, check, config precedence |
-| Adversarial | thousands of unmatched or adjacent dollars, deep nesting, very long spans, linear-time behaviour |
-| Code spans | delimiter runs beyond four, shorter/equal/longer interior runs, tabs, all-spaces, multiline, unmatched runs, every block context |
+| Delimiters | Single dollar, double dollar, paren, bracket, environment, GitLab dollar-backtick, MyST role and fence forms |
+| Boundaries | Intraword on both sides, spaces and tabs inside, digit after closer, adjacent spans, empty and long bodies |
+| Escapes | One through four backslashes at openers and closers; escaped dollars in bodies |
+| Lines | Short, N-1/N/N+1 width boundaries, soft newline, blank-line boundary, display blocks, missing final newline |
+| Parser collisions | Emphasis, links, images, entities, HTML, backticks, TeX comments, quotes, apostrophes, ellipses, dashes, block markers |
+| Contexts | Paragraph, heading, list, blockquote, nested containers, table, link text, footnote, definition list, colon container, raw-block adjacency |
+| Blocks | Labels, attributes, `align*`, nested and custom environments, mismatches, missing closers, code-block precedence |
+| Unicode and I/O | Non-ASCII letters/digits/space, CJK adjacency, combining marks, tabs, LF/CRLF, BOM, stdin, output file, in-place, check, config |
+| Modes | Default, semantic, smart quotes, ellipses, cleanups, auto, width zero and one |
+| Adversarial | Thousands of dollar runs, deep environments, very long bodies, sentinel collisions, linear-time watchdog |
 
+Exact expected bytes already prove protected content survived; the black-box runner does
+not reimplement the scanner to assert a second "protected slice" property. Python and Rust
+unit/property tests may inspect region boundaries internally, but no product promise lives
+only there.
 
-## Test Corpora, and Which Gate Each Backs
+### Golden layers
 
-Documented here because the parity gate this spec relies on depends on a corpus whose
-provenance is recorded nowhere, and that is worth fixing before more work leans on it.
+- Minimal shared parity cases are the normative cross-language contract and produce
+  precise failures.
+- `math.md` and `code-inline.md` are shared integration inputs. Both ports consume the
+  upstream files directly through the manifest and the upstream tryscript suite. The
+  tryscript transcript may intentionally repeat an expected result because it validates a
+  readable CLI workflow rather than the isolated conformance case.
+- `tests/testdocs/testdoc.orig.md` and its mode-specific expected files remain shared
+  whole-document blast-radius checks. Rust runs them through `repos/flowmark` instead of
+  copying them. Representative mode pairs may also appear in the manifest for an exact
+  process-level assertion.
+- The pinned CommonMark documents and reviewed outputs are shared inputs for both ports.
+  All 652 CommonMark 0.31.2 examples seed default-mode recognition coverage; a reviewed
+  stable subset plus every preservation case exercises other modes.
+- A small number of native unit and property tests cover scanner states, byte indexes,
+  parser adapters, and fail-closed paths. Any result observable from both CLIs also gets a
+  shared case.
+- `scripts/check-golden-coverage.sh` fails if a topical fixture is referenced by neither
+  tryscript nor the manifest, or if a parity payload is dangling.
 
-| Corpus | Checked in? | Purpose | Provenance |
-| --- | --- | --- | --- |
-| `tests/tryscript/fixtures/content/*.md` | yes | per-topic golden fixtures | hand-authored in repo |
-| `tests/testdocs/testdoc.orig.md` + 4 expected | yes | whole-document reference goldens | hand-authored in repo |
-| `flowmark-rs` `tests/parity/corner-cases.md` + 5 expected | yes | Python↔Rust corner cases | hand-authored in repo |
-| `flowmark-rs` `benchmarks/corpus/` | no, regenerable | throughput and directory-walk timing | `benchmarks/generate_corpus.sh [N]` copies repo `.md` files round-robin into a 4–5 level tree, default 1000 files |
-| `flowmark-rs` `attic/test-docs/` | **no** | the byte-parity gate between ports | **undocumented — see below** |
-| `tests/parity_corpus/` (planned) | not implemented | CommonMark-seeded shared corpus | `plan-2026-05-28-shared-parity-corpus.md`, still Draft |
+Golden updates are never automatic during tests. For a behavior fix, desired output is
+committed or reviewed as part of the Python implementation; the Rust port consumes that
+same expected output from the pinned upstream commit.
 
-### The undocumented one
+## Implementation plan
 
-`scripts/corpus-parity-check.sh` defaults to `attic/test-docs`, 623 real-world files.
-Two different things are worth separating here, because the convention is documented even
-though the contents are not.
+### Phase 0: shared conformance foundation
 
-**What is documented: the `attic/` convention.** `attic/` is a gitignored, machine-local
-scratch directory — the same place third-party repository checkouts go under tbd's
-`checkout-third-party-repo` shortcut, which creates the directory and adds it to
-`.gitignore`. It persists across sessions on one machine and is never tracked. So
-`attic/test-docs` is by construction local to whoever assembled it.
+- [ ] Implement `tests/parity_corpus/`, strict schema validation, stdin and file-tree cases,
+  and the Python built-binary runner (`FM-CONFORMANCE-001`).
+- [ ] Add fixture and payload reachability checks to the golden-coverage gate.
+- [ ] Replace implementation-specific paths in upstream tryscript frontmatter with an
+  injected binary-directory value, then make the Rust runner execute
+  `repos/flowmark/tests/tryscript/` and its fixtures directly.
+- [ ] Make the Rust reference-document and CommonMark runners read upstream inputs and
+  expected files through `repos/flowmark` rather than synchronized copies.
+- [ ] Add the Rust native conformance runner against `repos/flowmark` and register portable
+  existing Rust `tests/parity/` cases upstream. Retain only Rust tests that provide a
+  distinct native diagnostic.
+- [ ] Mark the older Rust shared-corpus draft superseded and update the port-sync playbook
+  to use manifest `change_id` reports.
 
-**What is not documented: the contents.** No document in flowmark, flowmark-rs, or
-`rust-porting-playbook` records which files those are, where they came from, or how to
-rebuild the set. Verified against git history as well as the working trees: nothing under
-`attic/` was ever committed (`git log --diff-filter=A -- "attic/*"` is empty), no download
-or assembly step appears anywhere, and `corpus-parity-check.sh` arrived on 2026-02-19
-already defaulting to the path with no accompanying creation step.
+The foundation may land with reviewed current-behavior cases. It must be green before the
+math implementation changes expected behavior.
 
-**The consequence follows from the convention.** A container session cannot have that
-directory, so every fresh session finds it missing. That is exactly what the record shows:
-a senior review flagged the non-reproducibility on 2026-05-28 and the response documented
-a *substitute* (60 tracked repo files) rather than the original; two later syncs recorded
-the same substitution. The script itself fails loudly when the directory is absent
-(`exit 2`), so the degradation is a human decision to proceed with a smaller corpus, taken
-in the open each time — not a silent failure.
+### Phase 1: math corpus and Python implementation
 
-The practical reading is that the corpus is a local directory on the maintainer's machine
-that predates the port, and the answer lives there rather than in any repository.
+- [x] Expand the topic-level `math.md` seed and record the measured M1–M4 defects.
+- [ ] Add minimal desired-output cases for the complete math matrix under
+  `FM-MATH-INLINE-001` and `FM-MATH-BLOCK-001`.
+- [ ] Implement input normalization, the source scanner, side table, parser bridge, token-
+  aware transformations, and fail-closed restoration in Python.
+- [ ] Make all math cases, the integration fixture, and affected whole-document goldens
+  pass and remain idempotent.
+- [ ] Confirm documents without recognized protected syntax have no unexplained golden
+  churn.
 
-The port-sync playbook documents the fallback honestly — substitute a repo-Markdown
-spot-check and say so — and two sync artifacts show it being taken: 60 tracked files on
-2026-05-28, a repo-Markdown spot-check on 2026-05-30. So the gate degrades visibly rather
-than silently, but at roughly a tenth of its intended scale, and only one machine can run
-it at full strength.
+### Phase 2: direct Rust math port
 
-**Action:** recover the contents from the maintainer's machine, then either check in a
-redistributable subset or document a reconstruction procedure. Note that the stalled
-CommonMark-seeded corpus below is the structural fix for this same problem: a corpus that
-is checked in and reproducible needs no provenance archaeology. Tracked separately; it blocks nothing here, because
-Track A's evidence is the checked-in `math.md`, not the external corpus. Treat a green
-`corpus-parity-check.sh` run as confirmation, and record which corpus it ran against.
+- [ ] Bump `repos/flowmark` to the exact Phase 1 commit.
+- [ ] Run the native Rust corpus adapter and group failures by `change_id`.
+- [ ] Implement the same scanner contract idiomatically in Rust. Do not translate Python
+  regexes or test functions.
+- [ ] Require every `FM-PRESERVE-CORE-001`, `FM-MATH-INLINE-001`, and
+  `FM-MATH-BLOCK-001` case to pass with no new divergence entries.
+- [ ] Run existing Rust tryscript, parity, CommonMark, and real-world diagnostic sweeps for
+  regressions.
 
-### The planned shared corpus
+The Rust port is complete when the submodule pin and shared case results prove it, not when
+a manually translated test count matches.
 
-`plan-2026-05-28-shared-parity-corpus.md` (tracker `fmr-bh2b`, Status: *Draft — proposal
-pending upstream agreement*) would vendor all 655 CommonMark 0.31.2 spec examples
-(CC-BY-SA 4.0) into `tests/parity_corpus/` in the Python repo, consumed by both ports
-with no copy-paste. It is not implemented — that directory exists in neither repo.
+### Phase 3: inline code
 
-It matters here for two reasons. It records a measured scratch run of **69/655 (~10.5%)
-divergences** between Python 0.7.0 and the Rust port across ~12 spec sections, a real
-signal currently invisible to CI. And if it lands, both tracks' cases belong in it as
-`cases/flowmark/math/` and `cases/flowmark/preservation/` families rather than as a
-parallel structure. Neither track blocks on it; both should be written so their cases can
-migrate.
+- [x] Expand `code-inline.md` around delimiter and whitespace failures.
+- [ ] Add shared source-exact cases for arbitrary delimiter lengths, every body relation,
+  contexts, malformed spans, Unicode, modes, and idempotence.
+- [ ] Route valid code spans through the protection layer in Python, then port by
+  `FM-CODE-SPAN-001` in Rust.
+- [ ] Keep public atomic-span API behavior unchanged unless a separate compatibility change
+  is approved.
 
+### Phase 4: extension registry
 
-## Implementation Beads
+- [ ] Add P0 recognition rules and cases one family at a time: multiline tables, callouts,
+  colon containers, TOML frontmatter, and definition lists.
+- [ ] Port each completed change ID to Rust before beginning the next severity tier.
+- [ ] Add P1 and P2 families after P0 parity is green.
 
-Epic `fm-7vtx`. The file-and-function map below was written against the pre-review
-architecture; the review invalidated part of it, so each row now states what survived.
+## Backward compatibility
 
-| Bead | Work | Status after review |
-| --- | --- | --- |
-| `fm-fa8p` | C1: delimiter from the longest backtick run, `render_code_span` | **Stands.** Site and fix unchanged |
-| `fm-9ey6` | C2: exclude atomic spans from whitespace normalisation | **Site stands, contract changes** — see Normative preservation contracts |
-| `fm-uzvf` | `tests/test_code_spans.py` | **Demoted to non-normative.** Internals only; the contract is the corpus plus golden CLI cases |
-| `fm-okli` | Wire both corpora into the tryscript goldens | **Stands and is now central** — this is the normative vehicle |
-| `fm-ocpw` | Survey and regenerate changed goldens | **Stands** |
-| `fm-q32c` | M1: three inline math atomic patterns | **Withdrawn.** Post-parse patterns cannot preserve source bytes (FM-PR71-01) |
-| `fm-mu4s` | M3: typography through `iter_atomic_spans` | **Withdrawn** for the same reason; typography consumes typed protected regions instead |
-| `fm-6erm` | M4: opaque display-math blocks | **Reframed.** Same goal, but from the pre-parse block scanner, not `block_heuristics.py` |
+The new protection layer is internal. `AtomicPattern`, `ATOMIC_PATTERNS`,
+`MARKDOWN_INLINE_PATTERNS`, `iter_atomic_spans`, their ordering, names, and character-offset
+contract remain unchanged in this plan. Math is not added to those public tuples. A future
+public protected-region API requires its own specification.
 
-Review findings are tracked under `fm-mbhb` as `fm-f270`, `fm-pr8i`, `fm-50nn`,
-`fm-dkpr`, `fm-844g`, `fm-trno` and `fm-ma9e`.
+Formatter output intentionally changes for documents containing recognized math, source-
+exact code spans, or extension blocks. Those changes restore authored syntax and are
+the feature. Documents without recognized protected syntax should remain unchanged except
+for the explicit BOM/newline boundary rules; the shared corpus measures that blast radius.
 
-### What survived the review, and what did not
+Configuration files and CLI flags remain compatible. Built-in recognition needs no new
+option. No dependency is required by the architecture itself; any later dependency change
+must follow the repository's supply-chain policy.
 
-Worth stating plainly, because two of the three findings this spec was proudest of turned
-out to be wrong in their *conclusions* even though the measurements behind them held.
+## Risks and mitigations
 
-**Survived.** Every measurement: the 19 math defect instances, the 14 inline-code
-defects, C1's delimiter collapse and its exact trigger, C2's context asymmetry, the
-dead-fixture discovery, and the body rule verified against the interleaved corpus line.
-Those were probed, not inferred, and the review did not dispute any of them.
+| Risk | Mitigation |
+| --- | --- |
+| A parser alters or splits a synthetic token. | Collision and parser-round-trip cases plus restoration validation; fail closed before output. |
+| A sentinel collides with authored private-use text. | Deterministically choose an absent sequence and test inputs containing candidate sentinels. |
+| Broad dollar pairing inhibits wrapping in currency or shell prose. | Accept as the safe default, pin exact output, and consider an additive strict profile only after evidence. |
+| A block opener consumes unrelated trailing prose. | Commit only candidates with legal compatible closers; unmatched openers never own the suffix. |
+| Lists and blockquotes close at the wrong indentation. | Shared container vectors cover every nesting direction, tabs, lazy continuation, and boundary mismatch. |
+| Python code-point offsets diverge from Rust byte offsets. | Normative scanner positions are UTF-8 bytes; test CJK, combining marks, and supplementary scalars. |
+| Placeholder width changes wrapping. | Use side-table logical width, never token text length; test N-1/N/N+1 boundaries. |
+| Deep or malformed input becomes quadratic. | Single-pass runs and stacks, adversarial fixtures, and a generous hang watchdog. |
+| Golden regeneration blesses corruption. | Desired-output TDD, selected explicit acceptance, full diff review, and no update mode in normal tests. |
+| Test trees drift between repositories. | One upstream shared test surface consumed by a pinned submodule; no synchronized copies. |
 
-**Did not survive.** Three conclusions drawn *from* those measurements:
+## Acceptance criteria
 
-- that math could be protected by post-parse atomic patterns — refuted by a probe the
-  review supplied and this spec reproduced;
-- that a restrictive delimiter rule was the conservative choice — it was the opposite,
-  and Pandoc's own simpler rule rejects the currency case without any of the added
-  clauses;
-- that pattern ordering settled the GitLab arbitration — alternation order cannot,
-  because the two candidates start at different offsets.
+- All required math forms work without dialect configuration.
+- Recognized math and extension regions are exact normalized-source slices after formatting.
+- Valid code spans preserve authored delimiters and body bytes exactly.
+- Display blocks retain line structure, prefixes, labels, attributes, and nesting.
+- Parser collisions cannot reinterpret protected content.
+- Unmatched and mismatched input is deterministic, idempotent, non-crashing, and does not
+  cause an unmatched block opener to own unrelated trailing prose.
+- Scanner and restoration work are O(n) and fail closed.
+- The Python and Rust built binaries consume the same manifest, inputs, and expected bytes.
+- Math lands in Rust with zero new known divergences.
+- Every behavior change is traceable from a stable `change_id` to shared case IDs and the
+  pinned upstream commit.
+- Both ports run the upstream tryscript, topic fixtures, reference documents, and
+  CommonMark documents directly wherever their harnesses are portable.
+- Language-specific unit tests are limited to internal invariants; shared observable
+  behavior is never proven only by a native test.
+- No preservation fixture is dead or maintained as an independent copy.
 
-The pattern is consistent: the empirical work was sound and the architectural inference
-on top of it was not. That is worth remembering when reading the parts of this spec that
-are still inference.
+## Issue disposition
 
+- [#70](https://github.com/jlevy/flowmark/issues/70) is Track A's original inline-math
+  report; M3 and M4 expand its required fix.
+- [#62](https://github.com/jlevy/flowmark/issues/62) supplies Track B's verified extension
+  ledger. Its claim that dollar-math interiors are already safe must be corrected.
+- [#58](https://github.com/jlevy/flowmark/issues/58) is consistent with C1's delimiter
+  collapse; the shared cases determine whether the same fix closes it completely.
+- [#67](https://github.com/jlevy/flowmark/issues/67) receives the GitLab math forms.
 
-## Phases
-
-Reordered after [review FM-PR71-07](https://github.com/jlevy/flowmark/pull/71). The
-earlier order put all of Track C's tests, fixes and golden churn ahead of the math
-implementation, on the reasoning that inline code owned the shared span path. FM-PR71-01
-disproved that: the shared path runs after parsing, so it cannot carry math at all.
-Track C was therefore gating the explicitly highest-priority feature for no reason.
-
-Math is now the critical path. Track C stays tracked and tested but does not block it.
-
-### Phase 0 — The shared contract (prerequisite)
-
-- [ ] Land `plan-2026-05-28-shared-parity-corpus.md`: `tests/parity_corpus/`, the
-      manifest schema, and two thin native runners.
-- [ ] Add the fixture-inventory gate to `scripts/check-golden-coverage.sh` so a dead
-      fixture fails CI.
-- [ ] Write the pre-parse protection contract: placeholder collision handling, width
-      accounting, index and encoding semantics, exact restoration.
-- [ ] Write the block scanner as language-neutral pseudocode plus test vectors.
-
-Nothing below starts until the contract exists, because everything below is expressed
-against it.
-
-### Phase 1 — Math corpus, as black-box cases
-
-- [x] `tests/tryscript/fixtures/content/math.md`, Parts A–E.
-- [ ] Extend it to the conformance matrix families, especially the parser-collision
-      family that FM-PR71-01 exposed and the dialect forms FM-PR71-02 restored.
-- [ ] Correct the two false claims in the current corpus: E5 (`$ a + b $`) is valid
-      Pandoc display-adjacent input, not malformed; E7's "single-line in every dialect"
-      is false, since Pandoc accepts a soft newline.
-- [ ] Express every case as manifest entries plus tryscript goldens. Red is expected.
-
-### Phase 2 — Pre-parse math protection in Python
-
-- [ ] Implement the scanner and side table, or the parser extension, per the Phase 0
-      contract.
-- [ ] Typography, escaping, cleanup and wrapping consume typed protected regions.
-- [ ] M4's display blocks come from the same scanner, not a separate mechanism.
-- [ ] Regenerate goldens, including `testdoc.expected.auto.md` line 111, which records
-      the collapsed `$$` form as expected output.
-
-### Phase 3 — Rust math implementation against the same corpus
-
-- [ ] Implement against the committed manifest — not a translation of the Python regexes,
-      which is impossible (no backreferences or lookaround in `regex`).
-- [ ] Drive the known-divergence list to zero for math.
-
-### Phase 4 — Track C: inline code correctness
-
-- [x] `tests/tryscript/fixtures/content/code-inline.md`, Parts A–E.
-- [ ] C1: derive the delimiter run from the longest backtick run in the content.
-- [ ] C2: settle the code-span contract per **Normative preservation contracts** —
-      preferably preserve the authored source exactly — then implement it.
-- [ ] Both ports, against the shared corpus.
-
-### Phase 5 — Track B: the generic preservation scanner
-
-- [ ] Broaden the Phase 2 scanner to the P0 rows: multiline tables, Obsidian callouts,
-      `:::` containers, `+++` frontmatter, definition lists.
-- [ ] Then the P1 and P2 rows.
-
-
-## Backward Compatibility
-
-**BACKWARD COMPATIBILITY REQUIREMENTS:**
-
-- **Code types, methods, and function signatures**: KEEP DEPRECATED. `ATOMIC_PATTERNS`
-  and `MARKDOWN_INLINE_PATTERNS` are public (`plan-2026-05-26-public-inline-api.md`). New
-  patterns are additive; existing names, ordering semantics and the `AtomicPattern` shape
-  do not change.
-- **API compatibility for libraries**: SUPPORT BOTH. Adding math to the default tuple
-  changes what `iter_atomic_spans` returns for math-bearing input. Strictly more
-  protective, but a behavioural change worth a changelog line.
-- **File format compatibility**: N/A. **Server API**: N/A. **Database schema**: N/A.
-
-**Output compatibility** is the one that matters. This changes flowmark's output for
-documents containing math, and — via Track C — for documents containing code spans with
-internal whitespace or with backticks inside a wide delimiter. All are one-time changes
-and all are the fix. Documents with
-neither must be byte-identical, which the corpus parity machinery can demonstrate.
-
-## Outstanding Questions
-
-Resolved by the review, kept for the record:
-
-- [x] Pattern ordering against `INLINE_CODE_SPAN` — **not resolvable by ordering.**
-      Alternation decides only between matches at the same offset, and the two candidates
-      for `` $`a+b`$ `` start at 0 and 1. Needs an explicit recogniser (FM-PR71-05).
-- [x] C2 fix placement — subsumed by the pre-parse boundary; the paragraph normaliser is
-      no longer where math is protected, though it is still where C2 lives.
-- [x] `\begin{}` environment list — the block scanner contract settles it: match by name,
-      including starred and custom names.
-
-Open:
-
-- [ ] Which pre-parse design: source scanner with a side table, or a parser extension?
-      The side table matches what the Rust port already does for its PUA passthrough,
-      which argues for it on portability grounds.
-- [ ] Code-span contract: preserve the authored source exactly, or specify the exact
-      CommonMark canonicalisation? This spec prefers the former; it needs a decision
-      before Phase 4.
-- [ ] Does the shared parity corpus land in `jlevy/flowmark` as its spec proposes, and
-      does this work wait for it, or seed it?
-- [ ] Which existing goldens change once protection moves pre-parse? Larger blast radius
-      than the earlier estimate, since the scanner sees every document.
-
-## Issue Disposition
-
-- Closes [#70](https://github.com/jlevy/flowmark/issues/70) (Track A, M1–M2).
-- Closes [#62](https://github.com/jlevy/flowmark/issues/62) across both tracks. Its
-  "already robustly safe" list needs the `$…$` interior entry corrected.
-- Very likely closes [#58](https://github.com/jlevy/flowmark/issues/58): C1 is delimiter
-  collapse producing exactly the backtick mis-pairing that issue reports. C2 is a distinct
-  defect in the same area.
-- Contributes the two math forms to
-  [#67](https://github.com/jlevy/flowmark/issues/67) (GitLab Flavored Markdown).
-
-## An Adjacent Bug Found While Writing This
-
-Formatting this spec corrupted it. Three table cells written as code spans containing
-backticks — fenced-block info strings and the GitLab dollar-backtick form — came back with
-their delimiters re-paired and content changed. That is #58 reproduced on a table row.
-
-The spec is therefore in `.flowmarkignore`, temporarily, with a comment recording what to
-re-check before removing the entry. Part C of the math corpus includes nested-backtick
-spans so the shape is covered by a test even though the fix ships separately.
+This spec remains in `.flowmarkignore` until source-exact code spans land. It contains
+backtick-bearing examples that the current formatter can corrupt while formatting its own
+documentation.
 
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
