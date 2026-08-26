@@ -3,10 +3,11 @@ type: is
 id: is-01m0xscyy7w21twx4n4p5pgvh5
 title: Add shared source-exact conformance cases for inline code spans
 kind: task
-status: open
+status: closed
 priority: 1
-version: 5
+version: 7
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
+delegate: codex@spud10.local
 labels: []
 dependencies:
   - type: blocks
@@ -14,8 +15,15 @@ dependencies:
   - type: blocks
     target: is-01m0xsc02hwk2b4xnmww9869yk
 parent_id: is-01m0xpsz0wkaw5gvdzc6q1xa9b
+hold: null
+hold_until: null
 created_at: 2026-08-26T01:01:52.966Z
-updated_at: 2026-08-26T03:00:27.001Z
+updated_at: 2026-08-26T11:05:44.772Z
+started_at: 2026-08-26T11:02:50.920Z
+closed_at: 2026-08-26T11:05:44.760Z
+close_reason: Added six reviewed language-neutral FM-CODE-SPAN-001 cases for delimiter runs, whitespace/typography, multiline containers, math arbitration, Markdown contexts, and malformed fallback in b0caa64; coverage validation passes and the pre-fix CLI is red on exact delimiter preservation.
+resolution: null
+duplicate_of: null
 ---
 Write FM-CODE-SPAN-001 as desired-output cases in the language-neutral manifest before changing Python code.
 

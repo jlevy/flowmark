@@ -3,10 +3,11 @@ type: is
 id: is-01m0xsc02hwk2b4xnmww9869yk
 title: Recognize source-exact inline code spans in the Python pre-parse scanner
 kind: task
-status: open
+status: closed
 priority: 1
-version: 6
+version: 9
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
+delegate: codex@spud10.local
 labels: []
 dependencies:
   - type: blocks
@@ -16,8 +17,15 @@ dependencies:
   - type: blocks
     target: is-01m0xscdmzyb7m84p8mtscn2j5
 parent_id: is-01m0xpsz0wkaw5gvdzc6q1xa9b
+hold: null
+hold_until: null
 created_at: 2026-08-26T01:01:21.349Z
-updated_at: 2026-08-26T03:00:30.393Z
+updated_at: 2026-08-26T11:30:15.810Z
+started_at: 2026-08-26T11:05:44.989Z
+closed_at: 2026-08-26T11:30:15.809Z
+close_reason: Python source-exact code-span recognition implemented and verified.
+resolution: null
+duplicate_of: null
 ---
 Extend the established Python preservation scanner for FM-CODE-SPAN-001 after its shared cases are red.
 
@@ -29,3 +37,7 @@ Files and functions:
 The recognized region owns the exact authored opening run, body, and closing run. Do not shorten a safe wide delimiter, reconstruct padding, or delegate source fidelity to MarkdownNormalizer.render_code_span(). Unmatched runs remain ordinary source.
 
 Acceptance: delimiter corruption C1 is eliminated in all shared contexts, composite-math arbitration is unchanged, and scanner work remains linear.
+
+## Notes
+
+Implemented in 116489d. The pre-parse scanner now admits valid code-span candidates and preserves the full authored delimiter/body/closing slice; focused scanner and integration tests pass.

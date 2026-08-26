@@ -3,15 +3,19 @@ type: is
 id: is-01m0xpsyq253tk2p90pq8vsz7c
 title: "C1: authored code-span delimiters can be structurally corrupted"
 kind: bug
-status: open
+status: closed
 priority: 1
-version: 3
+version: 4
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
 parent_id: is-01m0xpsz0wkaw5gvdzc6q1xa9b
 created_at: 2026-08-26T00:16:32.994Z
-updated_at: 2026-08-26T03:01:09.732Z
+updated_at: 2026-08-26T11:30:17.447Z
+closed_at: 2026-08-26T11:30:17.446Z
+close_reason: C1 is proven closed by 29 shared exact code-span cases, including delimiter runs and CommonMark 328-349, plus the full code-inline topic workflow.
+resolution: null
+duplicate_of: null
 ---
 The current Marko renderer reconstructs every inline code span, often shortening a multi-backtick delimiter to one backtick. If the body contains a backtick run, the emitted delimiter can close early and change the Markdown structure. Even when narrowing renders equivalently, it violates the approved source-formatter policy.
 

@@ -3,9 +3,9 @@ type: is
 id: is-01m0xscdmzyb7m84p8mtscn2j5
 title: Route Python code spans through exact restoration and token-aware wrapping
 kind: task
-status: open
+status: closed
 priority: 1
-version: 6
+version: 8
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -17,7 +17,11 @@ dependencies:
     target: is-01m0xn1zcv01nmb6qgtw0nsf1z
 parent_id: is-01m0xpsz0wkaw5gvdzc6q1xa9b
 created_at: 2026-08-26T01:01:35.262Z
-updated_at: 2026-08-26T03:00:29.932Z
+updated_at: 2026-08-26T11:30:16.479Z
+closed_at: 2026-08-26T11:30:16.478Z
+close_reason: Exact restoration, wrapping, typography isolation, and idempotence verified.
+resolution: null
+duplicate_of: null
 ---
 Complete the Python side of FM-CODE-SPAN-001 using the existing protection pipeline.
 
@@ -29,3 +33,7 @@ Files and functions:
 - tests/test_preservation_bridge.py/test_wrapping.py: only native failure or width diagnostics not expressed by shared cases.
 
 Do not use pre-token re.sub whitespace collapse, iter_atomic_spans as the new scanner, or CommonMark's rendered-content normalization as the formatter policy. Acceptance: C2 and second-pass drift are eliminated in every context and all FM-CODE-SPAN-001 cases pass exact bytes.
+
+## Notes
+
+Implemented in 116489d. Code spans now traverse the established side table and restoration pipeline; protected code contributes immutable normalized context to smart-quote rewriting without exposing its bytes to mutation.
