@@ -34,6 +34,7 @@ class RegionKind(StrEnum):
     math_double_dollar_inline = "math_double_dollar_inline"
     pandoc_multiline_table = "pandoc_multiline_table"
     obsidian_callout = "obsidian_callout"
+    colon_container = "colon_container"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -61,6 +62,7 @@ _BLOCK_REGION_KINDS = frozenset(
     {
         RegionKind.pandoc_multiline_table,
         RegionKind.obsidian_callout,
+        RegionKind.colon_container,
         RegionKind.math_dollar_block,
         RegionKind.math_bracket_block,
         RegionKind.math_environment_block,

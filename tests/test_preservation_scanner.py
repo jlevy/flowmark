@@ -203,6 +203,15 @@ def test_callout_marker_must_be_the_first_line_of_its_quote() -> None:
     assert regions[0].source == "> [!tip]- valid\ncontinued lazily\n"
 
 
+def test_colon_container_closers_ignore_run_length_and_fenced_code() -> None:
+    source = normalize_source(":::: outer\n```text\n:::\n```\n::: inner\nbody\n:::::\n:::\n")
+
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [RegionKind.colon_container]
+    assert regions[0].source == source.text
+
+
 def test_unmatched_outer_block_retains_closed_inner_and_not_sibling_closers() -> None:
     source = normalize_source("\\begin{outer}\n\\begin{inner}\nbody\n\\end{inner}\n\n- $$\n- $$")
 

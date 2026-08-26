@@ -28,6 +28,7 @@ class BlockRuleKind(StrEnum):
     indented_code = "indented_code"
     pandoc_multiline_table = "pandoc_multiline_table"
     obsidian_callout = "obsidian_callout"
+    colon_container = "colon_container"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -49,6 +50,7 @@ class BlockRecognizerDescriptor:
         if self.region_kind is not None and self.region_kind not in {
             RegionKind.pandoc_multiline_table,
             RegionKind.obsidian_callout,
+            RegionKind.colon_container,
             RegionKind.math_dollar_block,
             RegionKind.math_bracket_block,
             RegionKind.math_environment_block,
@@ -130,6 +132,12 @@ BUILTIN_RECOGNIZERS: Final[tuple[RecognizerDescriptor, ...]] = (
         "FM-EXT-OBSIDIAN-CALLOUT-001",
     ),
     RecognizerDescriptor(
+        RegionKind.colon_container,
+        RegionForm.block,
+        OPAQUE_EXTENSION_BLOCK_PRIORITY,
+        "FM-EXT-COLON-CONTAINER-001",
+    ),
+    RecognizerDescriptor(
         RegionKind.math_dollar_block,
         RegionForm.block,
         BLOCK_MATH_PRIORITY,
@@ -177,6 +185,11 @@ BUILTIN_BLOCK_RECOGNIZERS: Final[tuple[BlockRecognizerDescriptor, ...]] = (
         BlockRuleKind.obsidian_callout,
         25,
         RegionKind.obsidian_callout,
+    ),
+    BlockRecognizerDescriptor(
+        BlockRuleKind.colon_container,
+        25,
+        RegionKind.colon_container,
     ),
     BlockRecognizerDescriptor(
         BlockRuleKind.math_dollar_block,

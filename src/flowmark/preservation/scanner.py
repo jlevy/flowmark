@@ -31,6 +31,7 @@ _THEMATIC_BREAK = re.compile(r"(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3
 _MULTILINE_TABLE_RULE = re.compile(r"-{3,}(?:[ \t]+-{3,})*\Z")
 _TABLE_CAPTION = re.compile(r"(?:(?:Table|table):|:)(?:[ \t]+|\Z)")
 _OBSIDIAN_CALLOUT = re.compile(r"\[![A-Za-z0-9][A-Za-z0-9_-]*\][+-]?(?:[ \t]+.*)?\Z")
+_COLON_FENCE = re.compile(r"(:{3,})(.*)\Z")
 
 
 class _DollarState(Enum):
@@ -1216,6 +1217,43 @@ def scan_obsidian_callouts(
     return tuple(candidates)
 
 
+def scan_colon_containers(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+    opaque_blocks: tuple[OpaqueBlock, ...] = (),
+) -> tuple[Candidate, ...]:
+    """Match nested colon fences by container, without equal-length closure."""
+    views = build_container_view(source) if lines is None else lines
+    opaque = _opaque_line_flags(views, opaque_blocks)
+    stacks: dict[tuple[tuple[str, int, int], ...], list[ContainerLine]] = {}
+    candidates: list[Candidate] = []
+    for line in views:
+        if opaque[line.index] or line.lazy:
+            continue
+        match = _COLON_FENCE.fullmatch(_line_payload(source, line))
+        if match is None:
+            continue
+        stack = stacks.setdefault(line.container_key, [])
+        if match.group(2).strip(" \t"):
+            stack.append(line)
+            continue
+        if not stack:
+            continue
+        opener = stack.pop()
+        if compatible_container(opener, line):
+            candidates.append(
+                Candidate(
+                    RegionKind.colon_container,
+                    RegionForm.block,
+                    opener.start,
+                    line.end,
+                    opener.context,
+                    _scaffold_prefix(source, opener),
+                )
+            )
+    return tuple(candidates)
+
+
 def resolve_candidate_tree(
     source: NormalizedSource, candidates: tuple[Candidate, ...]
 ) -> tuple[Candidate, ...]:
@@ -1378,7 +1416,13 @@ def _merge_ranges(
             selected = right[right_index]
             right_index += 1
         if merged and selected[0] < merged[-1][1]:
-            raise InvalidRegionError("excluded block ranges overlap")
+            previous = merged[-1]
+            if selected[1] <= previous[1]:
+                continue
+            if selected[0] == previous[0]:
+                merged[-1] = selected
+                continue
+            raise InvalidRegionError("excluded block ranges overlap without containment")
         merged.append(selected)
     return tuple(merged)
 
@@ -1442,6 +1486,7 @@ def scan_protected_regions(
         (
             *scan_pandoc_multiline_tables(source, lines, opaque_blocks),
             *scan_obsidian_callouts(source, lines, opaque_blocks),
+            *scan_colon_containers(source, lines, opaque_blocks),
             *scan_display_math(source, lines, opaque_blocks),
             *scan_environment_blocks(source, lines, opaque_blocks),
         ),
