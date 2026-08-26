@@ -3,9 +3,9 @@ type: is
 id: is-01m0y04eekb6m93y6akzk6m15j
 title: Port the preservation model, normalization, and scanners to Rust
 kind: task
-status: in_progress
+status: closed
 priority: 1
-version: 4
+version: 5
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 delegate: codex@spud10.local
 labels: []
@@ -16,8 +16,12 @@ parent_id: is-01m0xn1krnmt64xkaw4dkzvc3k
 hold: null
 hold_until: null
 created_at: 2026-08-26T02:59:33.970Z
-updated_at: 2026-08-26T10:37:03.776Z
+updated_at: 2026-08-26T11:00:53.738Z
 started_at: 2026-08-26T10:07:15.823Z
+closed_at: 2026-08-26T11:00:53.738Z
+close_reason: Implemented the source-exact Rust preservation model, normalization, registry, byte scanner, fixed-width collision-safe bridge, active container-frame identity, and focused native invariants in b76f635. Shared FM-MATH-INLINE-001 and FM-MATH-BLOCK-001 cases pass, including the sibling-list boundary regression.
+resolution: null
+duplicate_of: null
 ---
 Port the accepted Python behavior by shared change IDs, not by translating Python tests or regexes.
 
