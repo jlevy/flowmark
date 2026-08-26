@@ -108,11 +108,14 @@ a - b a – b a — b.
 
 This is a display formula:
 
-$$ L = \frac{1}{2} \rho v^2 S C_L $$
+$$
+L = \frac{1}{2} \rho v^2 S C_L
+$$
 
 And here is a formula in inline form as $L = \frac{1}{2} \rho v^2 S C_L$ with more text
-following. If the noteholders had converted their $420K at the 20% discount, they would
-be paying $\$0.55116 \times \$0.80$ per share, or $0.44093 per share.
+following. If the noteholders had converted their
+$420K at the 20% discount, they would be paying $\$0.55116 \times
+\$0.80$ per share, or $0.44093 per share.
 And $\$420K \div 0.44093$ is $952{,}532$ shares.
 
 ## Legalese

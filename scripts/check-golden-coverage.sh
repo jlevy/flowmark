@@ -36,6 +36,7 @@ REQUIRED_FILES=(
   formatting.tryscript.md
   typography-tests.tryscript.md
   list-spacing.tryscript.md
+  math.tryscript.md
   auto-mode.tryscript.md
   file-ops.tryscript.md
   stdin.tryscript.md

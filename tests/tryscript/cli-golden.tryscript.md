@@ -243,7 +243,6 @@ backup exists
 ```console
 $ printf '# No Backup\n' > nobackup.md && flowmark --inplace --nobackup nobackup.md && cat nobackup.md && test ! -f nobackup.bak && echo "no backup file"
 # No Backup
-
 no backup file
 ```
 

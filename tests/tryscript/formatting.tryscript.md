@@ -452,7 +452,9 @@ This has a footnote[^1] reference.
 
 Inline math $x^2 + y^2 = z^2$ and display math:
 
-$$ \sum_{i=1}^{n} i = \frac{n(n+1)}{2} $$
+$$
+\sum_{i=1}^{n} i = \frac{n(n+1)}{2}
+$$
 
 Final paragraph of the comprehensive document.
 ````
