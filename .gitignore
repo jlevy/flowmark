@@ -1,6 +1,7 @@
 # Additions to standard GitHub .gitignore:
 *.bak
 *.orig
+!tests/parity_corpus/cases/cli/inplace-backup/after/workspace/input.md.orig
 tmp/
 trash/
 attic/
@@ -183,4 +184,3 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-
