@@ -425,7 +425,7 @@ def _validate_manifest(
                 "invalid-case-registry", f"cannot load {registry_path}: {error}"
             ) from error
         registry = _validate_manifest(registry_data, repo_root, allow_case_registries=False)
-        if registry.default_env:
+        if "defaults" in registry_data:
             raise ConformanceError(
                 "invalid-case-registry", f"included registry {path} cannot define defaults"
             )

@@ -67,6 +67,12 @@ outcome = "manifest-error"
 code = "invalid-case-registry"
 
 [[fixture]]
+id = "schema.registry-empty-defaults"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/registry-empty-defaults.toml"
+outcome = "manifest-error"
+code = "invalid-case-registry"
+
+[[fixture]]
 id = "comparison.stdout-mismatch"
 manifest = "tests/parity_corpus/runner-fixtures/manifests/stdout-mismatch.toml"
 outcome = "case-failure"
