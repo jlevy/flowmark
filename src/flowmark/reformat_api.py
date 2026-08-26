@@ -7,6 +7,27 @@ from flowmark.formats.flowmark_markdown import ListSpacing
 from flowmark.linewrapping.markdown_filling import fill_markdown
 from flowmark.linewrapping.text_filling import Wrap, fill_text
 from flowmark.linewrapping.text_wrapping import get_html_md_word_splitter
+from flowmark.preservation.model import InvalidUtf8Error
+
+
+def _decode_utf8(data: bytes) -> str:
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise InvalidUtf8Error() from error
+
+
+def _read_stdin_bytes() -> bytes:
+    stream = getattr(sys.stdin, "buffer", None)
+    return stream.read() if stream is not None else sys.stdin.read().encode("utf-8")
+
+
+def _write_stdout_bytes(data: bytes) -> None:
+    stream = getattr(sys.stdout, "buffer", None)
+    if stream is not None:
+        stream.write(data)
+    else:
+        sys.stdout.write(data.decode("utf-8"))
 
 
 def reformat_text(
@@ -21,7 +42,9 @@ def reformat_text(
 ) -> str:
     """
     Reformat text or markdown and wrap lines. Simply a convenient wrapper
-    around `fill_text()` and `fill_markdown()` with reasonable defaults.
+    around `fill_text()` and `fill_markdown()` with reasonable defaults. Markdown input
+    is never implicitly dedented; call `fill_markdown(dedent_input=True)` explicitly for
+    docstring-style source.
     """
     if plaintext:
         # Plaintext mode
@@ -35,6 +58,7 @@ def reformat_text(
         # Markdown mode
         result = fill_markdown(
             text,
+            dedent_input=False,
             width=width,
             semantic=semantic,
             cleanups=cleanups,
@@ -96,15 +120,17 @@ def reformat_file(
         raise ValueError("Cannot use `inplace` with stdin")
 
     if read_stdin:
-        text = sys.stdin.read()
+        input_bytes = _read_stdin_bytes()
     else:
-        text = Path(path).read_text()
+        input_bytes = Path(path).read_bytes()
+    text = _decode_utf8(input_bytes)
 
     result = reformat_text(
         text, width, plaintext, semantic, cleanups, smartquotes, ellipses, list_spacing
     )
 
-    would_change = result != text
+    result_bytes = result.encode("utf-8")
+    would_change = result_bytes != input_bytes
 
     # In check mode, never write — only report whether the content would change.
     if check:
@@ -115,13 +141,13 @@ def reformat_file(
         with atomic_output_file(
             path, backup_suffix=backup_suffix, make_parents=make_parents
         ) as tmp_path:
-            tmp_path.write_text(result)
+            tmp_path.write_bytes(result_bytes)
     else:
         if not output or write_stdout:
-            sys.stdout.write(result)
+            _write_stdout_bytes(result_bytes)
         else:
             with atomic_output_file(output, make_parents=make_parents) as tmp_path:
-                tmp_path.write_text(result)
+                tmp_path.write_bytes(result_bytes)
 
     return would_change
 
@@ -196,13 +222,13 @@ def reformat_files(
     for file_path in files:
         if inplace:
             # Process each file in-place
-            output = None
+            file_output = None
         else:
             # Process each file to stdout
-            output = "-"
+            file_output = "-"
         if reformat_file(
             path=file_path,
-            output=output,
+            output=file_output,
             width=width,
             inplace=inplace,
             nobackup=nobackup,

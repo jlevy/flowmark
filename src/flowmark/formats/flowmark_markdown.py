@@ -823,9 +823,10 @@ class MarkdownNormalizer(Renderer):
     def render_protected_block(self, element: ProtectedBlock) -> str:
         """Emit an opaque token without a synthesized quote/list render prefix."""
         self._skip_next_blank_line = False
+        separator = "" if self._suppress_item_break or self._second_prefix else "\n"
         self._prefix = self._second_prefix
         self._suppress_item_break = False
-        return element.token + "\n"
+        return separator + element.token + "\n"
 
     def render_line_break(self, element: inline.LineBreak) -> str:
         return "\n" if element.soft else "\\\n"
