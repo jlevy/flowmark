@@ -32,7 +32,7 @@ ALLOWED_PATH_ROOTS = (
     "tests/tryscript/fixtures/",
     "tests/testdocs/",
 )
-TOP_LEVEL_FIELDS = frozenset({"schema_version", "corpus", "defaults", "case"})
+TOP_LEVEL_FIELDS = frozenset({"schema_version", "corpus", "defaults", "case_registry", "case"})
 DEFAULTS_FIELDS = frozenset({"env"})
 COMMON_CASE_FIELDS = frozenset(
     {
@@ -353,8 +353,9 @@ def _validate_case_paths(case: ConformanceCase, index: int, repo_root: Path) -> 
         _validate_existing_path(case.after_tree, f"{location}.after_tree", repo_root, "directory")
 
 
-def validate_manifest(data: object, repo_root: Path) -> ConformanceManifest:
-    """Validate parsed TOML and return the typed version 1 manifest."""
+def _validate_manifest(
+    data: object, repo_root: Path, *, allow_case_registries: bool
+) -> ConformanceManifest:
     root = _mapping(data, "manifest")
     _unknown_fields(root, TOP_LEVEL_FIELDS, "manifest")
 
@@ -379,9 +380,9 @@ def validate_manifest(data: object, repo_root: Path) -> ConformanceManifest:
             )
         default_env.append((name, value))
 
-    raw_cases_value = _required(root, "case", "manifest")
-    if not isinstance(raw_cases_value, list) or not raw_cases_value:
-        raise ConformanceError("invalid-type", "manifest.case must be a nonempty array")
+    raw_cases_value = root.get("case", [])
+    if not isinstance(raw_cases_value, list):
+        raise ConformanceError("invalid-type", "manifest.case must be an array")
     raw_cases = cast(list[object], raw_cases_value)
     case_fields = tuple(
         _validate_case_fields(_mapping(case, f"case[{index}]"), index)
@@ -397,7 +398,55 @@ def validate_manifest(data: object, repo_root: Path) -> ConformanceManifest:
     for index, case in enumerate(cases):
         _validate_case_paths(case, index, repo_root)
 
-    return ConformanceManifest(corpus=corpus, default_env=tuple(default_env), cases=cases)
+    raw_registries_value = root.get("case_registry", [])
+    if not isinstance(raw_registries_value, list):
+        raise ConformanceError("invalid-type", "manifest.case_registry must be an array of strings")
+    raw_registry_items = cast(list[object], raw_registries_value)
+    if any(not isinstance(value, str) for value in raw_registry_items):
+        raise ConformanceError("invalid-type", "manifest.case_registry must be an array of strings")
+    raw_registries = cast(list[str], raw_registry_items)
+    if raw_registries and not allow_case_registries:
+        raise ConformanceError("nested-case-registry", "case registries cannot include registries")
+
+    included_cases: list[ConformanceCase] = []
+    seen_registries: set[PurePosixPath] = set()
+    for index, raw_path in enumerate(raw_registries):
+        location = f"manifest.case_registry[{index}]"
+        path = _lexical_path(raw_path, location)
+        _validate_existing_path(path, location, repo_root, "file")
+        if path in seen_registries:
+            raise ConformanceError("duplicate-case-registry", f"duplicate registry path {path}")
+        seen_registries.add(path)
+        registry_path = repo_root.joinpath(*path.parts)
+        try:
+            registry_data = tomllib.loads(registry_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+            raise ConformanceError(
+                "invalid-case-registry", f"cannot load {registry_path}: {error}"
+            ) from error
+        registry = _validate_manifest(registry_data, repo_root, allow_case_registries=False)
+        if registry.default_env:
+            raise ConformanceError(
+                "invalid-case-registry", f"included registry {path} cannot define defaults"
+            )
+        included_cases.extend(registry.cases)
+
+    all_cases = (*cases, *included_cases)
+    if not all_cases:
+        raise ConformanceError("invalid-type", "manifest must define one or more cases")
+    seen.clear()
+    for case in all_cases:
+        if case.id in seen:
+            raise ConformanceError("duplicate-case-id", f"duplicate case ID {case.id!r}")
+        seen.add(case.id)
+    return ConformanceManifest(
+        corpus=corpus, default_env=tuple(default_env), cases=tuple(all_cases)
+    )
+
+
+def validate_manifest(data: object, repo_root: Path) -> ConformanceManifest:
+    """Validate parsed TOML and all root-relative case registries."""
+    return _validate_manifest(data, repo_root.resolve(), allow_case_registries=True)
 
 
 def load_manifest(path: Path, repo_root: Path) -> ConformanceManifest:
@@ -430,10 +479,12 @@ def select_cases(
         if unknown:
             raise ConformanceError("unknown-selector", f"unknown {name} selector {unknown[0]!r}")
 
+    explicitly_selected = bool(ids or change_ids or tags)
     selected = tuple(
         case
         for case in manifest.cases
-        if (not ids or case.id in ids)
+        if (explicitly_selected or "deferred" not in case.tags)
+        and (not ids or case.id in ids)
         and (not change_ids or case.change_id in change_ids)
         and (not tags or set(tags).issubset(case.tags))
     )
@@ -990,10 +1041,41 @@ def _validate_portable_test_definitions(repo_root: Path) -> None:
                 )
 
 
+def _validate_case_deferrals(manifest: ConformanceManifest, repo_root: Path) -> None:
+    """Require explicit ownership and desired source bytes for deferred shared cases."""
+    for case in manifest.cases:
+        owner_tags = tuple(tag for tag in case.tags if tag.startswith("owner-fm-"))
+        if "deferred" not in case.tags:
+            if owner_tags:
+                raise ConformanceError(
+                    "invalid-deferral",
+                    f"active case {case.id!r} has a deferred owner tag",
+                )
+            continue
+        if len(owner_tags) != 1:
+            raise ConformanceError(
+                "invalid-deferral",
+                f"deferred case {case.id!r} must have exactly one owner-fm-* tag",
+            )
+        if "commonmark" in case.tags:
+            if case.stdin is None:
+                raise ConformanceError(
+                    "invalid-deferral", f"deferred CommonMark case {case.id!r} must use stdin"
+                )
+            source = repo_root.joinpath(*case.stdin.parts).read_bytes()
+            expected = repo_root.joinpath(*case.expected_stdout.parts).read_bytes()
+            if source != expected:
+                raise ConformanceError(
+                    "invalid-deferral",
+                    f"deferred CommonMark case {case.id!r} must preserve source bytes",
+                )
+
+
 def check_conformance_coverage(repo_root: Path, *, check_topics: bool = True) -> None:
     """Validate schema, exact case-payload reachability, and shared-test portability."""
     repo_root = repo_root.resolve()
     manifest = load_manifest(repo_root / "tests/parity_corpus/manifest.toml", repo_root)
+    _validate_case_deferrals(manifest, repo_root)
     _validate_case_payload_reachability(manifest, repo_root)
     if check_topics:
         _validate_topic_reachability(repo_root)

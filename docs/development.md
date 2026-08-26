@@ -43,6 +43,9 @@ make test
 # Run the shared installed-binary corpus and reachability checks only:
 make test-conformance
 
+# Verify the offline CommonMark extraction, registry, license, and pinned checksums:
+uv run python scripts/import-commonmark-spec.py check
+
 # Explicitly preview and accept only these exact conformance case IDs:
 make accept-conformance CASES=cli.stdin.wrap,cli.files.inplace-backup
 

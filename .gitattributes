@@ -1,0 +1,2 @@
+# CommonMark examples intentionally exercise significant trailing whitespace and tabs.
+tests/parity_corpus/spec/commonmark-*/examples/** -whitespace

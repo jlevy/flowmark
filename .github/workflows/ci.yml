@@ -84,6 +84,9 @@ jobs:
         # Check-only mode so CI fails on unformatted code instead of fixing it.
         run: uv run python devtools/lint.py --check
 
+      - name: Check pinned CommonMark corpus
+        run: uv run python scripts/import-commonmark-spec.py check
+
       - name: Check conformance schema and reachability
         run: uv run python -m devtools.conformance coverage
 

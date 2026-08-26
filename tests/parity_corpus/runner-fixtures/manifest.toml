@@ -49,6 +49,24 @@ outcome = "manifest-error"
 code = "symlink-path"
 
 [[fixture]]
+id = "schema.duplicate-case-registry"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/duplicate-case-registry.toml"
+outcome = "manifest-error"
+code = "duplicate-case-registry"
+
+[[fixture]]
+id = "schema.nested-case-registry"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/nested-case-registry.toml"
+outcome = "manifest-error"
+code = "nested-case-registry"
+
+[[fixture]]
+id = "schema.registry-defaults"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/registry-defaults.toml"
+outcome = "manifest-error"
+code = "invalid-case-registry"
+
+[[fixture]]
 id = "comparison.stdout-mismatch"
 manifest = "tests/parity_corpus/runner-fixtures/manifests/stdout-mismatch.toml"
 outcome = "case-failure"

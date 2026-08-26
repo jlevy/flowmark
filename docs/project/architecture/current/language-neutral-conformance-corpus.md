@@ -167,15 +167,25 @@ A fixture used as a shared golden input must not be copied into `tests/parity_co
 ## Manifest schema
 
 The manifest is UTF-8 TOML with a numeric schema version.
-Payload paths are slash-separated paths relative to the upstream repository root, not
-to the manifest directory. Schema version 1 permits only the canonical shared roots
-`tests/parity_corpus/`, `tests/tryscript/fixtures/`, and `tests/testdocs/`. This lets a
-manifest case reuse an integration fixture without `..` traversal and gives the Rust
-adapter the same path beneath `repos/flowmark`.
+Payload paths are slash-separated paths relative to the upstream repository root, not to
+the manifest directory.
+Schema version 1 permits only the canonical shared roots `tests/parity_corpus/`,
+`tests/tryscript/fixtures/`, and `tests/testdocs/`. This lets a manifest case reuse an
+integration fixture without `..` traversal and gives the Rust adapter the same path
+beneath `repos/flowmark`.
 
 Runners reject duplicate IDs, unknown fields, missing files, absolute paths,
 parent-directory traversal, symlinks, paths outside those roots, and fields that do not
 apply to the selected case kind.
+
+The root may declare a `case_registry` array of repository-root-relative TOML paths for
+large generated case sets.
+A fragment repeats the schema version and corpus name and contains ordinary cases, but
+it cannot define defaults or include another registry.
+Runners append fragments in declaration order after root cases, then reject duplicate
+registry paths and duplicate IDs across the merged manifest.
+This remains one logical manifest and one source of truth; splitting the generated
+CommonMark tables is only a review and tooling boundary.
 
 ```toml
 schema_version = 1
@@ -307,6 +317,13 @@ Runner conformance is itself tested with shared malformed-manifest and
 intentional-failure fixtures.
 This prevents the two adapters from quietly assigning different meanings to the same
 schema.
+
+An unfiltered run omits cases tagged `deferred`. Any populated exact selector includes
+matching deferred cases, which keeps the normal suite green while making each owning
+bead directly runnable.
+A deferred case has exactly one `owner-fm-*` tag.
+Deferred CommonMark expectations equal their input bytes so the corpus states
+preservation-safe desired behavior instead of blessing a known defect.
 
 ## Golden authoring and review
 

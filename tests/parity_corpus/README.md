@@ -30,7 +30,15 @@ newline conversion, ANSI removal, or path replacement.
 - `schema_version = 1`
 - `corpus = "flowmark-language-neutral-conformance"`
 - optional `[defaults.env]` string values
+- optional `case_registry` array of repository-root-relative TOML paths
 - one or more `[[case]]` tables
+
+Case registries let a large generated corpus remain reviewable without creating a second
+schema.
+Each fragment repeats `schema_version` and `corpus`, contains ordinary `[[case]]`
+tables, and cannot define defaults or include another registry.
+Runners append fragments in declared order after the root cases and reject duplicate
+paths or case IDs across the merged manifest.
 
 Every case requires:
 
@@ -95,9 +103,20 @@ Validation uses this order so malformed fixtures are deterministic:
 2. defaults and case-table types
 3. required, unknown, and kind-specific case fields
 4. ID, change-ID, tag, argument, and numeric value constraints
-5. duplicate IDs
+5. duplicate IDs within each file
 6. lexical path confinement
 7. path existence, file kind, and symlink checks
+8. registry path uniqueness, one-level loading, and forbidden registry defaults
+9. duplicate IDs across the merged manifest
+
+## Deferred Cases
+
+An unfiltered run skips a case tagged `deferred`; an explicit exact ID, change ID, or
+tag selection includes matching deferred cases so developers can work on them directly.
+Every deferred case has exactly one `owner-fm-*` tag naming its bead.
+Deferred CommonMark cases commit source-preserving desired output, never a known corrupt
+formatter result. Removing the deferral and owner tag is part of implementing the owning
+change.
 
 ## Authoring and Acceptance
 

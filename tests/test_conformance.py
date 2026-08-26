@@ -39,10 +39,18 @@ def _installed_flowmark() -> Path:
 def test_shared_manifest_validates() -> None:
     manifest = load_manifest(CORPUS_ROOT / "manifest.toml", REPO_ROOT)
 
-    assert [case.id for case in manifest.cases] == [
+    assert [case.id for case in manifest.cases[:6]] == [
         "cli.stdin.wrap",
         "cli.files.inplace-backup",
+        "reference.testdoc.plain",
+        "reference.testdoc.semantic",
+        "reference.testdoc.cleaned",
+        "reference.testdoc.auto",
     ]
+    case_ids = {case.id for case in manifest.cases}
+    assert "commonmark.default.0001" in case_ids
+    assert "commonmark.default.0652" in case_ids
+    assert "commonmark.auto.0650" in case_ids
 
 
 def test_shared_invalid_manifest_fixtures_have_stable_error_codes() -> None:
@@ -75,6 +83,10 @@ def test_case_selection_uses_exact_filters_and_rejects_unknown_values() -> None:
             tags=("stdin", "cli"),
         )
     ] == ["cli.stdin.wrap"]
+    assert "commonmark.default.0017" not in {case.id for case in select_cases(manifest)}
+    assert [case.id for case in select_cases(manifest, ids=("commonmark.default.0017",))] == [
+        "commonmark.default.0017"
+    ]
 
     for filters in (
         {"ids": ("cli.stdin",)},
@@ -91,6 +103,10 @@ def test_case_selection_uses_exact_filters_and_rejects_unknown_values() -> None:
 
 def test_seed_cases_run_against_the_installed_cli() -> None:
     manifest = load_manifest(CORPUS_ROOT / "manifest.toml", REPO_ROOT)
+    cases = select_cases(
+        manifest,
+        ids=("cli.stdin.wrap", "cli.files.inplace-backup"),
+    )
 
     pass_counts = [
         len(
@@ -101,7 +117,7 @@ def test_seed_cases_run_against_the_installed_cli() -> None:
                 repo_root=REPO_ROOT,
             )
         )
-        for case in manifest.cases
+        for case in cases
     ]
 
     assert pass_counts == [2, 1]
@@ -236,6 +252,7 @@ def test_conformance_coverage_rejects_a_dangling_case_payload(tmp_path: Path) ->
     copied_root = tmp_path / "repo"
     copied_corpus = copied_root / "tests/parity_corpus"
     shutil.copytree(CORPUS_ROOT, copied_corpus, symlinks=True)
+    shutil.copytree(REPO_ROOT / "tests/testdocs", copied_root / "tests/testdocs")
 
     check_conformance_coverage(copied_root, check_topics=False)
     dangling = copied_corpus / "cases/dangling.expected"
@@ -252,6 +269,7 @@ def test_conformance_coverage_rejects_dead_topics_and_implementation_paths(
 ) -> None:
     copied_root = tmp_path / "repo"
     shutil.copytree(CORPUS_ROOT, copied_root / "tests/parity_corpus", symlinks=True)
+    shutil.copytree(REPO_ROOT / "tests/testdocs", copied_root / "tests/testdocs")
     shutil.copytree(REPO_ROOT / "tests/tryscript", copied_root / "tests/tryscript")
     check_conformance_coverage(copied_root)
 

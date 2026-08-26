@@ -80,6 +80,7 @@ test: test-conformance
 	$(MAKE) test-golden
 
 test-conformance:
+	uv run python scripts/import-commonmark-spec.py check
 	uv run python -m devtools.conformance coverage
 	uv run python -m devtools.conformance run --executable "$(FLOWMARK_BIN)"
 

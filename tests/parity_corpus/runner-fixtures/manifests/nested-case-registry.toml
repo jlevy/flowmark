@@ -1,0 +1,3 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+case_registry = ["tests/parity_corpus/runner-fixtures/manifests/registry-with-nested.toml"]
