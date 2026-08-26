@@ -3,9 +3,9 @@ type: is
 id: is-01m0xzyjzy4xf6vn0g5nsa5zdw
 title: Build the Python native conformance runner against the installed CLI
 kind: task
-status: open
+status: closed
 priority: 1
-version: 4
+version: 6
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -17,7 +17,11 @@ dependencies:
     target: is-01m0y0056wzdgx731m97mrka76
 parent_id: is-01m0xn2b9tnj99k484920ysv9z
 created_at: 2026-08-26T02:56:22.012Z
-updated_at: 2026-08-26T02:57:13.434Z
+updated_at: 2026-08-26T03:32:38.118Z
+closed_at: 2026-08-26T03:32:38.117Z
+close_reason: Implemented the strict Python schema validator and native installed-binary runner with exact byte and file-tree comparison, idempotent fresh-sandbox passes, exact selectors, minimal environment, timeouts, bounded diagnostics, shared malformed/failure fixtures, and invalid-UTF-8 transport coverage. Full lint, 471 pytest tests, 133 tryscript checks, and build pass.
+resolution: null
+duplicate_of: null
 ---
 Implement the Python adapter for FM-CONFORMANCE-001 after the shared schema exists.
 
