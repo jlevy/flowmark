@@ -1,0 +1,80 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.code-span.delimiter-runs"
+change_id = "FM-CODE-SPAN-001"
+description = "Arbitrary authored delimiter widths and unequal interior runs remain source-exact."
+kind = "stdin"
+tags = ["code-span", "desired-output", "preservation", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/code-span/delimiter-runs/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/code-span/delimiter-runs/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.code-span.whitespace-typography"
+change_id = "FM-CODE-SPAN-001"
+description = "Authored code whitespace, tabs, quotes, and ellipses bypass normalization and typography."
+kind = "stdin"
+tags = ["code-span", "desired-output", "preservation", "stdin", "typography"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/code-span/whitespace-typography/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/code-span/whitespace-typography/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.code-span.multiline-containers"
+change_id = "FM-CODE-SPAN-001"
+description = "Multiline code spans retain authored line structure inside list and quote containers."
+kind = "stdin"
+tags = ["code-span", "container", "desired-output", "multiline", "preservation", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/code-span/multiline-containers/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/code-span/multiline-containers/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.code-span.precedence"
+change_id = "FM-CODE-SPAN-001"
+description = "Composite math, code spans, and math-like code bodies follow the portable arbitration order."
+kind = "stdin"
+tags = ["arbitration", "code-span", "desired-output", "math", "preservation", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/code-span/precedence/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/code-span/precedence/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.code-span.contexts"
+change_id = "FM-CODE-SPAN-001"
+description = "Code spans remain exact in headings, links, and GFM table cells."
+kind = "stdin"
+tags = ["code-span", "context", "desired-output", "preservation", "stdin", "table"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/code-span/contexts/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/code-span/contexts/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.code-span.malformed"
+change_id = "FM-CODE-SPAN-001"
+description = "Unmatched runs remain ordinary source while later complete spans stay independently recognizable."
+kind = "stdin"
+tags = ["code-span", "desired-output", "malformed", "preservation", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/code-span/malformed/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/code-span/malformed/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

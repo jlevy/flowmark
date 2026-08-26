@@ -60,6 +60,12 @@ def test_shared_manifest_validates() -> None:
     assert "commonmark.auto.0650" in case_ids
     assert {
         "preservation.core.invalid-utf8",
+        "preservation.code-span.delimiter-runs",
+        "preservation.code-span.whitespace-typography",
+        "preservation.code-span.multiline-containers",
+        "preservation.code-span.precedence",
+        "preservation.code-span.contexts",
+        "preservation.code-span.malformed",
         "preservation.math.inline.dollar-boundaries",
         "preservation.math.block.display-dollar",
         "preservation.math.topic.width-zero",
