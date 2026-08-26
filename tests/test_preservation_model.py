@@ -18,7 +18,13 @@ from flowmark.preservation.normalization import (
     scalar_width,
     scalar_widths,
 )
-from flowmark.preservation.registry import BUILTIN_RECOGNIZERS, RECOGNIZER_BY_KIND
+from flowmark.preservation.registry import (
+    BLOCK_RECOGNIZER_BY_KIND,
+    BUILTIN_BLOCK_RECOGNIZERS,
+    BUILTIN_RECOGNIZERS,
+    RECOGNIZER_BY_KIND,
+    BlockRuleKind,
+)
 
 
 def test_normalization_has_one_bom_and_terminal_lf() -> None:
@@ -138,4 +144,10 @@ def test_container_and_registry_invariants_are_portable() -> None:
     assert (
         RECOGNIZER_BY_KIND[RegionKind.code_span].priority
         < RECOGNIZER_BY_KIND[RegionKind.math_dollar_inline].priority
+    )
+    block_kinds = [descriptor.kind for descriptor in BUILTIN_BLOCK_RECOGNIZERS]
+    assert set(BLOCK_RECOGNIZER_BY_KIND) == set(block_kinds)
+    assert (
+        BLOCK_RECOGNIZER_BY_KIND[BlockRuleKind.fenced_code].priority
+        < BLOCK_RECOGNIZER_BY_KIND[BlockRuleKind.math_dollar_block].priority
     )

@@ -1,9 +1,12 @@
 from flowmark.preservation.model import Candidate, RegionForm, RegionKind
 from flowmark.preservation.normalization import normalize_source
+from flowmark.preservation.registry import BlockRuleKind
 from flowmark.preservation.scanner import (
     arbitrate_candidates,
+    build_container_view,
     escape_is_even,
     scan_dollar_runs,
+    scan_existing_opaque_blocks,
     scan_inline_scope,
     scan_protected_regions,
 )
@@ -89,7 +92,10 @@ def test_arbitration_uses_start_priority_length_and_kind() -> None:
         Candidate(RegionKind.math_dollar_inline, RegionForm.inline, 12, 15),
     )
 
-    assert arbitrate_candidates(candidates) == (candidates[1], candidates[3])
+    assert arbitrate_candidates(candidates, start=0, end=15) == (
+        candidates[1],
+        candidates[3],
+    )
 
 
 def test_default_scopes_never_pair_across_blank_lines() -> None:
@@ -104,3 +110,84 @@ def test_default_scopes_separate_headings_and_structural_table_cells() -> None:
 
     table = normalize_source("| First | Second |\n| --- | --- |\n| $a | plain and $c$ |")
     assert [region.source for region in scan_protected_regions(table)] == ["$c$"]
+
+
+def test_container_view_tracks_item_identity_and_nested_prefix_order() -> None:
+    source = normalize_source(
+        "> $$\n> body\n> $$\n\n- $$\n  body\n  $$\n\n1. > \\[\n   > body\n   > \\]\n\n- $$\n- $$"
+    )
+    lines = build_container_view(source)
+
+    assert lines[0].container_key == lines[1].container_key == lines[2].container_key
+    assert lines[0].context.blockquote_depth == 1
+    assert lines[4].container_key == lines[5].container_key == lines[6].container_key
+    assert lines[4].context.list_depth == 1
+    assert lines[4].context.content_column == 2
+    assert lines[8].container_key == lines[9].container_key == lines[10].container_key
+    assert lines[8].context.blockquote_depth == 1
+    assert lines[8].context.list_depth == 1
+    assert lines[8].context.content_column == 3
+    assert lines[12].container_key != lines[13].container_key
+
+    lazy_source = normalize_source("> quote $a +\nb$ tail\n\n- list $c +\nd$ tail")
+    lazy_lines = build_container_view(lazy_source)
+    assert lazy_lines[1].lazy
+    assert lazy_lines[0].container_key == lazy_lines[1].container_key
+    assert lazy_lines[4].lazy
+    assert lazy_lines[3].container_key == lazy_lines[4].container_key
+    lazy_regions = scan_protected_regions(lazy_source)
+    assert [region.container.blockquote_depth for region in lazy_regions] == [1, 0]
+    assert [region.container.list_depth for region in lazy_regions] == [0, 1]
+
+
+def test_block_math_preserves_raw_container_prefixes_and_suffixes() -> None:
+    source = normalize_source(
+        "> $$\n> quoted\n> $$ (label)\n\n"
+        "- $$\n  listed\n  $$ {#id .wide}\n\n"
+        "1. > \\[\n   > nested\n   > \\]"
+    )
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [
+        RegionKind.math_dollar_block,
+        RegionKind.math_dollar_block,
+        RegionKind.math_bracket_block,
+    ]
+    assert [region.source for region in regions] == [
+        "> $$\n> quoted\n> $$ (label)\n",
+        "- $$\n  listed\n  $$ {#id .wide}\n",
+        "1. > \\[\n   > nested\n   > \\]\n",
+    ]
+
+
+def test_existing_opaque_blocks_win_before_math_scanning() -> None:
+    source = normalize_source(
+        "---\nitems:\n- one\nmath: $not_inline$\n---\n\n"
+        "```math\n$$\nnot display\n$$\n```\n\n"
+        "    $$\n    indented\n    $$\n\n"
+        "$$\nreal display\n$$"
+    )
+    opaque = scan_existing_opaque_blocks(source)
+
+    assert [block.kind for block in opaque] == [
+        BlockRuleKind.yaml_frontmatter,
+        BlockRuleKind.fenced_code,
+        BlockRuleKind.indented_code,
+    ]
+    assert [region.source for region in scan_protected_regions(source)] == [
+        "$$\nreal display\n$$\n"
+    ]
+
+
+def test_unmatched_outer_block_retains_closed_inner_and_not_sibling_closers() -> None:
+    source = normalize_source("\\begin{outer}\n\\begin{inner}\nbody\n\\end{inner}\n\n- $$\n- $$")
+
+    assert [region.source for region in scan_protected_regions(source)] == [
+        "\\begin{inner}\nbody\n\\end{inner}\n"
+    ]
+
+
+def test_non_nesting_bracket_display_uses_first_opener_and_next_closer() -> None:
+    source = normalize_source("\\[\n\\[\nbody\n\\]")
+
+    assert [region.source for region in scan_protected_regions(source)] == ["\\[\n\\[\nbody\n\\]\n"]

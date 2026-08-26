@@ -292,6 +292,9 @@ formatter never emits a partial document or an internal token.
 Delimiter scanning, sentinel selection, token replacement, and restoration are each
 O(n). Environment matching uses a stack bounded by source length. No rule backtracks over
 the body, recursively reparses substrings, or searches from every unmatched opener.
+Candidate arbitration uses a fixed eight-pass radix order over unsigned 64-bit UTF-8 byte
+starts, followed by a single overlap pass; it is O(n) in the number of candidates and does
+not allocate a source-length bucket array.
 
 ## Recognition model
 
@@ -433,6 +436,11 @@ An opener records blockquote depth, list nesting, and content column. A closer i
 only in the same blockquote/list container at the recorded content column or a valid deeper
 continuation. It cannot close across a quote or list-item boundary. The raw prefixes stay
 inside the restored source slice.
+
+Internally, each ordered quote/list frame also carries the source position that created the
+container item. Compatibility compares this ordered identity path, not only the summarized
+depths and column stored on the region. Thus sibling list items and reversed list/quote
+nesting cannot close one another even when their summary fields happen to match.
 
 The algorithm is a small container stack with CommonMark marker widths, not a top-level
 regular expression. Required vectors cover top-level blocks, nested lists, nested quotes,

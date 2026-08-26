@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from types import MappingProxyType
 from typing import Final
 
@@ -16,6 +17,38 @@ CODE_SPAN_PRIORITY = 20
 UNAMBIGUOUS_INLINE_PRIORITY = 30
 DOLLAR_INLINE_PRIORITY = 40
 BLOCK_MATH_PRIORITY = 50
+
+
+class BlockRuleKind(StrEnum):
+    """Stable pre-parse block rule names shared with the Rust port."""
+
+    yaml_frontmatter = "yaml_frontmatter"
+    fenced_code = "fenced_code"
+    indented_code = "indented_code"
+    math_dollar_block = "math_dollar_block"
+    math_bracket_block = "math_bracket_block"
+    math_environment_block = "math_environment_block"
+
+
+@dataclass(frozen=True, slots=True)
+class BlockRecognizerDescriptor:
+    """Precedence and optional protected-region kind for a block rule."""
+
+    kind: BlockRuleKind
+    priority: int
+    region_kind: RegionKind | None
+
+    def __post_init__(self) -> None:
+        if type(self.kind) is not BlockRuleKind:
+            raise InvalidRegionError("block rule kind must use a stable enum value")
+        if type(self.priority) is not int or self.priority < 0:
+            raise InvalidRegionError("block rule priority must be a nonnegative integer")
+        if self.region_kind is not None and self.region_kind not in {
+            RegionKind.math_dollar_block,
+            RegionKind.math_bracket_block,
+            RegionKind.math_environment_block,
+        }:
+            raise InvalidRegionError("block rule region kind must use block treatment")
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,3 +142,39 @@ if tuple(descriptor.priority for descriptor in BUILTIN_RECOGNIZERS) != tuple(
     sorted(descriptor.priority for descriptor in BUILTIN_RECOGNIZERS)
 ):
     raise InvalidRegionError("built-in recognizers must be ordered by priority")
+
+
+# Existing opaque Markdown blocks win before registered preservation blocks. The distinct
+# bands are part of the portable scanner contract; additions fit between them without
+# changing existing values.
+BUILTIN_BLOCK_RECOGNIZERS: Final[tuple[BlockRecognizerDescriptor, ...]] = (
+    BlockRecognizerDescriptor(BlockRuleKind.yaml_frontmatter, 10, None),
+    BlockRecognizerDescriptor(BlockRuleKind.fenced_code, 20, None),
+    BlockRecognizerDescriptor(BlockRuleKind.indented_code, 20, None),
+    BlockRecognizerDescriptor(
+        BlockRuleKind.math_dollar_block,
+        30,
+        RegionKind.math_dollar_block,
+    ),
+    BlockRecognizerDescriptor(
+        BlockRuleKind.math_bracket_block,
+        30,
+        RegionKind.math_bracket_block,
+    ),
+    BlockRecognizerDescriptor(
+        BlockRuleKind.math_environment_block,
+        30,
+        RegionKind.math_environment_block,
+    ),
+)
+
+BLOCK_RECOGNIZER_BY_KIND: Final[Mapping[BlockRuleKind, BlockRecognizerDescriptor]] = (
+    MappingProxyType({descriptor.kind: descriptor for descriptor in BUILTIN_BLOCK_RECOGNIZERS})
+)
+
+if len(BLOCK_RECOGNIZER_BY_KIND) != len(BUILTIN_BLOCK_RECOGNIZERS):
+    raise InvalidRegionError("built-in block recognizer kinds must be unique")
+if tuple(descriptor.priority for descriptor in BUILTIN_BLOCK_RECOGNIZERS) != tuple(
+    sorted(descriptor.priority for descriptor in BUILTIN_BLOCK_RECOGNIZERS)
+):
+    raise InvalidRegionError("built-in block recognizers must be ordered by priority")

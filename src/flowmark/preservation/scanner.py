@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, replace
 from enum import Enum, auto
+from typing import cast
 
 from flowmark.preservation.model import (
     Candidate,
+    ContainerContext,
     InvalidRegionError,
     NormalizedSource,
     ProtectedRegion,
@@ -14,7 +17,7 @@ from flowmark.preservation.model import (
     RegionKind,
     validate_regions,
 )
-from flowmark.preservation.registry import RECOGNIZER_BY_KIND
+from flowmark.preservation.registry import RECOGNIZER_BY_KIND, BlockRuleKind
 
 ByteRange = tuple[int, int]
 ScalarRun = tuple[int, int]
@@ -24,12 +27,81 @@ _BEGIN_PREFIX = "\\begin{"
 _END_PREFIX = "\\end{"
 _TABLE_DELIMITER_CELL = re.compile(r":?-{3,}:?\Z")
 _ATX_HEADING = re.compile(r" {0,3}#{1,6}(?:[ \t]+|$)")
+_THEMATIC_BREAK = re.compile(r"(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})\Z")
 
 
 class _DollarState(Enum):
     none = auto()
     single = auto()
     double = auto()
+
+
+class _ContainerKind(Enum):
+    quote = auto()
+    list_item = auto()
+
+
+@dataclass(frozen=True, slots=True)
+class _ContainerFrame:
+    kind: _ContainerKind
+    identity: int
+    content_column: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class ContainerLine:
+    """One raw line plus its portable logical container view."""
+
+    index: int
+    start: int
+    end: int
+    content_start: int
+    content_end: int
+    logical_column: int
+    context: ContainerContext
+    container_key: tuple[tuple[str, int, int], ...]
+    frames: tuple[_ContainerFrame, ...]
+    lazy: bool = False
+
+    def __post_init__(self) -> None:
+        if self.start > self.content_start or self.content_start > self.content_end:
+            raise InvalidRegionError("container line offsets are out of order")
+        if self.content_end > self.end:
+            raise InvalidRegionError("container line content ends outside its raw line")
+        if self.logical_column < 0:
+            raise InvalidRegionError("container line column must be nonnegative")
+
+
+@dataclass(frozen=True, slots=True)
+class OpaqueBlock:
+    """Existing Markdown block excluded from preservation recognition."""
+
+    kind: BlockRuleKind
+    start: int
+    end: int
+
+    def __post_init__(self) -> None:
+        if self.kind not in {
+            BlockRuleKind.yaml_frontmatter,
+            BlockRuleKind.fenced_code,
+            BlockRuleKind.indented_code,
+        }:
+            raise InvalidRegionError("opaque block uses a non-opaque rule kind")
+        if self.start < 0 or self.start >= self.end:
+            raise InvalidRegionError("opaque block offsets are invalid")
+
+
+@dataclass(frozen=True, slots=True)
+class InlineScope:
+    """One parser-independent paragraph, heading, or table-cell scan scope."""
+
+    start: int
+    end: int
+    context: ContainerContext
+
+    def __post_init__(self) -> None:
+        if self.start < 0 or self.start >= self.end:
+            raise InvalidRegionError("inline scope offsets are invalid")
 
 
 def escape_is_even(text: str, position: int) -> bool:
@@ -323,28 +395,72 @@ def scan_inline_environments(
     return tuple(candidates)
 
 
-def arbitrate_candidates(candidates: tuple[Candidate, ...]) -> tuple[Candidate, ...]:
-    """Select the earliest, highest-priority, longest non-overlapping candidates."""
-    ordered = sorted(
-        candidates,
-        key=lambda candidate: (
-            candidate.start,
+def arbitrate_candidates(
+    candidates: tuple[Candidate, ...],
+    *,
+    start: int,
+    end: int,
+) -> tuple[Candidate, ...]:
+    """Select candidates with a fixed-pass radix order over UTF-8 byte starts."""
+    if start < 0 or start > end or end >= 1 << 64:
+        raise InvalidRegionError("arbitration scope is invalid")
+    for candidate in candidates:
+        if candidate.start < start or candidate.end > end:
+            raise InvalidRegionError("candidate leaves its arbitration scope")
+    if len(candidates) < 2:
+        return candidates
+
+    ordered = list(candidates)
+    for shift in range(0, 64, 8):
+        counts = [0] * 256
+        for candidate in ordered:
+            counts[(candidate.start >> shift) & 0xFF] += 1
+        next_position = 0
+        for bucket, count in enumerate(counts):
+            counts[bucket] = next_position
+            next_position += count
+        pass_output: list[Candidate | None] = [None] * len(ordered)
+        for candidate in ordered:
+            bucket = (candidate.start >> shift) & 0xFF
+            pass_output[counts[bucket]] = candidate
+            counts[bucket] += 1
+        ordered = cast(list[Candidate], pass_output)
+
+    selected: list[Candidate] = []
+    previous_end = start
+    candidate_index = 0
+    while candidate_index < len(ordered):
+        candidate = ordered[candidate_index]
+        candidate_index += 1
+        candidate_key = (
             RECOGNIZER_BY_KIND[candidate.kind].priority,
             -(candidate.end - candidate.start),
             candidate.kind.value,
-        ),
-    )
-    selected: list[Candidate] = []
-    previous_end = 0
-    for candidate in ordered:
-        if selected and candidate.start < previous_end:
-            continue
-        selected.append(candidate)
-        previous_end = candidate.end
+        )
+        while candidate_index < len(ordered) and ordered[candidate_index].start == candidate.start:
+            alternate = ordered[candidate_index]
+            alternate_key = (
+                RECOGNIZER_BY_KIND[alternate.kind].priority,
+                -(alternate.end - alternate.start),
+                alternate.kind.value,
+            )
+            if alternate_key < candidate_key:
+                candidate = alternate
+                candidate_key = alternate_key
+            candidate_index += 1
+        if candidate.start >= previous_end:
+            selected.append(candidate)
+            previous_end = candidate.end
     return tuple(selected)
 
 
-def scan_inline_scope(source: NormalizedSource, start: int, end: int) -> tuple[Candidate, ...]:
+def scan_inline_scope(
+    source: NormalizedSource,
+    start: int,
+    end: int,
+    *,
+    container: ContainerContext | None = None,
+) -> tuple[Candidate, ...]:
     """Propose and arbitrate every built-in inline recognizer in one scope."""
     candidates = (
         *scan_composite_math(source, start, end),
@@ -353,7 +469,10 @@ def scan_inline_scope(source: NormalizedSource, start: int, end: int) -> tuple[C
         *scan_inline_environments(source, start, end),
         *scan_dollar_runs(source, start, end),
     )
-    return arbitrate_candidates(candidates)
+    selected = arbitrate_candidates(candidates, start=start, end=end)
+    if container is None:
+        return selected
+    return tuple(replace(candidate, container=container) for candidate in selected)
 
 
 def _line_scalar_ranges(text: str) -> tuple[ScalarRun, ...]:
@@ -366,12 +485,580 @@ def _line_scalar_ranges(text: str) -> tuple[ScalarRun, ...]:
     return tuple(ranges)
 
 
-def _line_content(text: str, start: int, end: int) -> str:
-    return text[start:end].removesuffix("\n")
+def _advance_column(column: int, scalar: str) -> int:
+    return column + 1 if scalar == " " else column + (4 - column % 4)
 
 
-def _is_blank_line(text: str, start: int, end: int) -> bool:
-    return _line_content(text, start, end).strip(" \t") == ""
+def _consume_indent(
+    text: str,
+    index: int,
+    end: int,
+    column: int,
+    *,
+    maximum: int,
+) -> tuple[int, int]:
+    origin = column
+    while index < end and text[index] in " \t":
+        next_column = _advance_column(column, text[index])
+        if next_column - origin > maximum:
+            break
+        index += 1
+        column = next_column
+    return index, column
+
+
+def _consume_to_column(
+    text: str, index: int, end: int, column: int, target: int
+) -> tuple[int, int] | None:
+    while index < end and text[index] in " \t" and column < target:
+        column = _advance_column(column, text[index])
+        index += 1
+    return (index, column) if column >= target else None
+
+
+def _consume_quote_marker(text: str, index: int, end: int, column: int) -> tuple[int, int] | None:
+    marker_index, marker_column = _consume_indent(
+        text,
+        index,
+        end,
+        column,
+        maximum=3,
+    )
+    if marker_index >= end or text[marker_index] != ">":
+        return None
+    marker_index += 1
+    marker_column += 1
+    if marker_index < end and text[marker_index] in " \t":
+        marker_column = _advance_column(marker_column, text[marker_index])
+        marker_index += 1
+    return marker_index, marker_column
+
+
+def _list_marker_end(text: str, index: int, end: int) -> int | None:
+    if index >= end:
+        return None
+    if text[index] in "-*+":
+        marker_end = index + 1
+    elif text[index].isdigit():
+        marker_end = index
+        while marker_end < end and marker_end - index < 9 and text[marker_end].isdigit():
+            marker_end += 1
+        if marker_end >= end or text[marker_end] not in ".)":
+            return None
+        marker_end += 1
+    else:
+        return None
+    if marker_end < end and text[marker_end] not in " \t":
+        return None
+    return marker_end
+
+
+def _consume_list_marker(
+    text: str,
+    index: int,
+    end: int,
+    column: int,
+) -> tuple[int, int, int, int] | None:
+    marker_index, marker_column = _consume_indent(
+        text,
+        index,
+        end,
+        column,
+        maximum=3,
+    )
+    marker_end = _list_marker_end(text, marker_index, end)
+    if marker_end is None:
+        return None
+
+    after_marker_column = marker_column + (marker_end - marker_index)
+    if marker_end == end:
+        return marker_end, after_marker_column, after_marker_column + 1, marker_index
+
+    padding_end = marker_end
+    padding_column = after_marker_column
+    while padding_end < end and text[padding_end] in " \t":
+        padding_column = _advance_column(padding_column, text[padding_end])
+        padding_end += 1
+
+    padding_width = padding_column - after_marker_column
+    if padding_end < end and padding_width <= 4:
+        content_start = padding_end
+        content_column = padding_column
+    else:
+        content_start = marker_end + 1
+        content_column = _advance_column(after_marker_column, text[marker_end])
+    return content_start, content_column, content_column, marker_index
+
+
+def _match_frame(
+    text: str,
+    index: int,
+    end: int,
+    column: int,
+    frame: _ContainerFrame,
+) -> tuple[int, int] | None:
+    if frame.kind is _ContainerKind.quote:
+        return _consume_quote_marker(text, index, end, column)
+    return _consume_to_column(text, index, end, column, frame.content_column)
+
+
+def _parse_new_frames(
+    text: str,
+    index: int,
+    end: int,
+    column: int,
+    frames: list[_ContainerFrame],
+) -> tuple[int, int]:
+    while index < end:
+        quote = _consume_quote_marker(text, index, end, column)
+        if quote is not None:
+            marker_index, _ = _consume_indent(
+                text,
+                index,
+                end,
+                column,
+                maximum=3,
+            )
+            frames.append(_ContainerFrame(_ContainerKind.quote, marker_index))
+            index, column = quote
+            continue
+
+        list_marker = _consume_list_marker(text, index, end, column)
+        if list_marker is None:
+            break
+        index, column, content_column, marker_index = list_marker
+        frames.append(
+            _ContainerFrame(
+                _ContainerKind.list_item,
+                marker_index,
+                content_column,
+            )
+        )
+    return index, column
+
+
+def _container_context(frames: tuple[_ContainerFrame, ...]) -> ContainerContext:
+    list_frames = tuple(frame for frame in frames if frame.kind is _ContainerKind.list_item)
+    return ContainerContext(
+        blockquote_depth=sum(frame.kind is _ContainerKind.quote for frame in frames),
+        list_depth=len(list_frames),
+        content_column=list_frames[-1].content_column if list_frames else 0,
+    )
+
+
+def _container_key(frames: tuple[_ContainerFrame, ...]) -> tuple[tuple[str, int, int], ...]:
+    return tuple((frame.kind.name, frame.identity, frame.content_column) for frame in frames)
+
+
+def _payload_start(text: str, start: int, end: int) -> int:
+    return _consume_indent(text, start, end, 0, maximum=3)[0]
+
+
+def _starts_block_structure(text: str, start: int, end: int) -> bool:
+    content_start = _payload_start(text, start, end)
+    content = text[content_start:end]
+    if not content:
+        return False
+    return bool(
+        _ATX_HEADING.match(text[start:end])
+        or _consume_quote_marker(text, start, end, 0)
+        or _consume_list_marker(text, start, end, 0)
+        or re.match(r"(`{3,}|~{3,})", content)
+        or _THEMATIC_BREAK.fullmatch(content)
+        or content in {"$$", "\\[", "\\]"}
+        or content.startswith(("\\begin{", "\\end{"))
+    )
+
+
+def build_container_view(source: NormalizedSource) -> tuple[ContainerLine, ...]:
+    """Derive raw line ranges and container identities without parsing Markdown."""
+    text = source.text
+    active_frames: tuple[_ContainerFrame, ...] = ()
+    previous_allows_lazy = False
+    views: list[ContainerLine] = []
+
+    for line_number, (line_start, line_end) in enumerate(_line_scalar_ranges(text)):
+        content_end = line_end - 1 if text[line_end - 1 : line_end] == "\n" else line_end
+        index = line_start
+        column = 0
+        matched_count = 0
+        for frame in active_frames:
+            matched = _match_frame(text, index, content_end, column, frame)
+            if matched is None:
+                break
+            index, column = matched
+            matched_count += 1
+
+        remaining_blank = text[index:content_end].strip(" \t") == ""
+        lazy = False
+        if (
+            matched_count < len(active_frames)
+            and previous_allows_lazy
+            and not remaining_blank
+            and not _starts_block_structure(text, index, content_end)
+        ):
+            frames = list(active_frames)
+            lazy = True
+        else:
+            frames = list(active_frames[:matched_count])
+            index, column = _parse_new_frames(
+                text,
+                index,
+                content_end,
+                column,
+                frames,
+            )
+
+        frame_tuple = tuple(frames)
+        view = ContainerLine(
+            index=line_number,
+            start=source.byte_offset(line_start),
+            end=source.byte_offset(line_end),
+            content_start=source.byte_offset(index),
+            content_end=source.byte_offset(content_end),
+            logical_column=column,
+            context=_container_context(frame_tuple),
+            container_key=_container_key(frame_tuple),
+            frames=frame_tuple,
+            lazy=lazy,
+        )
+        views.append(view)
+
+        if remaining_blank:
+            retained: list[_ContainerFrame] = list(active_frames[:matched_count])
+            for frame in active_frames[matched_count:]:
+                if frame.kind is _ContainerKind.quote:
+                    break
+                retained.append(frame)
+            active_frames = tuple(frames) if len(frames) > matched_count else tuple(retained)
+            previous_allows_lazy = False
+        else:
+            active_frames = frame_tuple
+            previous_allows_lazy = not _starts_block_structure(text, index, content_end)
+
+    return tuple(views)
+
+
+def _scalar_line_bounds(source: NormalizedSource, line: ContainerLine) -> tuple[int, int]:
+    start = source.scalar_index(line.start)
+    end = source.scalar_index(line.content_end)
+    return start, end
+
+
+def _content_under_frames(
+    source: NormalizedSource,
+    line: ContainerLine,
+    frames: tuple[_ContainerFrame, ...],
+) -> tuple[int, int, int] | None:
+    start, end = _scalar_line_bounds(source, line)
+    index = start
+    column = 0
+    for frame_index, frame in enumerate(frames):
+        matched = _match_frame(source.text, index, end, column, frame)
+        if matched is None:
+            remaining_frames = frames[frame_index:]
+            if source.text[index:end].strip(" \t") == "" and all(
+                remaining.kind is _ContainerKind.list_item for remaining in remaining_frames
+            ):
+                return end, end, column
+            return None
+        index, column = matched
+    return index, end, column
+
+
+def _line_payload_bounds(
+    source: NormalizedSource,
+    line: ContainerLine,
+    *,
+    frames: tuple[_ContainerFrame, ...] | None = None,
+) -> tuple[int, int]:
+    if frames is None:
+        start = source.scalar_index(line.content_start)
+        end = source.scalar_index(line.content_end)
+        column = line.logical_column
+    else:
+        content = _content_under_frames(source, line, frames)
+        if content is None:
+            raise InvalidRegionError("line is outside the requested container")
+        start, end, column = content
+    start, _ = _consume_indent(source.text, start, end, column, maximum=3)
+    return start, end
+
+
+def _line_payload(
+    source: NormalizedSource,
+    line: ContainerLine,
+    *,
+    frames: tuple[_ContainerFrame, ...] | None = None,
+) -> str:
+    start, end = _line_payload_bounds(source, line, frames=frames)
+    return source.text[start:end].rstrip(" \t")
+
+
+def _raw_line_content(source: NormalizedSource, line: ContainerLine) -> str:
+    start, end = _scalar_line_bounds(source, line)
+    return source.text[start:end]
+
+
+def compatible_container(opener: ContainerLine, closer: ContainerLine) -> bool:
+    """Return whether two structural delimiters occupy the same container item."""
+    return (
+        not opener.lazy
+        and not closer.lazy
+        and opener.container_key == closer.container_key
+        and opener.context == closer.context
+    )
+
+
+def _fence_opener(payload: str) -> tuple[str, int] | None:
+    match = re.fullmatch(r"(`{3,}|~{3,})(.*)", payload)
+    if match is None or (match.group(1)[0] == "`" and "`" in match.group(2)):
+        return None
+    return match.group(1)[0], len(match.group(1))
+
+
+def _fence_closes(payload: str, character: str, length: int) -> bool:
+    stripped = payload.rstrip(" \t")
+    return len(stripped) >= length and set(stripped) == {character}
+
+
+def _line_indent_width(source: NormalizedSource, line: ContainerLine) -> int:
+    start = source.scalar_index(line.content_start)
+    end = source.scalar_index(line.content_end)
+    index = start
+    column = line.logical_column
+    while index < end and source.text[index] in " \t":
+        column = _advance_column(column, source.text[index])
+        index += 1
+    return column - line.logical_column
+
+
+def _opaque_line_flags(
+    lines: tuple[ContainerLine, ...], blocks: tuple[OpaqueBlock, ...]
+) -> tuple[bool, ...]:
+    flags = [False] * len(lines)
+    block_index = 0
+    for line in lines:
+        while block_index < len(blocks) and blocks[block_index].end <= line.start:
+            block_index += 1
+        if (
+            block_index < len(blocks)
+            and blocks[block_index].start < line.end
+            and line.start < blocks[block_index].end
+        ):
+            flags[line.index] = True
+    return tuple(flags)
+
+
+def scan_existing_opaque_blocks(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+) -> tuple[OpaqueBlock, ...]:
+    """Find leading YAML frontmatter plus fenced and indented code blocks."""
+    views = build_container_view(source) if lines is None else lines
+    blocks: list[OpaqueBlock] = []
+    covered = [False] * len(views)
+
+    if views and not views[0].container_key and _raw_line_content(source, views[0]) == "---":
+        for closer_index in range(1, len(views)):
+            closer = views[closer_index]
+            if _raw_line_content(source, closer) in {"---", "..."}:
+                blocks.append(
+                    OpaqueBlock(
+                        BlockRuleKind.yaml_frontmatter,
+                        views[0].start,
+                        closer.end,
+                    )
+                )
+                for index in range(closer_index + 1):
+                    covered[index] = True
+                break
+
+    line_index = 0
+    while line_index < len(views):
+        if covered[line_index]:
+            line_index += 1
+            continue
+        opener = views[line_index]
+        fence = None if opener.lazy else _fence_opener(_line_payload(source, opener))
+        if fence is None:
+            line_index += 1
+            continue
+        character, length = fence
+        final_index = line_index
+        closer_index: int | None = None
+        for candidate_index in range(line_index + 1, len(views)):
+            candidate = views[candidate_index]
+            content = _content_under_frames(source, candidate, opener.frames)
+            if content is None:
+                break
+            final_index = candidate_index
+            payload = _line_payload(source, candidate, frames=opener.frames)
+            if _fence_closes(payload, character, length):
+                closer_index = candidate_index
+                break
+        if closer_index is not None:
+            final_index = closer_index
+        block = OpaqueBlock(
+            BlockRuleKind.fenced_code,
+            opener.start,
+            views[final_index].end,
+        )
+        blocks.append(block)
+        for index in range(line_index, final_index + 1):
+            covered[index] = True
+        line_index = final_index + 1
+
+    line_index = 0
+    while line_index < len(views):
+        if covered[line_index] or _line_indent_width(source, views[line_index]) < 4:
+            line_index += 1
+            continue
+        if line_index > 0 and not covered[line_index - 1]:
+            previous = _line_payload(source, views[line_index - 1])
+            if previous:
+                line_index += 1
+                continue
+        start_index = line_index
+        final_index = line_index
+        line_index += 1
+        while line_index < len(views) and not covered[line_index]:
+            line = views[line_index]
+            if _line_payload(source, line) == "":
+                line_index += 1
+                continue
+            if (
+                line.container_key == views[start_index].container_key
+                and _line_indent_width(source, line) >= 4
+            ):
+                final_index = line_index
+                line_index += 1
+                continue
+            break
+        block = OpaqueBlock(
+            BlockRuleKind.indented_code,
+            views[start_index].start,
+            views[final_index].end,
+        )
+        blocks.append(block)
+        for index in range(start_index, final_index + 1):
+            covered[index] = True
+
+    block_by_start = {block.start: block for block in blocks}
+    return tuple(block_by_start[line.start] for line in views if line.start in block_by_start)
+
+
+_DOLLAR_CLOSER = re.compile(r"\$\$(?:[ \t]+(?:\([^()\n]*\)|\{[^{}\n]*\}))?\Z")
+_ENVIRONMENT_LINE = re.compile(r"\\(begin|end)\{([^{}\n]+)\}\Z")
+
+
+def scan_display_math(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+    opaque_blocks: tuple[OpaqueBlock, ...] = (),
+) -> tuple[Candidate, ...]:
+    """Pair compatible standalone dollar and bracket display delimiters."""
+    views = build_container_view(source) if lines is None else lines
+    opaque = _opaque_line_flags(views, opaque_blocks)
+    pending_dollars: dict[tuple[tuple[str, int, int], ...], ContainerLine] = {}
+    pending_brackets: dict[tuple[tuple[str, int, int], ...], ContainerLine] = {}
+    candidates: list[Candidate] = []
+
+    for line in views:
+        if opaque[line.index] or line.lazy:
+            continue
+        payload = _line_payload(source, line)
+        key = line.container_key
+        if payload == "$$":
+            opener = pending_dollars.pop(key, None)
+            if opener is None:
+                pending_dollars[key] = line
+            elif compatible_container(opener, line):
+                candidates.append(
+                    Candidate(
+                        RegionKind.math_dollar_block,
+                        RegionForm.block,
+                        opener.start,
+                        line.end,
+                        opener.context,
+                    )
+                )
+            continue
+        if _DOLLAR_CLOSER.fullmatch(payload):
+            opener = pending_dollars.pop(key, None)
+            if opener is not None and compatible_container(opener, line):
+                candidates.append(
+                    Candidate(
+                        RegionKind.math_dollar_block,
+                        RegionForm.block,
+                        opener.start,
+                        line.end,
+                        opener.context,
+                    )
+                )
+            continue
+        if payload == "\\[":
+            pending_brackets.setdefault(key, line)
+            continue
+        if payload == "\\]":
+            opener = pending_brackets.pop(key, None)
+            if opener is not None and compatible_container(opener, line):
+                candidates.append(
+                    Candidate(
+                        RegionKind.math_bracket_block,
+                        RegionForm.block,
+                        opener.start,
+                        line.end,
+                        opener.context,
+                    )
+                )
+    return tuple(candidates)
+
+
+def scan_environment_blocks(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+    opaque_blocks: tuple[OpaqueBlock, ...] = (),
+) -> tuple[Candidate, ...]:
+    """Match standalone nested environments independently in each container item."""
+    views = build_container_view(source) if lines is None else lines
+    opaque = _opaque_line_flags(views, opaque_blocks)
+    stacks: dict[
+        tuple[tuple[str, int, int], ...],
+        list[tuple[str, ContainerLine]],
+    ] = {}
+    candidates: list[Candidate] = []
+
+    for line in views:
+        if opaque[line.index] or line.lazy:
+            continue
+        match = _ENVIRONMENT_LINE.fullmatch(_line_payload(source, line))
+        if match is None:
+            continue
+        command, name = match.groups()
+        stack = stacks.setdefault(line.container_key, [])
+        if command == "begin":
+            stack.append((name, line))
+        elif stack and stack[-1][0] == name:
+            _, opener = stack.pop()
+            if compatible_container(opener, line):
+                candidates.append(
+                    Candidate(
+                        RegionKind.math_environment_block,
+                        RegionForm.block,
+                        opener.start,
+                        line.end,
+                        opener.context,
+                    )
+                )
+    return tuple(candidates)
+
+
+def resolve_candidate_tree(
+    source: NormalizedSource, candidates: tuple[Candidate, ...]
+) -> tuple[Candidate, ...]:
+    """Resolve closed outer blocks while retaining children of unmatched openers."""
+    return arbitrate_candidates(candidates, start=0, end=source.byte_length)
 
 
 def _is_table_delimiter(line: str) -> bool:
@@ -380,12 +1067,17 @@ def _is_table_delimiter(line: str) -> bool:
     return len(cells) >= 2 and all(_TABLE_DELIMITER_CELL.fullmatch(cell) for cell in cells)
 
 
-def _plain_block_scopes(text: str, lines: tuple[ScalarRun, ...]) -> tuple[ScalarRun, ...]:
+def _plain_block_scopes(
+    source: NormalizedSource, lines: tuple[ContainerLine, ...]
+) -> tuple[ScalarRun, ...]:
     scopes: list[ScalarRun] = []
     paragraph_start: int | None = None
     paragraph_end = 0
-    for line_start, line_end in lines:
-        if _ATX_HEADING.match(_line_content(text, line_start, line_end)):
+    for line in lines:
+        line_start = source.scalar_index(line.content_start)
+        line_end = source.scalar_index(line.end)
+        payload = _line_payload(source, line)
+        if _ATX_HEADING.match(payload):
             if paragraph_start is not None:
                 scopes.append((paragraph_start, paragraph_end))
                 paragraph_start = None
@@ -394,6 +1086,9 @@ def _plain_block_scopes(text: str, lines: tuple[ScalarRun, ...]) -> tuple[Scalar
             if paragraph_start is None:
                 paragraph_start = line_start
             paragraph_end = line_end
+            if re.fullmatch(r"(?:=+|-+)[ \t]*", payload):
+                scopes.append((paragraph_start, paragraph_end))
+                paragraph_start = None
     if paragraph_start is not None:
         scopes.append((paragraph_start, paragraph_end))
     return tuple(scopes)
@@ -408,7 +1103,9 @@ def _table_cell_ranges(
             source,
             source.byte_offset(line_start),
             source.byte_offset(line_end),
-        )
+        ),
+        start=source.byte_offset(line_start),
+        end=source.byte_offset(line_end),
     )
     code_ranges = tuple(
         (source.scalar_index(candidate.start), source.scalar_index(candidate.end))
@@ -434,47 +1131,137 @@ def _table_cell_ranges(
     )
 
 
+def _has_structural_pipe(source: NormalizedSource, line: ContainerLine) -> bool:
+    start = source.scalar_index(line.content_start)
+    end = source.scalar_index(line.content_end)
+    cells = _table_cell_ranges(source, start, end)
+    return len(cells) > 1 or source.text[start:end].lstrip(" \t").startswith("|")
+
+
 def _block_inline_scopes(
-    source: NormalizedSource, lines: tuple[ScalarRun, ...]
-) -> tuple[ByteRange, ...]:
-    text = source.text
-    separator_index: int | None = None
-    for index in range(1, len(lines)):
-        line_start, line_end = lines[index]
-        header_start, header_end = lines[index - 1]
-        if _is_table_delimiter(_line_content(text, line_start, line_end)) and "|" in _line_content(
-            text, header_start, header_end
-        ):
-            separator_index = index
-            break
-
+    source: NormalizedSource, lines: tuple[ContainerLine, ...]
+) -> tuple[InlineScope, ...]:
     scalar_scopes: list[ScalarRun] = []
-    if separator_index is None:
-        scalar_scopes.extend(_plain_block_scopes(text, lines))
-    else:
-        header_index = separator_index - 1
-        if header_index > 0:
-            scalar_scopes.append((lines[0][0], lines[header_index - 1][1]))
-        for line_start, line_end in lines[header_index:]:
-            scalar_scopes.extend(_table_cell_ranges(source, line_start, line_end))
+    plain_lines: list[ContainerLine] = []
 
+    def flush_plain() -> None:
+        if plain_lines:
+            scalar_scopes.extend(_plain_block_scopes(source, tuple(plain_lines)))
+            plain_lines.clear()
+
+    index = 0
+    while index < len(lines):
+        is_table_start = (
+            index + 1 < len(lines)
+            and _has_structural_pipe(source, lines[index])
+            and _is_table_delimiter(_line_payload(source, lines[index + 1]))
+        )
+        if not is_table_start:
+            plain_lines.append(lines[index])
+            index += 1
+            continue
+
+        flush_plain()
+        table_end = index + 2
+        while table_end < len(lines) and _has_structural_pipe(source, lines[table_end]):
+            table_end += 1
+        for table_line in lines[index:table_end]:
+            line_start = source.scalar_index(table_line.content_start)
+            line_end = source.scalar_index(table_line.content_end)
+            scalar_scopes.extend(_table_cell_ranges(source, line_start, line_end))
+        index = table_end
+
+    flush_plain()
     return tuple(
-        (source.byte_offset(start), source.byte_offset(end))
+        InlineScope(
+            source.byte_offset(start),
+            source.byte_offset(end),
+            lines[0].context,
+        )
         for start, end in scalar_scopes
         if start < end
     )
 
 
-def _default_inline_scopes(source: NormalizedSource) -> tuple[ByteRange, ...]:
-    scopes: list[ByteRange] = []
-    block: list[ScalarRun] = []
-    for line_range in _line_scalar_ranges(source.text):
-        if _is_blank_line(source.text, *line_range):
+def _range_line_flags(
+    lines: tuple[ContainerLine, ...], ranges: tuple[ByteRange, ...]
+) -> tuple[bool, ...]:
+    flags = [False] * len(lines)
+    range_index = 0
+    for line in lines:
+        while range_index < len(ranges) and ranges[range_index][1] <= line.start:
+            range_index += 1
+        if (
+            range_index < len(ranges)
+            and ranges[range_index][0] < line.end
+            and line.start < ranges[range_index][1]
+        ):
+            flags[line.index] = True
+    return tuple(flags)
+
+
+def _merge_ranges(
+    left: tuple[ByteRange, ...], right: tuple[ByteRange, ...]
+) -> tuple[ByteRange, ...]:
+    merged: list[ByteRange] = []
+    left_index = 0
+    right_index = 0
+    while left_index < len(left) or right_index < len(right):
+        if right_index >= len(right) or (
+            left_index < len(left) and left[left_index][0] <= right[right_index][0]
+        ):
+            selected = left[left_index]
+            left_index += 1
+        else:
+            selected = right[right_index]
+            right_index += 1
+        if merged and selected[0] < merged[-1][1]:
+            raise InvalidRegionError("excluded block ranges overlap")
+        merged.append(selected)
+    return tuple(merged)
+
+
+def _merge_candidates(
+    left: tuple[Candidate, ...], right: tuple[Candidate, ...]
+) -> tuple[Candidate, ...]:
+    merged: list[Candidate] = []
+    left_index = 0
+    right_index = 0
+    while left_index < len(left) or right_index < len(right):
+        if right_index >= len(right) or (
+            left_index < len(left) and left[left_index].start <= right[right_index].start
+        ):
+            selected = left[left_index]
+            left_index += 1
+        else:
+            selected = right[right_index]
+            right_index += 1
+        if merged and selected.start < merged[-1].end:
+            raise InvalidRegionError("selected block and inline candidates overlap")
+        merged.append(selected)
+    return tuple(merged)
+
+
+def _default_inline_scopes(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...],
+    excluded_ranges: tuple[ByteRange, ...],
+) -> tuple[InlineScope, ...]:
+    excluded = _range_line_flags(lines, excluded_ranges)
+    scopes: list[InlineScope] = []
+    block: list[ContainerLine] = []
+    block_key: tuple[tuple[str, int, int], ...] | None = None
+    for line in lines:
+        blank = _line_payload(source, line) == ""
+        if excluded[line.index] or blank or (block and line.container_key != block_key):
             if block:
                 scopes.extend(_block_inline_scopes(source, tuple(block)))
                 block.clear()
-        else:
-            block.append(line_range)
+                block_key = None
+        if not excluded[line.index] and not blank:
+            if not block:
+                block_key = line.container_key
+            block.append(line)
     if block:
         scopes.extend(_block_inline_scopes(source, tuple(block)))
     return tuple(scopes)
@@ -485,18 +1272,51 @@ def scan_protected_regions(
     *,
     inline_scopes: tuple[ByteRange, ...] | None = None,
 ) -> tuple[ProtectedRegion, ...]:
-    """Scan inline scopes and emit sorted source-exact math regions."""
-    scopes = _default_inline_scopes(source) if inline_scopes is None else inline_scopes
-    selected: list[Candidate] = []
+    """Scan block precedence and inline scopes into source-exact math regions."""
+    lines = build_container_view(source)
+    opaque_blocks = scan_existing_opaque_blocks(source, lines)
+    block_candidates = resolve_candidate_tree(
+        source,
+        (
+            *scan_display_math(source, lines, opaque_blocks),
+            *scan_environment_blocks(source, lines, opaque_blocks),
+        ),
+    )
+    excluded_ranges = _merge_ranges(
+        tuple((block.start, block.end) for block in opaque_blocks),
+        tuple((candidate.start, candidate.end) for candidate in block_candidates),
+    )
+    scopes = (
+        _default_inline_scopes(source, lines, excluded_ranges)
+        if inline_scopes is None
+        else tuple(InlineScope(start, end, ContainerContext()) for start, end in inline_scopes)
+    )
+    inline_candidates: list[Candidate] = []
     previous_scope_end = 0
-    for start, end in scopes:
+    excluded_index = 0
+    for scope in scopes:
+        start = scope.start
+        end = scope.end
         if start < previous_scope_end or end > source.byte_length:
             raise InvalidRegionError("inline scopes overlap or leave normalized source")
-        selected.extend(scan_inline_scope(source, start, end))
+        while excluded_index < len(excluded_ranges) and excluded_ranges[excluded_index][1] <= start:
+            excluded_index += 1
+        if (
+            excluded_index < len(excluded_ranges)
+            and start < excluded_ranges[excluded_index][1]
+            and excluded_ranges[excluded_index][0] < end
+        ):
+            raise InvalidRegionError("inline scope overlaps an opaque or protected block")
+        inline_candidates.extend(scan_inline_scope(source, start, end, container=scope.context))
         previous_scope_end = end
 
-    math_candidates = tuple(
-        candidate for candidate in selected if candidate.kind is not RegionKind.code_span
+    math_candidates = _merge_candidates(
+        block_candidates,
+        tuple(
+            candidate
+            for candidate in inline_candidates
+            if candidate.kind is not RegionKind.code_span
+        ),
     )
     regions = tuple(
         candidate.to_region(source, index=index) for index, candidate in enumerate(math_candidates)
