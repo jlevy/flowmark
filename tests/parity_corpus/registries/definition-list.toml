@@ -1,0 +1,54 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.extension.definition-list.terms-definitions"
+change_id = "FM-EXT-DEFINITION-LIST-001"
+description = "Multiple terms and definitions retain marker choice, spacing, continuations, inline math, code, and typography."
+kind = "stdin"
+tags = ["definition-list", "desired-output", "extension", "math", "preservation", "stdin", "typography"]
+args = ["--width", "22", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/definition-list/terms-definitions/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/definition-list/terms-definitions/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.definition-list.containers"
+change_id = "FM-EXT-DEFINITION-LIST-001"
+description = "Definition lists inside quote and list containers retain compatible prefixes and nested blocks."
+kind = "stdin"
+tags = ["container", "definition-list", "desired-output", "extension", "nested", "preservation", "stdin"]
+args = ["--width", "20", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/definition-list/containers/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/definition-list/containers/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.definition-list.opaque-boundary"
+change_id = "FM-EXT-DEFINITION-LIST-001"
+description = "Indented fenced code and false markers stay inside a definition while following prose remains formatable."
+kind = "stdin"
+tags = ["boundary", "code-fence", "definition-list", "desired-output", "extension", "preservation", "stdin"]
+args = ["--width", "24", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/definition-list/opaque-boundary/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/definition-list/opaque-boundary/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.definition-list.fallback"
+change_id = "FM-EXT-DEFINITION-LIST-001"
+description = "Orphan, joined, over-indented, and over-separated markers remain ordinary Markdown beside colon containers."
+kind = "stdin"
+tags = ["ambiguity", "definition-list", "extension", "fallback", "malformed", "stdin"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/definition-list/fallback/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/definition-list/fallback/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

@@ -220,6 +220,16 @@ def test_toml_frontmatter_requires_exact_root_delimiters() -> None:
     assert not any(region.kind is RegionKind.toml_frontmatter for region in indented)
 
 
+def test_definition_lists_require_marker_columns_and_stop_before_plain_suffix() -> None:
+    source = normalize_source(
+        "Term\n: Definition\n\n  Continued block\n\nSuffix\n\nNot a term\n   : over-indented"
+    )
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [RegionKind.definition_list]
+    assert regions[0].source == "Term\n: Definition\n\n  Continued block\n"
+
+
 def test_unmatched_outer_block_retains_closed_inner_and_not_sibling_closers() -> None:
     source = normalize_source("\\begin{outer}\n\\begin{inner}\nbody\n\\end{inner}\n\n- $$\n- $$")
 

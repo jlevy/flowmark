@@ -1,0 +1,17 @@
+: orphan marker
+
+Term with joined colon :ordinary colon text
+
+Three-space marker term : not a definition
+
+Term separated too far
+
+: definition too far
+
+::: unmatched container : not its definition
+
+::: note
+colon container stays exact
+:::
+
+Tail “formats”…

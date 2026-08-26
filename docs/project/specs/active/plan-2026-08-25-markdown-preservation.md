@@ -511,6 +511,32 @@ nesting, unmatched behavior, and a case matrix before implementation. Parser sup
 replace a passthrough rule only after the same shared cases prove exact or intentionally
 canonical output in both ports.
 
+### Definition-list contract
+
+Definition-list recognition follows Pandoc's `definition_lists` extension without asking
+the user to select a dialect. One or more nonblank, single-line terms in one logical
+container may be followed by one blank line and then a definition marker. A marker may be
+indented zero, one, or two columns, is `:` or `~`, and is followed by horizontal whitespace
+or the end of the logical line. A marker without first-line content is accepted so an
+indented block may supply the definition body. Three-space marker indentation,
+`:ordinary` text, and a marker without a preceding term are not openers.
+
+The protected extent includes every definition for the term run, lazy paragraph
+continuations, blank-separated blocks indented to the marker's content column, and nested
+list or quote blocks. After a blank boundary, another compatible term run plus marker
+continues the same definition list. A nonindented ordinary paragraph ends the region, and
+its separating blank line remains outside the protected slice. Existing fenced and
+indented code may be contained by a completed definition-list region, but delimiter-like
+text inside those opaque blocks never starts a definition list.
+
+The shared matrix covers multiple terms and definitions using both markers, compact and
+loose spacing, lazy and indented continuation, empty first lines, outer list and quote
+containers, nested blocks, inline math and code, opaque code containing false markers,
+source-exact typography shielding, a transformable suffix, and malformed or ambiguous
+fallbacks. The portable scanners may use small native tests for marker columns and extent
+boundaries; observable behavior belongs to `FM-EXT-DEFINITION-LIST-001` in the shared
+corpus.
+
 Custom delimiter configuration is a later additive feature. It must register rules in the
 same scanner and cannot weaken built-in protection by default.
 

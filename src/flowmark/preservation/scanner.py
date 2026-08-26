@@ -1278,6 +1278,246 @@ def scan_toml_frontmatter(
     return ()
 
 
+def _definition_marker(
+    source: NormalizedSource,
+    line: ContainerLine,
+    frames: tuple[_ContainerFrame, ...],
+) -> int | None:
+    """Return the marker body column for a compatible Pandoc definition line."""
+    if line.lazy:
+        return None
+    content = _content_under_frames(source, line, frames)
+    if content is None:
+        return None
+    index, end, column = content
+    index, column = _consume_indent(source.text, index, end, column, maximum=2)
+    if index >= end or source.text[index] not in ":~":
+        return None
+    index += 1
+    column += 1
+    if index < end and source.text[index] not in " \t":
+        return None
+    while index < end and source.text[index] in " \t":
+        column = _advance_column(column, source.text[index])
+        index += 1
+    return column
+
+
+def _definition_continuation_column(
+    source: NormalizedSource,
+    line: ContainerLine,
+    frames: tuple[_ContainerFrame, ...],
+) -> int | None:
+    content = _content_under_frames(source, line, frames)
+    if content is None:
+        return None
+    index, end, column = content
+    while index < end and source.text[index] in " \t":
+        column = _advance_column(column, source.text[index])
+        index += 1
+    return column
+
+
+def _definition_payload(
+    source: NormalizedSource,
+    line: ContainerLine,
+    frames: tuple[_ContainerFrame, ...],
+) -> str:
+    if line.frames == frames:
+        return _line_payload(source, line)
+    return _line_payload(source, line, frames=frames)
+
+
+def _definition_term_line(
+    source: NormalizedSource,
+    line: ContainerLine,
+    frames: tuple[_ContainerFrame, ...],
+    *,
+    opaque: bool,
+) -> bool:
+    if opaque or line.lazy or line.frames != frames:
+        return False
+    payload = _definition_payload(source, line, frames)
+    if not payload or _definition_marker(source, line, frames) is not None:
+        return False
+    colon_fence = _COLON_FENCE.fullmatch(payload)
+    if colon_fence is not None:
+        return False
+    start, end = _line_payload_bounds(source, line)
+    return not _starts_block_structure(source.text, start, end)
+
+
+def _definition_term_start(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...],
+    marker_index: int,
+    frames: tuple[_ContainerFrame, ...],
+    opaque: tuple[bool, ...],
+) -> int | None:
+    term_end = marker_index - 1
+    if term_end < 0:
+        return None
+    if _content_under_frames(source, lines[term_end], frames) is None:
+        return None
+    if _definition_payload(source, lines[term_end], frames) == "":
+        term_end -= 1
+        if (
+            term_end < 0
+            or _content_under_frames(source, lines[term_end], frames) is None
+            or _definition_payload(source, lines[term_end], frames) == ""
+        ):
+            return None
+
+    if not _definition_term_line(
+        source,
+        lines[term_end],
+        frames,
+        opaque=opaque[term_end],
+    ):
+        return None
+
+    term_start = term_end
+    while term_start >= 0:
+        line = lines[term_start]
+        if not _definition_term_line(
+            source,
+            line,
+            frames,
+            opaque=opaque[term_start],
+        ):
+            break
+        term_start -= 1
+    term_start += 1
+    return term_start if term_start <= term_end else None
+
+
+def _definition_term_sequence(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...],
+    start_index: int,
+    frames: tuple[_ContainerFrame, ...],
+    opaque: tuple[bool, ...],
+) -> tuple[int, int] | None:
+    """Find a compatible term run plus marker after a list-internal blank."""
+    index = start_index
+    terms = 0
+    while index < len(lines):
+        line = lines[index]
+        if opaque[index] or line.lazy or line.frames != frames:
+            return None
+        payload = _definition_payload(source, line, frames)
+        if payload == "":
+            break
+        marker_column = _definition_marker(source, line, frames)
+        if marker_column is not None:
+            return (index, marker_column) if terms else None
+        if not _definition_term_line(source, line, frames, opaque=False):
+            return None
+        terms += 1
+        index += 1
+    if not terms or index >= len(lines):
+        return None
+    index += 1
+    if index >= len(lines):
+        return None
+    line = lines[index]
+    if opaque[index] or line.lazy or line.frames != frames:
+        return None
+    marker_column = _definition_marker(source, line, frames)
+    return None if marker_column is None else (index, marker_column)
+
+
+def scan_definition_lists(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+    opaque_blocks: tuple[OpaqueBlock, ...] = (),
+) -> tuple[Candidate, ...]:
+    """Preserve complete Pandoc definition lists with portable extent rules."""
+    views = build_container_view(source) if lines is None else lines
+    opaque = _opaque_line_flags(views, opaque_blocks)
+    candidates: list[Candidate] = []
+    marker_index = 0
+    while marker_index < len(views):
+        marker = views[marker_index]
+        frames = marker.frames
+        marker_column = None if opaque[marker_index] else _definition_marker(source, marker, frames)
+        term_start = (
+            None
+            if marker_column is None
+            else _definition_term_start(source, views, marker_index, frames, opaque)
+        )
+        if marker_column is None or term_start is None:
+            marker_index += 1
+            continue
+
+        final_index = marker_index
+        scan_index = marker_index + 1
+        blank_start: int | None = None
+        while scan_index < len(views):
+            line = views[scan_index]
+            if _content_under_frames(source, line, frames) is None:
+                break
+            payload = _line_payload(source, line, frames=frames)
+            if payload == "":
+                if blank_start is None:
+                    blank_start = scan_index
+                scan_index += 1
+                continue
+
+            next_marker_column = (
+                None if opaque[scan_index] else _definition_marker(source, line, frames)
+            )
+            if blank_start is None:
+                final_index = scan_index
+                if next_marker_column is not None:
+                    marker_column = next_marker_column
+                scan_index += 1
+                continue
+
+            continuation_column = _definition_continuation_column(source, line, frames)
+            deeper_container = len(line.frames) > len(frames)
+            if next_marker_column is not None:
+                final_index = scan_index
+                marker_column = next_marker_column
+                blank_start = None
+                scan_index += 1
+                continue
+            if deeper_container or (
+                continuation_column is not None and continuation_column >= marker_column
+            ):
+                final_index = scan_index
+                blank_start = None
+                scan_index += 1
+                continue
+            next_item = _definition_term_sequence(
+                source,
+                views,
+                scan_index,
+                frames,
+                opaque,
+            )
+            if next_item is None:
+                break
+            next_marker_index, marker_column = next_item
+            final_index = next_marker_index
+            blank_start = None
+            scan_index = next_marker_index + 1
+
+        opener = views[term_start]
+        candidates.append(
+            Candidate(
+                RegionKind.definition_list,
+                RegionForm.block,
+                opener.start,
+                views[final_index].end,
+                opener.context,
+                _scaffold_prefix(source, opener),
+            )
+        )
+        marker_index = final_index + 1
+    return tuple(candidates)
+
+
 def resolve_candidate_tree(
     source: NormalizedSource, candidates: tuple[Candidate, ...]
 ) -> tuple[Candidate, ...]:
@@ -1512,6 +1752,7 @@ def scan_protected_regions(
             *scan_pandoc_multiline_tables(source, lines, opaque_blocks),
             *scan_obsidian_callouts(source, lines, opaque_blocks),
             *scan_colon_containers(source, lines, opaque_blocks),
+            *scan_definition_lists(source, lines, opaque_blocks),
             *scan_display_math(source, lines, opaque_blocks),
             *scan_environment_blocks(source, lines, opaque_blocks),
         ),

@@ -36,6 +36,7 @@ class RegionKind(StrEnum):
     obsidian_callout = "obsidian_callout"
     colon_container = "colon_container"
     toml_frontmatter = "toml_frontmatter"
+    definition_list = "definition_list"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -65,6 +66,7 @@ _BLOCK_REGION_KINDS = frozenset(
         RegionKind.obsidian_callout,
         RegionKind.colon_container,
         RegionKind.toml_frontmatter,
+        RegionKind.definition_list,
         RegionKind.math_dollar_block,
         RegionKind.math_bracket_block,
         RegionKind.math_environment_block,

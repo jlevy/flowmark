@@ -8,6 +8,7 @@ case_registry = [
     "tests/parity_corpus/registries/obsidian-callout.toml",
     "tests/parity_corpus/registries/colon-container.toml",
     "tests/parity_corpus/registries/toml-frontmatter.toml",
+    "tests/parity_corpus/registries/definition-list.toml",
     "tests/parity_corpus/spec/commonmark-0.31.2/manifest.toml",
 ]
 
