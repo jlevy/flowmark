@@ -3,9 +3,9 @@ type: is
 id: is-01m0xzy6s60v1k1pmchfz8a3k9
 title: Define the versioned shared conformance corpus and seed current behavior
 kind: task
-status: open
+status: closed
 priority: 1
-version: 4
+version: 6
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -17,7 +17,11 @@ dependencies:
     target: is-01m0xscz8eky51d0x92qv044xh
 parent_id: is-01m0xn2b9tnj99k484920ysv9z
 created_at: 2026-08-26T02:56:09.506Z
-updated_at: 2026-08-26T02:56:57.400Z
+updated_at: 2026-08-26T03:15:44.951Z
+closed_at: 2026-08-26T03:15:44.950Z
+close_reason: Defined schema version 1, exact stdin/file-tree seed cases, portable payloads, shared malformed-manifest and intentional-failure fixtures, and the reviewed authoring contract. Full lint, 463 pytest tests, 133 tryscript checks, and build pass.
+resolution: null
+duplicate_of: null
 ---
 Implement the schema-owned portion of FM-CONFORMANCE-001 in the Python repository.
 
