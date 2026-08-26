@@ -1,0 +1,16 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "fixture.file-tree-mismatch"
+change_id = "FM-CONFORMANCE-001"
+description = "The expected tree intentionally contains a file the formatter does not create."
+kind = "files"
+tags = ["fixture"]
+args = ["--inplace", "--nobackup", "input.md"]
+before_tree = "tests/parity_corpus/runner-fixtures/trees/file-tree-mismatch/before"
+after_tree = "tests/parity_corpus/runner-fixtures/trees/file-tree-mismatch/after"
+expected_stdout = "tests/parity_corpus/runner-fixtures/payloads/expected.stderr"
+expected_stderr = "tests/parity_corpus/runner-fixtures/payloads/expected.stderr"
+expected_exit = 0
+idempotent = false

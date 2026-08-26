@@ -632,9 +632,9 @@ beads do not create parent-child deadlocks.
 
 ### Phase 0: shared conformance foundation (`fm-o5vk`)
 
-1. `fm-ltof` defines schema version 1, payload layout, shared runner fixtures, and reviewed
-   current-behavior seeds.
-2. `fm-4cfe` implements the Python built-binary runner after `fm-ltof`.
+1. `fm-ltof` (**complete**) defines schema version 1, payload layout, shared runner
+   fixtures, and reviewed current-behavior seeds.
+2. `fm-4cfe` (**complete**) implements the Python built-binary runner after `fm-ltof`.
 3. `fm-0agl` adds selective acceptance, reachability, Makefile, and CI gates after
    `fm-4cfe`.
 4. `fm-okli` makes upstream tryscript and topic fixtures executable-neutral after

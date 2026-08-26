@@ -19,6 +19,12 @@ outcome = "manifest-error"
 code = "duplicate-case-id"
 
 [[fixture]]
+id = "schema.duplicate-before-path"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/duplicate-before-path.toml"
+outcome = "manifest-error"
+code = "duplicate-case-id"
+
+[[fixture]]
 id = "schema.kind-field-conflict"
 manifest = "tests/parity_corpus/runner-fixtures/manifests/kind-field-conflict.toml"
 outcome = "manifest-error"
@@ -31,7 +37,25 @@ outcome = "manifest-error"
 code = "invalid-path"
 
 [[fixture]]
+id = "schema.missing-payload"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/missing-payload.toml"
+outcome = "manifest-error"
+code = "missing-path"
+
+[[fixture]]
+id = "schema.symlink-payload"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/symlink-payload.toml"
+outcome = "manifest-error"
+code = "symlink-path"
+
+[[fixture]]
 id = "comparison.stdout-mismatch"
 manifest = "tests/parity_corpus/runner-fixtures/manifests/stdout-mismatch.toml"
 outcome = "case-failure"
 code = "stdout-mismatch"
+
+[[fixture]]
+id = "comparison.file-tree-mismatch"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/file-tree-mismatch.toml"
+outcome = "case-failure"
+code = "file-tree-mismatch"
