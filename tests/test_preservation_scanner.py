@@ -355,7 +355,7 @@ def test_angle_scanner_rejects_comparisons_and_accepts_html_and_autolinks() -> N
         "| <15min | >25min |\n"
         "| <1.5x | >2.5x |\n\n"
         "[link](<foo\nbar>) "
-        "<x-card data-label=\"raw\"> <https://example.com/a> <7@example.com> "
+        '<x-card data-label="raw"> <https://example.com/a> <7@example.com> '
         "<!DOCTYPE html>"
     )
 

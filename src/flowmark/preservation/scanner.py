@@ -42,9 +42,7 @@ _HTML_BLOCK_TAG = re.compile(
     r"table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[ \t]+|/?>|\Z)",
     re.IGNORECASE,
 )
-_HTML_COMPLETE_TAG = re.compile(
-    r"</?[A-Za-z][A-Za-z0-9-]*(?:[ \t\n]+[^<>]*)?[ \t\n]*/?>[ \t]*\Z"
-)
+_HTML_COMPLETE_TAG = re.compile(r"</?[A-Za-z][A-Za-z0-9-]*(?:[ \t\n]+[^<>]*)?[ \t\n]*/?>[ \t]*\Z")
 _HTML_TAG_START = re.compile(r"</?[A-Za-z][A-Za-z0-9-]*(?:[ \t\n]|/?>)")
 _AUTOLINK_URI = re.compile(r"[A-Za-z][A-Za-z0-9.+-]{1,31}:[^<>\x00-\x20]*\Z")
 _AUTOLINK_EMAIL = re.compile(
