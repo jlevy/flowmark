@@ -3,15 +3,19 @@ type: is
 id: is-01m0y0a1jtnwfh4akan7197358
 title: "P1 vertical slice: raw multiline HTML blocks"
 kind: feature
-status: open
+status: closed
 priority: 2
-version: 1
+version: 2
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
 parent_id: is-01kyss8fvgc7k0yb2xqjz8b0h2
 created_at: 2026-08-26T03:02:37.401Z
-updated_at: 2026-08-26T03:02:37.401Z
+updated_at: 2026-08-26T12:54:51.047Z
+closed_at: 2026-08-26T12:54:51.046Z
+close_reason: null
+resolution: null
+duplicate_of: null
 ---
 After P0 parity, preserve raw multiline HTML using CommonMark 0.31.2 HTML-block boundaries and one shared change ID.
 
