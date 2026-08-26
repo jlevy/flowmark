@@ -3,9 +3,9 @@ type: is
 id: is-01m0y02vbss1rhf6xgcwtf8qef
 title: Implement the Python collision-safe bridge and parser adapter
 kind: task
-status: in_progress
+status: closed
 priority: 1
-version: 3
+version: 4
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -13,7 +13,11 @@ dependencies:
     target: is-01m0y03afg7925xv1gk4v82zxw
 parent_id: is-01m0xn1kf4s20aga85f298dzww
 created_at: 2026-08-26T02:58:41.654Z
-updated_at: 2026-08-26T08:48:11.631Z
+updated_at: 2026-08-26T09:06:10.491Z
+closed_at: 2026-08-26T09:06:10.489Z
+close_reason: Implemented deterministic PUA/base36 substitution, form-aware Marko nodes, protected transform boundaries, and fail-closed restoration in the current commit; 514 pytest tests and all lint/type gates pass.
+resolution: null
+duplicate_of: null
 ---
 Carry typed source regions through Marko without asking Marko to recognize their syntax.
 
