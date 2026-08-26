@@ -3,9 +3,9 @@ type: is
 id: is-01m0xzyw7t9wk8zt69b0p5q0k4
 title: Add selective golden acceptance, reachability, and CI gates
 kind: task
-status: open
+status: in_progress
 priority: 1
-version: 4
+version: 5
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -17,7 +17,7 @@ dependencies:
     target: is-01m0y0056wzdgx731m97mrka76
 parent_id: is-01m0xn2b9tnj99k484920ysv9z
 created_at: 2026-08-26T02:56:31.481Z
-updated_at: 2026-08-26T03:06:11.904Z
+updated_at: 2026-08-26T03:32:53.149Z
 ---
 Make the shared corpus load-bearing and safe to maintain.
 
