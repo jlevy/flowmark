@@ -1,5 +1,4 @@
-<!-- Historical parity corner cases covering D1-D16 and P1-P9.
-     Shared expected outputs are reviewed in tests/parity_corpus. -->
+<!-- Historical cross-language parity corner cases D1-D16 and P1-P9. -->
 
 # Corner Cases: Parity Test Document
 
