@@ -3,9 +3,9 @@ type: is
 id: is-01m0xn1k559xy7eg2a2zgpxqy5
 title: "Phase 1A: define shared desired-output math behavior"
 kind: feature
-status: open
+status: closed
 priority: 1
-version: 6
+version: 7
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
@@ -14,7 +14,11 @@ child_order_hints:
   - is-01m0y00nt855jn33j93519akpr
   - is-01m0y00zvn2e13edc2zyfx6jxn
 created_at: 2026-08-25T23:45:46.149Z
-updated_at: 2026-08-26T03:03:46.277Z
+updated_at: 2026-08-26T07:46:00.545Z
+closed_at: 2026-08-26T07:46:00.545Z
+close_reason: Committed reviewed language-neutral desired-output math contract and pre-fix classification in 9ee6444; full lint, type, conformance, pytest, and tryscript gates pass.
+resolution: null
+duplicate_of: null
 ---
 Parent for the red shared tests that define FM-PRESERVE-CORE-001, FM-MATH-INLINE-001, and FM-MATH-BLOCK-001 before implementation. Use minimal exact cases for pinpoint behavior plus math.md and reference/CommonMark layers for interactions. Cover the full recognition, normalization, parser-collision, container, wrapping, transform, mode, I/O, malformed, idempotence, and adversarial matrices without building a Cartesian product.
 

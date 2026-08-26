@@ -5,15 +5,17 @@ title: Make Python wrapping and transforms protected-token aware
 kind: task
 status: open
 priority: 1
-version: 2
+version: 3
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
   - type: blocks
     target: is-01m0y03qynte7p5034zweegvjy
+  - type: blocks
+    target: is-01m0yfybntamn9fw3nefnr2fpt
 parent_id: is-01m0xn1kf4s20aga85f298dzww
 created_at: 2026-08-26T02:58:57.125Z
-updated_at: 2026-08-26T02:59:10.931Z
+updated_at: 2026-08-26T07:35:51.737Z
 ---
 Teach existing formatting stages to preserve token boundaries and use side-table widths.
 
