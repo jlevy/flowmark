@@ -5,7 +5,7 @@ title: "Markdown preservation: never corrupt what the parser does not model"
 kind: epic
 status: open
 priority: 1
-version: 10
+version: 12
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
@@ -19,7 +19,9 @@ child_order_hints:
   - is-01kyss8fvgc7k0yb2xqjz8b0h2
   - is-01kyss8gskyz68yaky5j8vrnpx
   - is-01m0xn2b9tnj99k484920ysv9z
+  - is-01m0xpsyq253tk2p90pq8vsz7c
+  - is-01m0xpsz0wkaw5gvdzc6q1xa9b
 created_at: 2026-08-25T23:45:29.170Z
-updated_at: 2026-08-25T23:46:10.874Z
+updated_at: 2026-08-26T00:16:33.308Z
 ---
 Umbrella for both tracks of the consolidated spec. Track A is mathematics (highest priority, measured, corpus written). Track B is the rest of the #62 ledger. One mechanism: recognise a construct well enough to bound it, then emit it byte-for-byte. Supersedes the never-written plan-2026-07-30-rare-markdown-preservation.md that fm-drjv, fm-7vmg and fm-w467 reference.
