@@ -3,9 +3,9 @@ type: is
 id: is-01m0xn1kf4s20aga85f298dzww
 title: "Phase 1B: implement the Python preservation core and math"
 kind: feature
-status: open
+status: closed
 priority: 1
-version: 14
+version: 15
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
@@ -21,7 +21,11 @@ child_order_hints:
   - is-01m0yfybntamn9fw3nefnr2fpt
   - is-01m0yqefdexrdhzxa7hqg2cqj6
 created_at: 2026-08-25T23:45:46.467Z
-updated_at: 2026-08-26T09:46:59.873Z
+updated_at: 2026-08-26T09:57:18.170Z
+closed_at: 2026-08-26T09:57:18.168Z
+close_reason: "Python preservation core and math are complete through commit 87ef906: normalized UTF-8 model, portable scanners, fixed-width collision-safe bridge, parser/wrapping integration, byte-safe CLI I/O, direct output routing, reviewed shared goldens, full topic workflow, and all repository gates pass."
+resolution: null
+duplicate_of: null
 ---
 Parent for the Python pre-parse preservation pipeline after shared math cases are red: normalized UTF-8 byte model and registry; inline and container-aware block scanners; collision-safe side-table bridge; thin Marko adapter; token-aware transforms/wrapping; byte-safe CLI integration; and reviewed blast-radius closeout.
 
