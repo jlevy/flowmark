@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from functools import cache
 from typing import Protocol
 
@@ -10,6 +11,8 @@ from flowmark.linewrapping.tag_handling import (
     denormalize_adjacent_tags,
     normalize_adjacent_tags,
 )
+from flowmark.preservation.bridge import InvalidTokenError, ProtectedSource
+from flowmark.preservation.model import ProtectedRegion, RegionForm
 
 DEFAULT_LEN_FUNCTION = len
 """
@@ -48,6 +51,154 @@ class _HtmlMdWordSplitter:
         # Normalize adjacent tags so paired tags tokenize as separate words.
         text = normalize_adjacent_tags(text)
         return [word.text for word in iter_atomic_words(text, ATOMIC_PATTERNS)]
+
+
+@dataclass(frozen=True, slots=True)
+class _WrappingFragment:
+    """Plain parser text or one protected inline region inside a wrapping word."""
+
+    text: str
+    region: ProtectedRegion | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _TextMetrics:
+    """Widths before the first and after the final authored protected LF."""
+
+    first_width: int
+    final_width: int
+    has_authored_break: bool
+
+
+def _protected_token_map(protected: ProtectedSource) -> dict[str, ProtectedRegion]:
+    if len(protected.tokens) != len(protected.regions):
+        raise InvalidTokenError("protected side table lengths do not match")
+    token_map = dict(zip(protected.tokens, protected.regions, strict=True))
+    if len(token_map) != len(protected.tokens):
+        raise InvalidTokenError("protected side table contains duplicate tokens")
+    return token_map
+
+
+def _wrapping_fragments(
+    text: str,
+    protected: ProtectedSource,
+    token_map: dict[str, ProtectedRegion] | None = None,
+) -> tuple[_WrappingFragment, ...]:
+    """Split parser text at exact side-table tokens without interpreting their bodies."""
+    regions_by_token = _protected_token_map(protected) if token_map is None else token_map
+    fragments: list[_WrappingFragment] = []
+    position = 0
+    while True:
+        token_start = text.find(protected.sentinel, position)
+        if token_start < 0:
+            if position < len(text):
+                fragments.append(_WrappingFragment(text[position:]))
+            break
+        if position < token_start:
+            fragments.append(_WrappingFragment(text[position:token_start]))
+        sentinel_end = text.find(protected.sentinel, token_start + len(protected.sentinel))
+        if sentinel_end < 0:
+            raise InvalidTokenError("protected token lost its closing sentinel during wrapping")
+        token_end = sentinel_end + len(protected.sentinel)
+        token = text[token_start:token_end]
+        region = regions_by_token.get(token)
+        if region is None:
+            raise InvalidTokenError("unknown or malformed protected token during wrapping")
+        if region.form is not RegionForm.inline:
+            raise InvalidTokenError("opaque block token reached inline wrapping")
+        fragments.append(_WrappingFragment(token, region))
+        position = token_end
+    return tuple(fragments)
+
+
+def _measure_fragments(
+    fragments: tuple[_WrappingFragment, ...],
+    len_fn: Callable[[str], int],
+) -> _TextMetrics:
+    column = 0
+    first_width: int | None = None
+    has_authored_break = False
+    for fragment in fragments:
+        if fragment.region is None:
+            column += len_fn(fragment.text)
+            continue
+        widths = fragment.region.logical_widths
+        if not widths:
+            raise InvalidTokenError("protected inline token has no logical width metadata")
+        column += widths[0]
+        if len(widths) > 1:
+            if first_width is None:
+                first_width = column
+            has_authored_break = True
+            column = widths[-1]
+    return _TextMetrics(
+        first_width=column if first_width is None else first_width,
+        final_width=column,
+        has_authored_break=has_authored_break,
+    )
+
+
+def measure_protected_text(
+    text: str,
+    protected: ProtectedSource,
+    len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
+) -> _TextMetrics:
+    """Measure parser text using source-side widths for every protected token."""
+    return _measure_fragments(_wrapping_fragments(text, protected), len_fn)
+
+
+def _wrap_protected_words(
+    words: list[str],
+    *,
+    protected: ProtectedSource,
+    width: int,
+    initial_column: int,
+    subsequent_offset: int,
+    drop_whitespace: bool,
+    len_fn: Callable[[str], int],
+    is_markdown: bool,
+) -> list[str]:
+    """Wrap structured words while protected source controls width and authored LFs."""
+    lines: list[str] = []
+    current_line: list[str] = []
+    current_width = initial_column
+    first_line = True
+    token_map = _protected_token_map(protected)
+
+    for word in words:
+        metrics = _measure_fragments(_wrapping_fragments(word, protected, token_map), len_fn)
+        space_width = 1 if current_line else 0
+        if current_width + space_width + metrics.first_width <= width:
+            current_line.append(word)
+            if metrics.has_authored_break:
+                current_width = metrics.final_width
+                first_line = False
+            else:
+                current_width += space_width + metrics.final_width
+            continue
+
+        if current_line:
+            line = " ".join(current_line)
+            lines.append(line.strip() if drop_whitespace else line)
+            first_line = False
+
+        escaped_word = markdown_escape_word(word) if is_markdown and not first_line else word
+        escaped_metrics = _measure_fragments(
+            _wrapping_fragments(escaped_word, protected, token_map), len_fn
+        )
+        current_line = [escaped_word]
+        current_width = (
+            escaped_metrics.final_width
+            if escaped_metrics.has_authored_break
+            else subsequent_offset + escaped_metrics.final_width
+        )
+        if escaped_metrics.has_authored_break:
+            first_line = False
+
+    if current_line:
+        line = " ".join(current_line)
+        lines.append(line.strip() if drop_whitespace else line)
+    return lines
 
 
 @cache
@@ -91,6 +242,7 @@ def wrap_paragraph_lines(
     splitter: WordSplitter | None = None,
     len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
     is_markdown: bool = False,
+    protected_source: ProtectedSource | None = None,
 ) -> list[str]:
     r"""
     Wrap a single paragraph of text, returning a list of wrapped lines.
@@ -122,6 +274,18 @@ def wrap_paragraph_lines(
         splitter = get_html_md_word_splitter()
 
     words = splitter(text)
+
+    if protected_source is not None and protected_source.regions:
+        return _wrap_protected_words(
+            words,
+            protected=protected_source,
+            width=width,
+            initial_column=initial_column,
+            subsequent_offset=subsequent_offset,
+            drop_whitespace=drop_whitespace,
+            len_fn=len_fn,
+            is_markdown=is_markdown,
+        )
 
     current_line: list[str] = []
     current_width = initial_column
@@ -178,6 +342,7 @@ def wrap_paragraph(
     word_splitter: WordSplitter | None = None,
     len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
     is_markdown: bool = False,
+    protected_source: ProtectedSource | None = None,
 ) -> str:
     """
     Wrap lines of a single paragraph of plain text, returning a new string.
@@ -192,6 +357,7 @@ def wrap_paragraph(
         subsequent_offset=len_fn(subsequent_indent),
         len_fn=len_fn,
         is_markdown=is_markdown,
+        protected_source=protected_source,
     )
     # Now insert indents on first and subsequent lines, if needed.
     if initial_indent and initial_column == 0 and len(lines) > 0:

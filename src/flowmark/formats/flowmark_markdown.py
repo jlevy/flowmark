@@ -19,6 +19,7 @@ from marko.source import Source
 from typing_extensions import override
 
 from flowmark.linewrapping.line_wrappers import (
+    bind_protected_source,
     line_wrap_by_sentence,
     line_wrap_to_width,
 )
@@ -958,6 +959,8 @@ def flowmark_markdown(
     Marko Markdown setup for GFM with a few customizations for Flowmark and a new
     renderer that normalizes Markdown according to Flowmark's conventions.
     """
+
+    line_wrapper = bind_protected_source(line_wrapper, _protected_source)
 
     class CustomRenderer(MarkdownNormalizer):
         def __init__(self) -> None:
