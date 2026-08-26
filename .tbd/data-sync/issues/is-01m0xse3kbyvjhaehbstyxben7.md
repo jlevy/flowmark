@@ -3,15 +3,19 @@ type: is
 id: is-01m0xse3kbyvjhaehbstyxben7
 title: "M3 fix: route smartquotes and ellipses through iter_atomic_spans"
 kind: bug
-status: open
+status: closed
 priority: 1
-version: 2
+version: 3
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
 parent_id: is-01m0xn1kf4s20aga85f298dzww
 created_at: 2026-08-26T01:02:30.507Z
-updated_at: 2026-08-26T01:02:58.904Z
+updated_at: 2026-08-26T01:38:18.204Z
+closed_at: 2026-08-26T01:38:18.204Z
+close_reason: "Withdrawn by review FM-PR71-01: same reason. Typography will consume typed protected regions from the pre-parse scanner instead of rediscovering spans post-parse."
+resolution: canceled
+duplicate_of: null
 ---
 Sites: src/flowmark/typography/smartquotes.py and src/flowmark/typography/ellipses.py.
 
