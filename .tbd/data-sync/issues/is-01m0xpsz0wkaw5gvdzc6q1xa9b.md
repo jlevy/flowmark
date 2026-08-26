@@ -5,13 +5,19 @@ title: "Track C Phase 2: inline code corpus, red tests, and the C1/C2 fixes"
 kind: task
 status: open
 priority: 1
-version: 2
+version: 7
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
 parent_id: is-01m0xn12jj483njnx12sm0sjs1
+child_order_hints:
+  - is-01m0xsc02hwk2b4xnmww9869yk
+  - is-01m0xscdmzyb7m84p8mtscn2j5
+  - is-01m0xscyy7w21twx4n4p5pgvh5
+  - is-01m0xscz8eky51d0x92qv044xh
+  - is-01m0xsczjbncpddwkvxsehvmsz
 created_at: 2026-08-26T00:16:33.308Z
-updated_at: 2026-08-26T00:17:27.972Z
+updated_at: 2026-08-26T01:01:53.611Z
 ---
 Phase 2 of the consolidated spec, scheduled ahead of the math fixes because inline code owns the shared span code path.
 
