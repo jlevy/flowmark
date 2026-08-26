@@ -344,6 +344,7 @@ Asserts full output with no truncation. This test validates:
   form, never the fragile shortcut `[label]` form (issue #45)
 - Footnote definitions stay in their original position (not moved to end)
 - Nested list spacing matches Python (no extra blank lines)
+- Raw HTML blocks remain source-exact
 - All other Markdown structures round-trip correctly
 
 ````console
@@ -432,7 +433,9 @@ A [collapsed][] reference where label equals text.
 
 **Bold text** and *italic text* and ~~strikethrough~~.
 
-<div class="html-block"> HTML block content. </div>
+<div class="html-block">
+HTML block content.
+</div>
 
 Inline <em>HTML emphasis</em> here.
 
