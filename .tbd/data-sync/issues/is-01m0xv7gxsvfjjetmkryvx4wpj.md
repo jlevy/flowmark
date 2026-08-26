@@ -5,7 +5,7 @@ title: "Address review: PR #71 — senior review of the preservation spec"
 kind: task
 status: open
 priority: 1
-version: 8
+version: 9
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
@@ -17,6 +17,7 @@ child_order_hints:
   - is-01m0xv7jntgc2frvg09d778cgc
   - is-01m0xv7jzx9wedx8s4scnqcgtr
   - is-01m0xv7ka05y737bj012y5fj5f
+  - is-01m0xwqg0hf3zsw7jsqqv3g69a
 created_at: 2026-08-26T01:33:51.917Z
-updated_at: 2026-08-26T01:33:54.368Z
+updated_at: 2026-08-26T02:00:03.856Z
 ---
