@@ -5,15 +5,13 @@ title: "M1 fix: add inline math atomic patterns for $…$, one-line $$…$$ and 
 kind: bug
 status: closed
 priority: 1
-version: 4
+version: 5
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
-dependencies:
-  - type: blocks
-    target: is-01m0xse3xhcna7jm56zb5vj4hk
+dependencies: []
 parent_id: is-01m0xn1kf4s20aga85f298dzww
 created_at: 2026-08-26T01:02:30.167Z
-updated_at: 2026-08-26T01:38:17.577Z
+updated_at: 2026-08-26T02:58:28.474Z
 ---
 Site: src/flowmark/linewrapping/atomic_patterns.py. Add three AtomicPattern entries beside INLINE_CODE_SPAN and MARKDOWN_LINK, then list them in ATOMIC_PATTERNS and in MARKDOWN_INLINE_PATTERNS (a sentence boundary must not fire inside a formula either).
 

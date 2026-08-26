@@ -1,16 +1,22 @@
 ---
 type: is
 id: is-01m0xn1krnmt64xkaw4dkzvc3k
-title: "Track A Phase 4: port math and inline-code fixes to flowmark-rs and re-establish parity"
-kind: task
+title: "Phase 2: port the preservation core and math directly to Rust"
+kind: feature
 status: open
 priority: 1
-version: 2
+version: 6
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
 parent_id: is-01m0xn12jj483njnx12sm0sjs1
+child_order_hints:
+  - is-01m0y04eekb6m93y6akzk6m15j
+  - is-01m0y04scg1bkvmbn4bgjx6dk8
+  - is-01m0y0543cmz5ta9mnenqqq4c6
 created_at: 2026-08-25T23:45:46.773Z
-updated_at: 2026-08-26T00:17:49.978Z
+updated_at: 2026-08-26T03:03:46.919Z
 ---
-Mirror math.md and the tryscript changes into flowmark-rs. Port the fixes to src/wrapping/atomic_patterns.rs, src/formatter/filling.rs and the typography module. Regenerate admin/port-coverage-mapping/*.yaml, bump the literal counts in python/tests/test_smoke.py, and drive test_no_unmapped_entries back to zero. Run scripts/corpus-parity-check.sh and record which corpus it ran against.
+Parent for an idiomatic Rust implementation driven by the pinned upstream manifest and change IDs. Port the normalized byte model, registry, scanners, bridge, structured wrapping, comrak adapter, and CLI failure boundaries; then prove zero-new-divergence parity through shared conformance, tryscript, topic, reference, and CommonMark layers.
+
+Do not mirror Python fixtures, regexes, unit-test names, or object layout. The Rust repository already has preservation-related PUA/NUL workarounds; replace them deliberately as shared cases become green rather than stacking a second mechanism. Completion is the submodule commit plus exact passing case IDs and updated port ledger.

@@ -1,25 +1,22 @@
 ---
 type: is
 id: is-01m0xsczjbncpddwkvxsehvmsz
-title: Survey and regenerate the goldens the Track C fixes change
+title: Review Python code-span goldens and close C1/C2 by shared evidence
 kind: task
 status: open
 priority: 1
-version: 2
+version: 4
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
-dependencies: []
+dependencies:
+  - type: blocks
+    target: is-01m0y06s6yse0c28j4fa8mz1vs
 parent_id: is-01m0xpsz0wkaw5gvdzc6q1xa9b
 created_at: 2026-08-26T01:01:53.611Z
-updated_at: 2026-08-26T01:02:17.779Z
+updated_at: 2026-08-26T03:00:50.523Z
 ---
-The Track C fixes change output for any document with multiple spaces inside a code span, or a wide delimiter around content containing backticks. Survey before assuming the blast radius is small.
+Close the Python FM-CODE-SPAN-001 phase by reviewing every affected layer.
 
-Known in advance:
-- tests/tryscript/fixtures/content/code-inline.md — the corpus itself.
-- tests/testdocs/testdoc.orig.md and its four expected files — check for code spans with internal runs.
-- tests/tryscript/fixtures/content/comprehensive.md — already the one fixture that differs between the Python and Rust repos, so re-check both after regenerating.
+Run the exact shared code-span cases, upstream code-inline.md tryscript workflow and second pass, all four reference-document modes, CommonMark documents, repository Markdown, and full lint/test/build. Use selective case-ID acceptance and classify each changed byte as intended source preservation or regression. Pay special attention to spec tables and documentation containing backticks, table cells versus paragraphs/headings, tabs, authored soft line endings, semantic wrapping, and inputs with no protected spans.
 
-Method: run the formatter over each fixture before and after the fixes, diff, and classify every change as either "the fix working" or "a regression". Do not regenerate goldens wholesale without reading the diff; the point of the survey is that a golden refresh hides exactly the class of bug this phase exists to fix.
-
-Also re-check the flowmark repo's own Markdown, since `make format` runs flowmark over the tree and any doc quoting backticks inside a wide delimiter will shift once.
+Update fm-dq8n and fm-bj2c only when the shared cases prove C1/C2 closed. No broad golden regeneration and no corrupt current output may be accepted as truth. Acceptance: Python is green, idempotent, has no unexplained blast-radius churn, and the exact upstream commit/change IDs are ready for Rust.

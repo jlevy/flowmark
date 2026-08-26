@@ -1,11 +1,11 @@
 ---
 type: is
 id: is-01m0xscyy7w21twx4n4p5pgvh5
-title: "Add tests/test_code_spans.py: delimiter and interior integrity properties"
+title: Add shared source-exact conformance cases for inline code spans
 kind: task
 status: open
 priority: 1
-version: 4
+version: 5
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -15,18 +15,15 @@ dependencies:
     target: is-01m0xsc02hwk2b4xnmww9869yk
 parent_id: is-01m0xpsz0wkaw5gvdzc6q1xa9b
 created_at: 2026-08-26T01:01:52.966Z
-updated_at: 2026-08-26T01:02:18.456Z
+updated_at: 2026-08-26T03:00:27.001Z
 ---
-New file tests/test_code_spans.py, alongside the existing tests/test_escape_handling.py and tests/test_wrapping.py.
+Write FM-CODE-SPAN-001 as desired-output cases in the language-neutral manifest before changing Python code.
 
-Assert properties rather than golden text, so the tests survive legitimate reflow and only fail on real corruption:
+Files:
+- tests/parity_corpus/manifest.toml
+- tests/parity_corpus/cases/preservation/code-span/**
+- tests/tryscript/fixtures/content/code-inline.md as the complementary integration document
 
-1. Delimiter integrity — for every code span in the input, the output span's CONTENT is byte-identical and its delimiter run is long enough that the content cannot close it early. Drives fm-fa8p.
-2. Interior integrity — non-whitespace content unchanged, and runs of spaces and tabs inside a span preserved. Drives fm-9ey6.
-3. The one permitted transform — a line ending inside a span becomes a space, per CommonMark 6.1.
-4. Atomicity — a span crossing the wrap column moves whole, is never split, and is never escaped even when its content begins with a list marker. Passes today; regression cover.
-5. Idempotence — a second pass is a no-op. This is what would have caught the `  a  ` -> ` a ` -> `a` progression.
+Cover authored delimiter runs of arbitrary length, bodies containing shorter/equal/different runs, leading/trailing/all-space bodies, tabs, authored soft newlines, empty/malformed/unclosed spans, escapes, Unicode, adjacency, wrapping N-1/N/N+1, paragraphs/headings/lists/quotes/tables/links, every transform/mode, stdin/files/in-place, and idempotence. The formatter policy is source-exact: valid spans preserve authored delimiters and body after document-level normalization; do not canonicalize them through CommonMark renderer rules.
 
-A shared helper for "non-whitespace characters unchanged" is worth extracting; both this file and the math tests want it.
-
-Parse spans with a backtick-run-aware regex, not a naive one, or the test cannot see the C1 failures it exists to catch.
+Small native scanner vectors may be added to tests/test_preservation_scanner.py only for run matching or arbitration diagnostics. Do not build a second Python-only output oracle or compare stripped whitespace. Acceptance: C1 and C2 fail against exact shared expected bytes before implementation and all already-correct contexts are pinned.

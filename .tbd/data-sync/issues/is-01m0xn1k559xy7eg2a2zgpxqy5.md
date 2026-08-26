@@ -1,19 +1,24 @@
 ---
 type: is
 id: is-01m0xn1k559xy7eg2a2zgpxqy5
-title: "Track A Phase 1: math corpus and red tests"
-kind: task
+title: "Phase 1A: define shared desired-output math behavior"
+kind: feature
 status: open
 priority: 1
-version: 3
+version: 6
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
 parent_id: is-01m0xn12jj483njnx12sm0sjs1
+child_order_hints:
+  - is-01m0y00nt855jn33j93519akpr
+  - is-01m0y00zvn2e13edc2zyfx6jxn
 created_at: 2026-08-25T23:45:46.149Z
-updated_at: 2026-08-26T02:41:48.633Z
+updated_at: 2026-08-26T03:03:46.277Z
 ---
-Build the math coverage from shared tests first. Expand the upstream math.md integration fixture, add minimal desired-output cases for the complete math matrix under stable change IDs, run the same cases in Python and Rust, and wire the same upstream fixture into the shared tryscript and whole-document layers. Add only a small number of Python-native scanner/property tests for byte-index, state-machine, adapter, and fail-closed invariants that cannot be isolated cleanly at the shared CLI boundary.
+Parent for the red shared tests that define FM-PRESERVE-CORE-001, FM-MATH-INLINE-001, and FM-MATH-BLOCK-001 before implementation. Use minimal exact cases for pinpoint behavior plus math.md and reference/CommonMark layers for interactions. Cover the full recognition, normalization, parser-collision, container, wrapping, transform, mode, I/O, malformed, idempotence, and adversarial matrices without building a Cartesian product.
+
+Expected output is reviewed product intent, never a whitespace-stripped Python oracle or blindly captured known corruption. Small native tests belong with implementation children only when an internal invariant cannot be isolated at the shared CLI boundary.
 
 ## Notes
 
