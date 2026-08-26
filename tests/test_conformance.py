@@ -58,6 +58,15 @@ def test_shared_manifest_validates() -> None:
     assert "commonmark.default.0001" in case_ids
     assert "commonmark.default.0652" in case_ids
     assert "commonmark.auto.0650" in case_ids
+    commonmark_code_cases = [
+        case
+        for case in manifest.cases
+        if case.change_id == "FM-CODE-SPAN-001" and "commonmark" in case.tags
+    ]
+    assert [case.id for case in commonmark_code_cases] == [
+        f"commonmark.default.{number:04}" for number in range(328, 350)
+    ]
+    assert all("deferred" not in case.tags for case in commonmark_code_cases)
     assert {
         "preservation.core.invalid-utf8",
         "preservation.code-span.delimiter-runs",
@@ -74,6 +83,13 @@ def test_shared_manifest_validates() -> None:
     assert (
         sum(
             case.stdin == PurePosixPath("tests/tryscript/fixtures/content/math.md")
+            for case in manifest.cases
+        )
+        == 1
+    )
+    assert (
+        sum(
+            case.stdin == PurePosixPath("tests/tryscript/fixtures/content/code-inline.md")
             for case in manifest.cases
         )
         == 1

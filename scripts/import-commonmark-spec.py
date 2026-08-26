@@ -87,12 +87,45 @@ def _slug(value: str) -> str:
     return slug or "unknown"
 
 
+def _escape_is_even(text: str, index: int) -> bool:
+    backslashes = 0
+    index -= 1
+    while index >= 0 and text[index] == "\\":
+        backslashes += 1
+        index -= 1
+    return backslashes % 2 == 0
+
+
+def _contains_active(markdown: str, token: str) -> bool:
+    start = 0
+    while (index := markdown.find(token, start)) >= 0:
+        if _escape_is_even(markdown, index):
+            return True
+        start = index + len(token)
+    return False
+
+
 def _deferral(markdown: str, section: str) -> tuple[str, str, str] | None:
-    if "`" in markdown or section == "Code spans":
-        return "fm-ocpw", "FM-CODE-SPAN-001", "contains code-span or backtick syntax"
-    if section == "HTML blocks" or re.search(r"<[/!A-Za-z][^>]*>", markdown):
+    if section == "Code spans":
+        return "fm-ocpw", "FM-CODE-SPAN-001", "exercises CommonMark code-span syntax"
+    html_match = re.search(r"<[/!A-Za-z][^>]*>", markdown)
+    if section == "HTML blocks" or (
+        html_match is not None and _escape_is_even(markdown, html_match.start())
+    ):
         return "fm-w1tn", "FM-EXT-RAW-HTML-001", "contains raw or inline HTML syntax"
-    if (markdown.count("$") >= 2) or any(token in markdown for token in (r"\(", r"\[", r"\begin{")):
+    if "`" in markdown:
+        return (
+            "fm-w467",
+            "FM-COMMONMARK-001",
+            "backtick syntax outside the Code spans section requires general review",
+        )
+    active_dollars = sum(
+        markdown[index] == "$" and _escape_is_even(markdown, index)
+        for index in range(len(markdown))
+    )
+    if active_dollars >= 2 or any(
+        _contains_active(markdown, token) for token in (r"\(", r"\[", r"\begin{")
+    ):
         return "fm-ucy8", "FM-MATH-INLINE-001", "contains math-shaped delimiter syntax"
     return None
 

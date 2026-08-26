@@ -5,11 +5,6 @@ schema_version = 1
 # this prevents known corruption from becoming an intermediate golden.
 
 [[deferred]]
-path = "tests/tryscript/fixtures/content/code-inline.md"
-owner = "fm-ocpw"
-reason = "Activate with the Python code-span preservation fix."
-
-[[deferred]]
 path = "tests/tryscript/fixtures/content/html-blocks.md"
 owner = "fm-w1tn"
 reason = "Current formatting collapses raw multiline HTML."

@@ -19,15 +19,23 @@ uv run python scripts/import-commonmark-spec.py check
 
 The one-time `import` mode verifies both download checksums before extracting inputs.
 It refuses to replace an existing corpus.
-Generated formatter expectations are candidate decisions, not CommonMark HTML truth;
-`review-report.json` records their classification.
-The checked-in review has 363 active default cases and 21 active alternate-mode cases.
-It defers 71 code/backtick cases, 10 math-shaped cases, 102 HTML cases, and 106 cases
-where the baseline fails, emits stderr, is non-idempotent, or changes Marko-visible
-HTML. Each deferral commits the source bytes as desired output and names its owning
+Generated formatter expectations are candidate decisions, not CommonMark HTML truth.
+`review-report.json` records the one-time import classification: 363 active default
+cases, 21 active alternate-mode cases, 71 code/backtick deferrals, 10 math-shaped
+deferrals, 102 HTML deferrals, and 106 baseline-behavior deferrals.
+Each initial deferral committed the source bytes as desired output and named its owning
 bead, never a passing corrupt baseline.
-The official rendered HTML remains provenance, not Flowmark output: these cases test
-preservation and formatting, not parser conformance.
+
+The manifest is the current execution ledger and can advance beyond that initial report
+only through exact golden review.
+After source-exact inline-code preservation landed, examples 328 through 349—the
+complete CommonMark Code spans section—were activated under `FM-CODE-SPAN-001`. Example
+334 intentionally normalizes the soft newline between two spans while preserving both
+authored spans exactly.
+A backtick in another CommonMark section no longer assigns that case to the code-span
+change ID; those cases retain their actual HTML, fence, list, escape, or general review
+owner. The official rendered HTML remains provenance, not Flowmark output: these cases
+test preservation and formatting, not parser conformance.
 As a second review check, all 363 active defaults and 21 alternate outputs preserved the
 same parsed structure as their inputs under the locked MarkdownIt 4.2.0 CommonMark
 preset.
