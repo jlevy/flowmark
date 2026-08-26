@@ -16,10 +16,11 @@ export UV_EXCLUDE_NEWER
 # Tryscript resolves the implementation under test through this injected directory.
 # Rust supplies its Cargo binary directory when it consumes the same upstream scripts.
 FLOWMARK_BIN_DIR ?= $(CURDIR)/.venv/bin
+FLOWMARK_BIN ?= $(FLOWMARK_BIN_DIR)/flowmark
 
-.PHONY: default install lint lint-check test test-golden test-golden-coverage upgrade build clean \
-        format format-docs generate generate-readme generate-skill validate-skill \
-        check-release-pin benchmark profile reset-ref-docs
+.PHONY: default install lint lint-check test test-conformance accept-conformance test-golden \
+        test-golden-coverage upgrade build clean format format-docs generate generate-readme \
+        generate-skill validate-skill check-release-pin benchmark profile reset-ref-docs
 
 default: format install lint test
 
@@ -74,9 +75,19 @@ lint:
 lint-check:
 	uv run python devtools/lint.py --check
 
-test:
+test: test-conformance
 	uv run pytest
 	$(MAKE) test-golden
+
+test-conformance:
+	uv run python -m devtools.conformance coverage
+	uv run python -m devtools.conformance run --executable "$(FLOWMARK_BIN)"
+
+accept-conformance:
+	@test -n "$(strip $(CASES))" || \
+		(echo "ERROR: pass exact case IDs with CASES=id.one,id.two" >&2; exit 2)
+	uv run python -m devtools.conformance accept --executable "$(FLOWMARK_BIN)" \
+		--case-ids "$(CASES)" --write
 
 test-golden:
 	FLOWMARK_BIN_DIR="$(FLOWMARK_BIN_DIR)" npx tryscript@0.1.7 run tests/tryscript/*.tryscript.md

@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import difflib
+import hashlib
 import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+from argparse import ArgumentParser
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, cast
+
+from strif import atomic_output_file
 
 if sys.version_info >= (3, 11):
     import tomllib  # pyright: ignore[reportUnreachable]
@@ -54,6 +59,12 @@ class ConformanceError(ValueError):
     """A stable conformance schema or execution failure."""
 
     def __init__(self, code: str, message: str) -> None:
+        encoded = message.encode("utf-8")
+        if len(encoded) > MAX_DIAGNOSTIC_BYTES:
+            message = (
+                encoded[:MAX_DIAGNOSTIC_BYTES].decode("utf-8", errors="replace")
+                + "\n... <diagnostic truncated>"
+            )
         super().__init__(f"{code}: {message}")
         self.code: str = code
 
@@ -103,6 +114,16 @@ class ProcessResult:
     stderr: bytes
     exit_code: int
     tree: tuple[FileSnapshot, ...]
+
+
+@dataclass(frozen=True)
+class AcceptanceChange:
+    """One exact golden-file addition, replacement, or deletion."""
+
+    case_id: str
+    path: PurePosixPath
+    before: bytes | None
+    after: bytes | None
 
 
 @dataclass(frozen=True)
@@ -428,6 +449,7 @@ def materialize_case(
     *,
     second_pass: bool = False,
     previous_stdout: bytes | None = None,
+    previous_tree: tuple[FileSnapshot, ...] | None = None,
 ) -> bytes | None:
     """Copy a case into an empty sandbox and return its exact stdin bytes, if any."""
     if not sandbox.is_dir() or any(sandbox.iterdir()):
@@ -443,6 +465,13 @@ def materialize_case(
         if case.stdin is None:  # pragma: no cover - guarded by validation
             raise ConformanceError("invalid-kind-fields", f"case {case.id!r} has no stdin")
         return repo_root.joinpath(*case.stdin.parts).read_bytes()
+
+    if second_pass and previous_tree is not None:
+        for snapshot in previous_tree:
+            destination = sandbox.joinpath(*snapshot.path.parts)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(snapshot.content)
+        return None
 
     source_tree = case.after_tree if second_pass else case.before_tree
     if source_tree is None:  # pragma: no cover - guarded by validation
@@ -572,6 +601,7 @@ def _run_once(
     *,
     second_pass: bool,
     previous_stdout: bytes | None,
+    previous_tree: tuple[FileSnapshot, ...] | None,
 ) -> ProcessResult:
     with tempfile.TemporaryDirectory(prefix="flowmark-conformance-") as temporary:
         sandbox = Path(temporary)
@@ -581,6 +611,7 @@ def _run_once(
             sandbox,
             second_pass=second_pass,
             previous_stdout=previous_stdout,
+            previous_tree=previous_tree,
         )
         command = (str(executable), *case.args)
         try:
@@ -630,6 +661,7 @@ def run_case(
         timeout_seconds,
         second_pass=False,
         previous_stdout=None,
+        previous_tree=None,
     )
     compare_result(case, first, repo_root)
     results = [first]
@@ -642,7 +674,413 @@ def run_case(
             timeout_seconds,
             second_pass=True,
             previous_stdout=first.stdout,
+            previous_tree=first.tree,
         )
         compare_result(case, second, repo_root)
         results.append(second)
     return tuple(results)
+
+
+def _acceptance_changes(
+    case: ConformanceCase,
+    result: ProcessResult,
+    repo_root: Path,
+) -> tuple[AcceptanceChange, ...]:
+    changes: list[AcceptanceChange] = []
+    for path, after in (
+        (case.expected_stdout, result.stdout),
+        (case.expected_stderr, result.stderr),
+    ):
+        before = repo_root.joinpath(*path.parts).read_bytes()
+        if before != after:
+            changes.append(AcceptanceChange(case.id, path, before, after))
+
+    if case.kind == "files":
+        if case.after_tree is None:  # pragma: no cover - guarded by validation
+            raise ConformanceError("invalid-kind-fields", f"case {case.id!r} has no output tree")
+        expected = {snapshot.path: snapshot.content for snapshot in _expected_tree(case, repo_root)}
+        actual = {snapshot.path: snapshot.content for snapshot in result.tree}
+        for relative in sorted(expected.keys() | actual.keys()):
+            before = expected.get(relative)
+            after = actual.get(relative)
+            if before != after:
+                changes.append(
+                    AcceptanceChange(
+                        case.id,
+                        case.after_tree / relative,
+                        before,
+                        after,
+                    )
+                )
+    return tuple(changes)
+
+
+def _complete_diff(change: AcceptanceChange) -> str:
+    before = change.before or b""
+    after = change.after or b""
+    before_name = change.path.as_posix() if change.before is not None else "/dev/null"
+    after_name = change.path.as_posix() if change.after is not None else "/dev/null"
+    metadata = (
+        f"before: {len(before)} bytes sha256={hashlib.sha256(before).hexdigest()}\n"
+        f"after:  {len(after)} bytes sha256={hashlib.sha256(after).hexdigest()}\n"
+    )
+    try:
+        before_text = before.decode("utf-8")
+        after_text = after.decode("utf-8")
+    except UnicodeDecodeError:
+        return metadata + (
+            f"--- {before_name}\n+++ {after_name}\n"
+            f"-<binary {len(before)} bytes> {before.hex()}\n"
+            f"+<binary {len(after)} bytes> {after.hex()}\n"
+        )
+    return metadata + "".join(
+        difflib.unified_diff(
+            before_text.splitlines(keepends=True),
+            after_text.splitlines(keepends=True),
+            fromfile=before_name,
+            tofile=after_name,
+        )
+    )
+
+
+def _write_acceptance_changes(changes: tuple[AcceptanceChange, ...], repo_root: Path) -> None:
+    for change in changes:
+        destination = repo_root.joinpath(*change.path.parts)
+        if change.after is None:
+            destination.unlink()
+            continue
+        with atomic_output_file(destination, make_parents=True) as temporary:
+            Path(temporary).write_bytes(change.after)
+
+
+def accept_cases(
+    manifest: ConformanceManifest,
+    *,
+    case_ids: tuple[str, ...],
+    executable: Path,
+    repo_root: Path,
+    timeout_seconds: float = 30.0,
+    write: bool = False,
+) -> tuple[AcceptanceChange, ...]:
+    """Preview and optionally write goldens for one or more exact case IDs."""
+    if not case_ids or any(not case_id for case_id in case_ids):
+        raise ConformanceError(
+            "exact-case-ids-required", "acceptance requires one or more exact case IDs"
+        )
+    if len(set(case_ids)) != len(case_ids):
+        raise ConformanceError("duplicate-selector", "acceptance case IDs must be unique")
+    selected = select_cases(manifest, ids=case_ids)
+    if len(selected) != len(case_ids):  # pragma: no cover - exact selection guarantees this
+        raise ConformanceError("unknown-selector", "an acceptance case ID was not selected")
+
+    executable = executable.resolve()
+    if not executable.is_file() or not os.access(executable, os.X_OK):
+        raise ConformanceError("invalid-executable", f"not executable: {executable}")
+    if timeout_seconds <= 0:
+        raise ConformanceError("invalid-timeout", "timeout must be positive")
+
+    by_path: dict[PurePosixPath, AcceptanceChange] = {}
+    for case in selected:
+        first = _run_once(
+            case,
+            manifest,
+            executable,
+            repo_root,
+            timeout_seconds,
+            second_pass=False,
+            previous_stdout=None,
+            previous_tree=None,
+        )
+        if first.exit_code != case.expected_exit:
+            raise _failure(
+                "unacceptable-exit",
+                case,
+                first,
+                "exit status is manifest metadata and must be reviewed manually",
+            )
+        if case.idempotent:
+            second = _run_once(
+                case,
+                manifest,
+                executable,
+                repo_root,
+                timeout_seconds,
+                second_pass=True,
+                previous_stdout=first.stdout,
+                previous_tree=first.tree,
+            )
+            if (
+                second.stdout,
+                second.stderr,
+                second.exit_code,
+                second.tree,
+            ) != (
+                first.stdout,
+                first.stderr,
+                first.exit_code,
+                first.tree,
+            ):
+                raise _failure(
+                    "idempotence-mismatch",
+                    case,
+                    second,
+                    "candidate golden output does not reach a fixed point",
+                )
+
+        for change in _acceptance_changes(case, first, repo_root):
+            previous = by_path.get(change.path)
+            if previous is not None and previous.after != change.after:
+                raise ConformanceError(
+                    "golden-conflict",
+                    f"cases {previous.case_id!r} and {case.id!r} propose different bytes for "
+                    f"{change.path}",
+                )
+            by_path[change.path] = change
+
+    changes = tuple(by_path[path] for path in sorted(by_path))
+    if not changes:
+        print("No golden changes proposed.")
+        return ()
+    for change in changes:
+        print(f"case {change.case_id}: {change.path}")
+        diff = _complete_diff(change)
+        sys.stdout.write(diff)
+        if not diff.endswith("\n"):
+            print()
+    if write:
+        _write_acceptance_changes(changes, repo_root)
+        print(f"Wrote {len(changes)} selected golden file change(s).")
+    else:
+        print("Preview only; no golden files were written.")
+    return changes
+
+
+def _case_payload_reference_counts(
+    manifest: ConformanceManifest, repo_root: Path
+) -> Counter[PurePosixPath]:
+    references: Counter[PurePosixPath] = Counter()
+    for case in manifest.cases:
+        for path in (case.expected_stdout, case.expected_stderr, case.stdin):
+            if path is not None and path.as_posix().startswith("tests/parity_corpus/cases/"):
+                references[path] += 1
+        for tree in (case.before_tree, case.after_tree):
+            if tree is None or not tree.as_posix().startswith("tests/parity_corpus/cases/"):
+                continue
+            root = repo_root.joinpath(*tree.parts)
+            for descendant in root.rglob("*"):
+                if descendant.is_file() and not descendant.is_symlink():
+                    relative = PurePosixPath(descendant.relative_to(repo_root).as_posix())
+                    references[relative] += 1
+    return references
+
+
+def _validate_case_payload_reachability(manifest: ConformanceManifest, repo_root: Path) -> None:
+    cases_root = repo_root / "tests/parity_corpus/cases"
+    if not cases_root.is_dir():
+        raise ConformanceError("missing-path", f"missing parity case directory: {cases_root}")
+    payloads: set[PurePosixPath] = set()
+    for path in cases_root.rglob("*"):
+        relative = PurePosixPath(path.relative_to(repo_root).as_posix())
+        if path.is_symlink() or (not path.is_dir() and not path.is_file()):
+            raise ConformanceError("invalid-corpus-entry", f"invalid parity payload: {relative}")
+        if path.is_file():
+            payloads.add(relative)
+
+    references = _case_payload_reference_counts(manifest, repo_root)
+    multiply_referenced = sorted(path for path, count in references.items() if count != 1)
+    if multiply_referenced:
+        path = multiply_referenced[0]
+        raise ConformanceError(
+            "multiply-referenced-payload",
+            f"{path} is reached {references[path]} times; expected exactly once",
+        )
+    unreachable = sorted(payloads - references.keys())
+    if unreachable:
+        raise ConformanceError(
+            "unreachable-payload", f"parity payload is not in the manifest: {unreachable[0]}"
+        )
+
+
+def _topic_deferred_paths(repo_root: Path) -> set[PurePosixPath]:
+    registry_path = repo_root / "tests/tryscript/fixtures/topic-fixtures.toml"
+    try:
+        data = tomllib.loads(registry_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+        raise ConformanceError("invalid-topic-registry", str(error)) from error
+    root = _mapping(data, "topic registry")
+    _unknown_fields(root, frozenset({"schema_version", "deferred"}), "topic registry")
+    if _integer(root, "schema_version", "topic registry") != 1:
+        raise ConformanceError("unsupported-topic-registry", "topic registry version must be 1")
+    raw_entries_value = root.get("deferred", [])
+    if not isinstance(raw_entries_value, list):
+        raise ConformanceError("invalid-topic-registry", "deferred must be an array")
+
+    deferred: set[PurePosixPath] = set()
+    for index, value in enumerate(cast(list[object], raw_entries_value)):
+        location = f"deferred[{index}]"
+        entry = _mapping(value, location)
+        _unknown_fields(entry, frozenset({"path", "owner", "reason"}), location)
+        raw_path = _string(entry, "path", location)
+        owner = _string(entry, "owner", location)
+        _string(entry, "reason", location)
+        expected_prefix = "tests/tryscript/fixtures/content/"
+        if (
+            not raw_path.startswith(expected_prefix)
+            or "/" in raw_path.removeprefix(expected_prefix)
+            or re.fullmatch(r"fm-[a-z0-9]+", owner) is None
+        ):
+            raise ConformanceError("invalid-topic-registry", f"invalid {location}")
+        path = PurePosixPath(raw_path)
+        if path in deferred:
+            raise ConformanceError("duplicate-topic-fixture", f"duplicate deferred path {path}")
+        candidate = repo_root.joinpath(*path.parts)
+        if not candidate.is_file() or candidate.is_symlink():
+            raise ConformanceError("missing-topic-fixture", f"deferred fixture is missing: {path}")
+        deferred.add(path)
+    return deferred
+
+
+def _validate_topic_reachability(repo_root: Path) -> None:
+    topic_root = repo_root / "tests/tryscript/fixtures/content"
+    if not topic_root.is_dir():
+        raise ConformanceError("missing-path", f"missing topic fixture directory: {topic_root}")
+    deferred = _topic_deferred_paths(repo_root)
+    reference_text = (repo_root / "tests/parity_corpus/manifest.toml").read_text(encoding="utf-8")
+    for script in sorted((repo_root / "tests/tryscript").glob("*.tryscript.md")):
+        reference_text += script.read_text(encoding="utf-8")
+
+    topics: set[PurePosixPath] = set()
+    for path in topic_root.iterdir():
+        relative = PurePosixPath(path.relative_to(repo_root).as_posix())
+        if path.is_symlink() or not path.is_file():
+            raise ConformanceError("invalid-topic-fixture", f"invalid topic entry: {relative}")
+        topics.add(relative)
+    for topic in sorted(topics):
+        short_path = topic.as_posix().removeprefix("tests/tryscript/")
+        referenced = short_path in reference_text or topic.as_posix() in reference_text
+        is_deferred = topic in deferred
+        if referenced and is_deferred:
+            raise ConformanceError(
+                "stale-topic-deferral", f"referenced topic remains deferred: {topic}"
+            )
+        if not referenced and not is_deferred:
+            raise ConformanceError("unreachable-topic", f"topic fixture is dead: {topic}")
+
+    unknown = sorted(deferred - topics)
+    if unknown:  # pragma: no cover - existence validation catches this first
+        raise ConformanceError(
+            "missing-topic-fixture", f"deferred fixture is missing: {unknown[0]}"
+        )
+
+
+def _validate_portable_test_definitions(repo_root: Path) -> None:
+    implementation_path = re.compile(
+        r"\.venv/bin|target/(?:debug|release)|python(?:\s+-m)?\s+flowmark|"
+        r"uv\s+run\s+flowmark"
+    )
+    definitions = [repo_root / "tests/parity_corpus/manifest.toml"]
+    definitions.extend(sorted((repo_root / "tests/tryscript").glob("*.tryscript.md")))
+    for path in definitions:
+        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if implementation_path.search(line):
+                relative = path.relative_to(repo_root)
+                raise ConformanceError(
+                    "implementation-path",
+                    f"{relative}:{line_number} embeds an implementation-specific executable",
+                )
+
+
+def check_conformance_coverage(repo_root: Path, *, check_topics: bool = True) -> None:
+    """Validate schema, exact case-payload reachability, and shared-test portability."""
+    repo_root = repo_root.resolve()
+    manifest = load_manifest(repo_root / "tests/parity_corpus/manifest.toml", repo_root)
+    _validate_case_payload_reachability(manifest, repo_root)
+    if check_topics:
+        _validate_topic_reachability(repo_root)
+        _validate_portable_test_definitions(repo_root)
+
+
+def _add_run_arguments(parser: ArgumentParser) -> None:
+    parser.add_argument("--repo-root", type=Path, default=Path.cwd())
+    parser.add_argument("--manifest", type=Path, default=Path("tests/parity_corpus/manifest.toml"))
+    parser.add_argument("--executable", type=Path, required=True)
+    parser.add_argument("--timeout", type=float, default=30.0)
+
+
+def _resolve_from_root(path: Path, repo_root: Path) -> Path:
+    return path if path.is_absolute() else repo_root / path
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the read-only conformance checks or explicit selected acceptance."""
+    parser = ArgumentParser(description="Run Flowmark's language-neutral conformance corpus.")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    run_parser = commands.add_parser("run", help="Run and compare selected corpus cases.")
+    _add_run_arguments(run_parser)
+    run_parser.add_argument("--case", action="append", default=[])
+    run_parser.add_argument("--change-id", action="append", default=[])
+    run_parser.add_argument("--tag", action="append", default=[])
+
+    accept_parser = commands.add_parser(
+        "accept", help="Preview or write selected case golden files."
+    )
+    _add_run_arguments(accept_parser)
+    accept_parser.add_argument(
+        "--case-ids", required=True, help="Comma-separated exact case IDs; never a pattern."
+    )
+    accept_parser.add_argument("--write", action="store_true")
+
+    coverage_parser = commands.add_parser(
+        "coverage", help="Validate manifest, payload, fixture, and portability coverage."
+    )
+    coverage_parser.add_argument("--repo-root", type=Path, default=Path.cwd())
+
+    arguments = parser.parse_args(argv)
+    repo_root = cast(Path, arguments.repo_root).resolve()
+    try:
+        if arguments.command == "coverage":
+            check_conformance_coverage(repo_root)
+            print("Conformance schema and reachability checks passed.")
+            return 0
+
+        manifest_path = _resolve_from_root(cast(Path, arguments.manifest), repo_root)
+        manifest = load_manifest(manifest_path, repo_root)
+        executable = cast(Path, arguments.executable)
+        timeout = cast(float, arguments.timeout)
+        if arguments.command == "run":
+            cases = select_cases(
+                manifest,
+                ids=tuple(cast(list[str], arguments.case)),
+                change_ids=tuple(cast(list[str], arguments.change_id)),
+                tags=tuple(cast(list[str], arguments.tag)),
+            )
+            for case in cases:
+                passes = run_case(
+                    case,
+                    manifest,
+                    executable=executable,
+                    repo_root=repo_root,
+                    timeout_seconds=timeout,
+                )
+                print(f"PASS {case.id} ({len(passes)} pass{'es' if len(passes) != 1 else ''})")
+            return 0
+
+        raw_case_ids = cast(str, arguments.case_ids)
+        case_ids = tuple(raw_case_ids.split(",")) if raw_case_ids else ()
+        accept_cases(
+            manifest,
+            case_ids=case_ids,
+            executable=executable,
+            repo_root=repo_root,
+            timeout_seconds=timeout,
+            write=cast(bool, arguments.write),
+        )
+        return 0
+    except ConformanceError as error:
+        print(error, file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

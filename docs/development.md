@@ -40,6 +40,12 @@ make lint-check
 # Run tests:
 make test
 
+# Run the shared installed-binary corpus and reachability checks only:
+make test-conformance
+
+# Explicitly preview and accept only these exact conformance case IDs:
+make accept-conformance CASES=cli.stdin.wrap,cli.files.inplace-backup
+
 # Run tryscript golden tests only:
 make test-golden
 

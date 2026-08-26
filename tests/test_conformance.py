@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import sys
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
@@ -10,6 +11,8 @@ from devtools.conformance import (
     ConformanceError,
     FileSnapshot,
     ProcessResult,
+    accept_cases,
+    check_conformance_coverage,
     compare_result,
     load_manifest,
     materialize_case,
@@ -164,13 +167,17 @@ def test_complete_file_tree_comparison_rejects_an_extra_file() -> None:
         stdout=b"",
         stderr=b"",
         exit_code=0,
-        tree=(FileSnapshot(PurePosixPath("unexpected.md"), b"surprise\n"),),
+        tree=tuple(
+            FileSnapshot(PurePosixPath(f"unexpected-{index:04}.md"), b"surprise\n")
+            for index in range(2_000)
+        ),
     )
 
     with pytest.raises(ConformanceError) as caught:
         compare_result(case, result, REPO_ROOT)
 
     assert caught.value.code == "file-tree-mismatch"
+    assert len(str(caught.value).encode()) <= 16_384
 
 
 def test_case_timeout_has_a_stable_failure_code(tmp_path: Path) -> None:
@@ -190,3 +197,73 @@ def test_case_timeout_has_a_stable_failure_code(tmp_path: Path) -> None:
 
     assert caught.value.code == "timeout"
     assert manifest.cases[0].id in str(caught.value)
+
+
+def test_acceptance_requires_exact_ids_and_preview_does_not_write(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    manifest_path = CORPUS_ROOT / "runner-fixtures/manifests/stdout-mismatch.toml"
+    manifest = load_manifest(manifest_path, REPO_ROOT)
+    expected_path = REPO_ROOT.joinpath(*manifest.cases[0].expected_stdout.parts)
+    original = expected_path.read_bytes()
+
+    with pytest.raises(ConformanceError) as caught:
+        accept_cases(
+            manifest,
+            case_ids=(),
+            executable=_installed_flowmark(),
+            repo_root=REPO_ROOT,
+        )
+    assert caught.value.code == "exact-case-ids-required"
+
+    changes = accept_cases(
+        manifest,
+        case_ids=("fixture.stdout-mismatch",),
+        executable=_installed_flowmark(),
+        repo_root=REPO_ROOT,
+    )
+
+    assert len(changes) == 1
+    assert changes[0].path == manifest.cases[0].expected_stdout
+    assert expected_path.read_bytes() == original
+    preview = capsys.readouterr().out
+    assert "fixture.stdout-mismatch" in preview
+    assert "Intentionally Wrong" in preview
+    assert "Runner Fixture" in preview
+
+
+def test_conformance_coverage_rejects_a_dangling_case_payload(tmp_path: Path) -> None:
+    copied_root = tmp_path / "repo"
+    copied_corpus = copied_root / "tests/parity_corpus"
+    shutil.copytree(CORPUS_ROOT, copied_corpus, symlinks=True)
+
+    check_conformance_coverage(copied_root, check_topics=False)
+    dangling = copied_corpus / "cases/dangling.expected"
+    dangling.write_bytes(b"not referenced\n")
+
+    with pytest.raises(ConformanceError) as caught:
+        check_conformance_coverage(copied_root, check_topics=False)
+
+    assert caught.value.code == "unreachable-payload"
+
+
+def test_conformance_coverage_rejects_dead_topics_and_implementation_paths(
+    tmp_path: Path,
+) -> None:
+    copied_root = tmp_path / "repo"
+    shutil.copytree(CORPUS_ROOT, copied_root / "tests/parity_corpus", symlinks=True)
+    shutil.copytree(REPO_ROOT / "tests/tryscript", copied_root / "tests/tryscript")
+    check_conformance_coverage(copied_root)
+
+    script = copied_root / "tests/tryscript/help.tryscript.md"
+    original = script.read_bytes()
+    script.write_bytes(original + b"\n$ .venv/bin/flowmark --help\n")
+    with pytest.raises(ConformanceError) as caught:
+        check_conformance_coverage(copied_root)
+    assert caught.value.code == "implementation-path"
+
+    script.write_bytes(original)
+    (copied_root / "tests/tryscript/fixtures/content/dead.md").write_bytes(b"dead\n")
+    with pytest.raises(ConformanceError) as caught:
+        check_conformance_coverage(copied_root)
+    assert caught.value.code == "unreachable-topic"

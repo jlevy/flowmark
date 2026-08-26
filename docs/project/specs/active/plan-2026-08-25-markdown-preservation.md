@@ -635,8 +635,8 @@ beads do not create parent-child deadlocks.
 1. `fm-ltof` (**complete**) defines schema version 1, payload layout, shared runner
    fixtures, and reviewed current-behavior seeds.
 2. `fm-4cfe` (**complete**) implements the Python built-binary runner after `fm-ltof`.
-3. `fm-0agl` adds selective acceptance, reachability, Makefile, and CI gates after
-   `fm-4cfe`.
+3. `fm-0agl` (**complete**) adds selective acceptance, reachability, Makefile, and CI
+   gates after `fm-4cfe`.
 4. `fm-okli` (**complete**) makes upstream tryscript executable-neutral after `fm-ltof`.
    The exact `math.md` and `code-inline.md` workflows activate in `fm-ucy8` and
    `fm-ocpw`, respectively, so known-corrupt output is never committed as an intermediate

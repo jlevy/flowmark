@@ -111,6 +111,23 @@ Use small cases for precise failures and the shared tryscript, topic fixtures, r
 documents, and CommonMark documents for interaction coverage.
 Repetition is appropriate only when another layer exercises a distinct boundary.
 
+Run the read-only corpus and all reachability checks with:
+
+```shell
+make test-conformance
+```
+
+Preview and write only named cases with a comma-separated exact-ID list:
+
+```shell
+make accept-conformance CASES=cli.stdin.wrap,cli.files.inplace-backup
+```
+
+The acceptance command prints the complete proposed diff, byte counts, and SHA-256
+digests before writing.
+Exit-status changes remain manual manifest edits so they cannot be silently accepted
+with output bytes.
+
 <!-- This document follows common-doc-guidelines.md.
 See github.com/jlevy/practical-prose and review guidelines before editing.
 -->

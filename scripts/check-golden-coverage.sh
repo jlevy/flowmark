@@ -23,46 +23,10 @@ else
 fi
 
 echo ""
-echo "Checking executable-path portability..."
-LEGACY_PATHS=$(rg -n '\.venv/bin|target/(debug|release)|python([[:space:]]+-m)?[[:space:]]+flowmark|uv[[:space:]]+run[[:space:]]+flowmark' \
-  "$TESTS_DIR"/*.tryscript.md tests/parity_corpus/manifest.toml 2>/dev/null || true)
-if [ -n "$LEGACY_PATHS" ]; then
-  echo "ERROR: Found implementation-specific executable paths in shared tests:"
-  echo "$LEGACY_PATHS"
+echo "Checking conformance schema and reachability..."
+if ! uv run python -m devtools.conformance coverage; then
   EXIT_CODE=1
-else
-  echo "OK: shared tests inject the implementation binary directory"
 fi
-
-echo ""
-echo "Checking topic-fixture reachability..."
-TOPIC_DIR="$TESTS_DIR/fixtures/content"
-TOPIC_REGISTRY="$TESTS_DIR/fixtures/topic-fixtures.toml"
-while IFS= read -r fixture; do
-  relative_path=${fixture#./}
-  script_path=${relative_path#tests/tryscript/}
-  references=$(rg -l -F "$script_path" "$TESTS_DIR"/*.tryscript.md \
-    tests/parity_corpus/manifest.toml 2>/dev/null || true)
-  deferred=$(rg -n -F "path = \"$relative_path\"" "$TOPIC_REGISTRY" 2>/dev/null || true)
-  if [ -n "$references" ] && [ -n "$deferred" ]; then
-    echo "  ERROR: $relative_path is referenced but still marked deferred"
-    EXIT_CODE=1
-  elif [ -z "$references" ] && [ -z "$deferred" ]; then
-    echo "  ERROR: $relative_path is neither referenced nor explicitly deferred"
-    EXIT_CODE=1
-  elif [ -n "$references" ]; then
-    echo "  OK: $relative_path"
-  else
-    echo "  DEFERRED: $relative_path"
-  fi
-done < <(find "$TOPIC_DIR" -maxdepth 1 -type f | sort)
-
-while IFS= read -r deferred_path; do
-  if [ ! -f "$deferred_path" ]; then
-    echo "  ERROR: deferred topic fixture does not exist: $deferred_path"
-    EXIT_CODE=1
-  fi
-done < <(sed -n 's/^path = "\([^"]*\)"$/\1/p' "$TOPIC_REGISTRY")
 
 echo ""
 echo "Checking required tryscript modules..."
