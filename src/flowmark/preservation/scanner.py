@@ -1254,6 +1254,30 @@ def scan_colon_containers(
     return tuple(candidates)
 
 
+def scan_toml_frontmatter(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+) -> tuple[Candidate, ...]:
+    """Pair exact root-level +++ lines at the normalized document start."""
+    views = build_container_view(source) if lines is None else lines
+    if not views or views[0].container_key or _raw_line_content(source, views[0]) != "+++":
+        return ()
+    for closer in views[1:]:
+        if not closer.container_key and _raw_line_content(source, closer) == "+++":
+            opener = views[0]
+            return (
+                Candidate(
+                    RegionKind.toml_frontmatter,
+                    RegionForm.block,
+                    opener.start,
+                    closer.end,
+                    opener.context,
+                    _scaffold_prefix(source, opener),
+                ),
+            )
+    return ()
+
+
 def resolve_candidate_tree(
     source: NormalizedSource, candidates: tuple[Candidate, ...]
 ) -> tuple[Candidate, ...]:
@@ -1484,6 +1508,7 @@ def scan_protected_regions(
     block_candidates = resolve_candidate_tree(
         source,
         (
+            *scan_toml_frontmatter(source, lines),
             *scan_pandoc_multiline_tables(source, lines, opaque_blocks),
             *scan_obsidian_callouts(source, lines, opaque_blocks),
             *scan_colon_containers(source, lines, opaque_blocks),

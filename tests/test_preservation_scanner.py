@@ -212,6 +212,14 @@ def test_colon_container_closers_ignore_run_length_and_fenced_code() -> None:
     assert regions[0].source == source.text
 
 
+def test_toml_frontmatter_requires_exact_root_delimiters() -> None:
+    valid = scan_protected_regions(normalize_source('+++\ntitle = "raw"\n+++\nbody'))
+    indented = scan_protected_regions(normalize_source(' +++\ntitle = "ordinary"\n+++'))
+
+    assert [region.kind for region in valid] == [RegionKind.toml_frontmatter]
+    assert not any(region.kind is RegionKind.toml_frontmatter for region in indented)
+
+
 def test_unmatched_outer_block_retains_closed_inner_and_not_sibling_closers() -> None:
     source = normalize_source("\\begin{outer}\n\\begin{inner}\nbody\n\\end{inner}\n\n- $$\n- $$")
 

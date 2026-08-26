@@ -24,6 +24,7 @@ class BlockRuleKind(StrEnum):
     """Stable pre-parse block rule names shared with the Rust port."""
 
     yaml_frontmatter = "yaml_frontmatter"
+    toml_frontmatter = "toml_frontmatter"
     fenced_code = "fenced_code"
     indented_code = "indented_code"
     pandoc_multiline_table = "pandoc_multiline_table"
@@ -51,6 +52,7 @@ class BlockRecognizerDescriptor:
             RegionKind.pandoc_multiline_table,
             RegionKind.obsidian_callout,
             RegionKind.colon_container,
+            RegionKind.toml_frontmatter,
             RegionKind.math_dollar_block,
             RegionKind.math_bracket_block,
             RegionKind.math_environment_block,
@@ -138,6 +140,12 @@ BUILTIN_RECOGNIZERS: Final[tuple[RecognizerDescriptor, ...]] = (
         "FM-EXT-COLON-CONTAINER-001",
     ),
     RecognizerDescriptor(
+        RegionKind.toml_frontmatter,
+        RegionForm.block,
+        OPAQUE_EXTENSION_BLOCK_PRIORITY,
+        "FM-EXT-TOML-FRONTMATTER-001",
+    ),
+    RecognizerDescriptor(
         RegionKind.math_dollar_block,
         RegionForm.block,
         BLOCK_MATH_PRIORITY,
@@ -174,6 +182,11 @@ if tuple(descriptor.priority for descriptor in BUILTIN_RECOGNIZERS) != tuple(
 # changing existing values.
 BUILTIN_BLOCK_RECOGNIZERS: Final[tuple[BlockRecognizerDescriptor, ...]] = (
     BlockRecognizerDescriptor(BlockRuleKind.yaml_frontmatter, 10, None),
+    BlockRecognizerDescriptor(
+        BlockRuleKind.toml_frontmatter,
+        10,
+        RegionKind.toml_frontmatter,
+    ),
     BlockRecognizerDescriptor(BlockRuleKind.fenced_code, 20, None),
     BlockRecognizerDescriptor(BlockRuleKind.indented_code, 20, None),
     BlockRecognizerDescriptor(
