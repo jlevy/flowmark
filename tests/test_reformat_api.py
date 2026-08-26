@@ -7,7 +7,7 @@ import pytest
 from flowmark.linewrapping.markdown_filling import fill_markdown
 from flowmark.preservation.bridge import InvalidTokenError
 from flowmark.preservation.model import InvalidUtf8Error
-from flowmark.reformat_api import reformat_file, reformat_text
+from flowmark.reformat_api import reformat_file, reformat_files, reformat_text
 
 
 def test_reformat_text_does_not_implicitly_dedent_markdown() -> None:
@@ -52,3 +52,21 @@ def test_invalid_utf8_and_restoration_failure_cannot_mutate_an_inplace_file(
     with pytest.raises(InvalidTokenError, match="injected"):
         reformat_file(source, None, inplace=True, nobackup=True)
     assert source.read_bytes() == original
+
+
+def test_one_direct_file_can_use_atomic_output_but_multiple_files_cannot(
+    tmp_path: Path,
+) -> None:
+    first = tmp_path / "first.md"
+    second = tmp_path / "second.md"
+    output = tmp_path / "output.md"
+    source = "prefix $x_1$ suffix words\n"
+    first.write_text(source)
+    second.write_text("second\n")
+
+    assert reformat_files([str(first)], str(output), width=14) == [str(first)]
+    assert first.read_text() == source
+    assert output.read_text() == "prefix $x_1$\nsuffix words\n"
+
+    with pytest.raises(ValueError, match="Cannot specify output file"):
+        reformat_files([str(first), str(second)], str(output), width=14)

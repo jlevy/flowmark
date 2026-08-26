@@ -212,9 +212,9 @@ def reformat_files(
             changed.append(files[0])
         return changed
 
-    # Multiple files case. Check mode never writes, so the multi-file output guard
-    # (which only concerns writing) does not apply.
-    if not inplace and not check and output and output != "-":
+    # Check mode never writes, so the multi-file output guard (which only concerns
+    # writing) does not apply. A single direct file may use an explicit output path.
+    if len(files) > 1 and not inplace and not check and output and output != "-":
         raise ValueError(
             "Cannot specify output file when processing multiple files (use --inplace instead)"
         )
@@ -223,6 +223,9 @@ def reformat_files(
         if inplace:
             # Process each file in-place
             file_output = None
+        elif len(files) == 1:
+            # A single direct file may use either an explicit path or stdout.
+            file_output = output
         else:
             # Process each file to stdout
             file_output = "-"

@@ -57,20 +57,26 @@ $ printf '# Out\n\nSome output text.\n' | flowmark -o output.md - && cat output.
 Some output text.
 ```
 
-## FO4b: Output to file with direct file input currently errors
+## FO4b: Output to file with direct file input
 
 ```console
-$ flowmark -o output.md fixtures/content/simple.md 2>&1
-Error: Cannot specify output file when processing multiple files (use --inplace instead)
-? 1
+$ flowmark -o output.md fixtures/content/simple.md && cat output.md
+# Simple Document
+
+This is a basic paragraph with some text.
+
+Another paragraph here.
 ```
 
-## FO4c: Long `--output` flag with direct file input also errors
+## FO4c: Long `--output` flag with direct file input
 
 ```console
-$ flowmark --output output.md fixtures/content/simple.md 2>&1
-Error: Cannot specify output file when processing multiple files (use --inplace instead)
-? 1
+$ flowmark --output output.md fixtures/content/simple.md && cat output.md
+# Simple Document
+
+This is a basic paragraph with some text.
+
+Another paragraph here.
 ```
 
 ## FO5: Output to stdout (explicit dash)
