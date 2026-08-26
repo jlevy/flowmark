@@ -334,8 +334,9 @@ deliberately ignored in pre-commit.
 The `--force-exclude` flag resolves this: with it, all exclusion sources
 (`.flowmarkignore`, `--exclude`/`--extend-exclude`, and the built-in defaults) are
 applied to explicitly-named files too.
-This is why Flowmark’s [published pre-commit hooks](#3-run-on-pre-commit) set
-`--force-exclude` — exactly as
+This is why Flowmark’s
+[published pre-commit hooks](skills/flowmark/references/project-setup.md#auto-fix-on-commit)
+set `--force-exclude` — exactly as
 [`ruff-pre-commit`](https://github.com/astral-sh/ruff-pre-commit) does — so your
 `.flowmarkignore` is respected on the staged files pre-commit hands the hook.
 
