@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import StrEnum
 from types import MappingProxyType
 from typing import Final
 
-from flowmark.preservation.model import InvalidRegionError, RegionForm, RegionKind
+from flowmark.preservation.model import (
+    InvalidRegionError,
+    RegionForm,
+    RegionKind,
+    StableStrEnum,
+)
 
 # Lower bands win arbitration. Gaps permit additive recognizers without renumbering the
 # stable precedence families used by both ports.
@@ -23,7 +27,7 @@ OPAQUE_EXTENSION_BLOCK_PRIORITY = 45
 BLOCK_MATH_PRIORITY = 50
 
 
-class BlockRuleKind(StrEnum):
+class BlockRuleKind(StableStrEnum):
     """Stable pre-parse block rule names shared with the Rust port."""
 
     yaml_frontmatter = "yaml_frontmatter"

@@ -24,7 +24,7 @@ class InvalidRegionError(PreservationError):
     """A protected-region record violates the portable data contract."""
 
 
-class _StableStrEnum(str, Enum):
+class StableStrEnum(str, Enum):
     """Python 3.10-compatible string enum with StrEnum's value rendering."""
 
     @override
@@ -32,7 +32,7 @@ class _StableStrEnum(str, Enum):
         return self.value
 
 
-class RegionKind(_StableStrEnum):
+class RegionKind(StableStrEnum):
     """Stable recognizer kinds shared with the Rust port."""
 
     math_gitlab_inline = "math_gitlab_inline"
@@ -60,7 +60,7 @@ class RegionKind(_StableStrEnum):
     math_environment_block = "math_environment_block"
 
 
-class RegionForm(_StableStrEnum):
+class RegionForm(StableStrEnum):
     """Whether a region participates in inline wrapping or block rendering."""
 
     inline = "inline"

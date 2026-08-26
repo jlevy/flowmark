@@ -51,6 +51,7 @@ def test_normalization_rejects_invalid_utf8_and_surrogates() -> None:
 def test_region_enums_render_stable_values_on_every_supported_python() -> None:
     assert str(RegionKind.math_dollar_inline) == "math_dollar_inline"
     assert str(RegionForm.inline) == "inline"
+    assert str(BlockRuleKind.math_dollar_block) == "math_dollar_block"
 
 
 def test_scalar_width_and_utf8_boundaries_are_distinct() -> None:
