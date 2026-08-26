@@ -5,7 +5,7 @@ title: "C2 fix: exclude atomic spans from the paragraph whitespace normalisation
 kind: bug
 status: open
 priority: 1
-version: 4
+version: 5
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -13,9 +13,11 @@ dependencies:
     target: is-01m0xsczjbncpddwkvxsehvmsz
   - type: blocks
     target: is-01m0xse38rtqj4zy9m2k5f1awj
+  - type: blocks
+    target: is-01m0xn1zcv01nmb6qgtw0nsf1z
 parent_id: is-01m0xpsz0wkaw5gvdzc6q1xa9b
 created_at: 2026-08-26T01:01:35.262Z
-updated_at: 2026-08-26T01:02:59.486Z
+updated_at: 2026-08-26T01:03:43.043Z
 ---
 Sites, all in the paragraph wrap path:
 

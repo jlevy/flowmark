@@ -5,15 +5,17 @@ title: "C1 fix: compute the code-span delimiter from the longest backtick run in
 kind: bug
 status: open
 priority: 1
-version: 3
+version: 4
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
   - type: blocks
     target: is-01m0xsczjbncpddwkvxsehvmsz
+  - type: blocks
+    target: is-01m0xpsyq253tk2p90pq8vsz7c
 parent_id: is-01m0xpsz0wkaw5gvdzc6q1xa9b
 created_at: 2026-08-26T01:01:21.349Z
-updated_at: 2026-08-26T01:02:18.755Z
+updated_at: 2026-08-26T01:03:42.723Z
 ---
 Site: src/flowmark/formats/flowmark_markdown.py:711-715, FlowmarkRenderer.render_code_span.
 
