@@ -3,9 +3,9 @@ type: is
 id: is-01m0xzyw7t9wk8zt69b0p5q0k4
 title: Add selective golden acceptance, reachability, and CI gates
 kind: task
-status: in_progress
+status: closed
 priority: 1
-version: 5
+version: 6
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -17,7 +17,11 @@ dependencies:
     target: is-01m0y0056wzdgx731m97mrka76
 parent_id: is-01m0xn2b9tnj99k484920ysv9z
 created_at: 2026-08-26T02:56:31.481Z
-updated_at: 2026-08-26T03:32:53.149Z
+updated_at: 2026-08-26T03:51:15.773Z
+closed_at: 2026-08-26T03:51:15.771Z
+close_reason: Added exact-ID-only golden acceptance with complete byte diffs and fixed-point verification; strict schema, payload, topic, deferral, and executable-path reachability gates; Makefile and CI read-only installed-binary targets; and regression tests for broad acceptance, dangling bytes, dead fixtures, portability, runner errors, and bounded diagnostics. Full lint, 474 pytest tests, 139 tryscript checks, and build pass.
+resolution: null
+duplicate_of: null
 ---
 Make the shared corpus load-bearing and safe to maintain.
 
