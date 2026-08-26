@@ -5,7 +5,7 @@ title: Implement Python source normalization, region types, and recognizer regis
 kind: task
 status: closed
 priority: 1
-version: 7
+version: 9
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -15,9 +15,9 @@ dependencies:
     target: is-01m0xse3xhcna7jm56zb5vj4hk
 parent_id: is-01m0xn1kf4s20aga85f298dzww
 created_at: 2026-08-26T02:57:56.804Z
-updated_at: 2026-08-26T08:56:10.808Z
-closed_at: 2026-08-26T08:56:10.807Z
-close_reason: Extended the portable region model with exact block parser scaffolds in 3103f09; 496 pytest tests and lint/type checks pass.
+updated_at: 2026-08-26T08:56:22.305Z
+closed_at: 2026-08-26T08:56:22.305Z
+close_reason: Extended the portable region model with exact block parser scaffolds in a34cd5d; 496 pytest tests and lint/type checks pass.
 resolution: null
 duplicate_of: null
 ---
