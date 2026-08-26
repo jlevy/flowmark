@@ -14,6 +14,7 @@ from flowmark.preservation.model import InvalidRegionError, RegionForm, RegionKi
 # stable precedence families used by both ports.
 COMPOSITE_INLINE_PRIORITY = 10
 RAW_HTML_INLINE_PRIORITY = 15
+OPAQUE_EXTENSION_INLINE_PRIORITY = 18
 CODE_SPAN_PRIORITY = 20
 UNAMBIGUOUS_INLINE_PRIORITY = 30
 ATTRIBUTE_GROUP_INLINE_PRIORITY = 35
@@ -108,6 +109,18 @@ BUILTIN_RECOGNIZERS: Final[tuple[RecognizerDescriptor, ...]] = (
         RegionForm.inline,
         RAW_HTML_INLINE_PRIORITY,
         "FM-EXT-RAW-HTML-001",
+    ),
+    RecognizerDescriptor(
+        RegionKind.myst_role_inline,
+        RegionForm.inline,
+        OPAQUE_EXTENSION_INLINE_PRIORITY,
+        "FM-EXT-MYST-WIKILINK-001",
+    ),
+    RecognizerDescriptor(
+        RegionKind.wikilink_inline,
+        RegionForm.inline,
+        OPAQUE_EXTENSION_INLINE_PRIORITY,
+        "FM-EXT-MYST-WIKILINK-001",
     ),
     RecognizerDescriptor(
         RegionKind.code_span,

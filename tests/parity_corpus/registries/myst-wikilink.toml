@@ -1,0 +1,54 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.extension.myst-wikilink.roles"
+change_id = "FM-EXT-MYST-WIKILINK-001"
+description = "General MyST roles preserve names, exact backtick-run closure, Unicode, and transform-shaped bodies while math keeps priority."
+kind = "stdin"
+tags = ["desired-output", "extension", "inline", "myst", "preservation", "role", "stdin", "unicode"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/myst-wikilink/roles/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/myst-wikilink/roles/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.myst-wikilink.wikilinks"
+change_id = "FM-EXT-MYST-WIKILINK-001"
+description = "Wikilinks preserve aliases, embeds, anchors, Unicode, and balanced nested-looking brackets."
+kind = "stdin"
+tags = ["alias", "anchor", "desired-output", "embed", "extension", "inline", "preservation", "stdin", "unicode", "wikilink"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/myst-wikilink/wikilinks/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/myst-wikilink/wikilinks/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.myst-wikilink.contexts"
+change_id = "FM-EXT-MYST-WIKILINK-001"
+description = "Roles and wikilinks stay atomic in headings, lists, links, and tables even when their bodies contain pipes."
+kind = "stdin"
+tags = ["context", "desired-output", "extension", "heading", "list", "myst", "preservation", "stdin", "table", "wikilink"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/myst-wikilink/contexts/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/myst-wikilink/contexts/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.myst-wikilink.fallback"
+change_id = "FM-EXT-MYST-WIKILINK-001"
+description = "Escaped, empty, invalid, unmatched, multiline, and code-contained lookalikes retain ordinary Markdown behavior."
+kind = "stdin"
+tags = ["escape", "extension", "fallback", "malformed", "myst", "preservation", "stdin", "wikilink"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/myst-wikilink/fallback/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/myst-wikilink/fallback/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

@@ -1,0 +1,5 @@
+Escaped \[[not a link]] plus empty [[]] and unmatched [[open stay ordinary "text"...
+
+Invalid {bad role}`x` {9bad}`x` and spaced {ref} `x` stay ordinary.
+
+``{ref}`inside code` `` and {ref}`unclosed remain fallback syntax.

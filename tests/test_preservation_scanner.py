@@ -215,6 +215,34 @@ def test_line_blocks_require_active_spaced_bars_and_do_not_claim_tables() -> Non
     ]
 
 
+def test_general_myst_roles_and_wikilinks_preserve_priority_and_nesting() -> None:
+    source = normalize_source(
+        "{ref}`target` {custom:name}``body `tick` `` {math}`x_y`\n\n"
+        "[[Note]] ![[Page#A|Alias]] [[outer [[inner]] tail]]\n\n"
+        "``{ref}`inside` `` \\[[escaped]] [[]] {bad role}`x`"
+    )
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [
+        RegionKind.myst_role_inline,
+        RegionKind.myst_role_inline,
+        RegionKind.math_myst_inline,
+        RegionKind.wikilink_inline,
+        RegionKind.wikilink_inline,
+        RegionKind.wikilink_inline,
+        RegionKind.code_span,
+        RegionKind.code_span,
+    ]
+    assert [region.source for region in regions[:6]] == [
+        "{ref}`target`",
+        "{custom:name}``body `tick` ``",
+        "{math}`x_y`",
+        "[[Note]]",
+        "![[Page#A|Alias]]",
+        "[[outer [[inner]] tail]]",
+    ]
+
+
 def test_existing_opaque_blocks_win_before_math_scanning() -> None:
     source = normalize_source(
         "---\nitems:\n- one\nmath: $not_inline$\n---\n\n"

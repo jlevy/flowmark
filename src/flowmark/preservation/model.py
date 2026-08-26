@@ -28,6 +28,8 @@ class RegionKind(StrEnum):
     math_gitlab_inline = "math_gitlab_inline"
     math_myst_inline = "math_myst_inline"
     raw_html_inline = "raw_html_inline"
+    myst_role_inline = "myst_role_inline"
+    wikilink_inline = "wikilink_inline"
     code_span = "code_span"
     math_paren_inline = "math_paren_inline"
     math_environment_inline = "math_environment_inline"
@@ -60,6 +62,8 @@ _INLINE_REGION_KINDS = frozenset(
         RegionKind.math_gitlab_inline,
         RegionKind.math_myst_inline,
         RegionKind.raw_html_inline,
+        RegionKind.myst_role_inline,
+        RegionKind.wikilink_inline,
         RegionKind.code_span,
         RegionKind.math_paren_inline,
         RegionKind.math_environment_inline,

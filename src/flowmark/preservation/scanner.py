@@ -23,6 +23,7 @@ ByteRange = tuple[int, int]
 ScalarRun = tuple[int, int]
 
 _MYST_ROLE = "{math}"
+_GENERAL_MYST_ROLE = re.compile(r"[A-Za-z][A-Za-z0-9:_-]*\Z")
 _BEGIN_PREFIX = "\\begin{"
 _END_PREFIX = "\\end{"
 _TABLE_DELIMITER_CELL = re.compile(r":?-{3,}:?\Z")
@@ -313,6 +314,80 @@ def scan_composite_math(source: NormalizedSource, start: int, end: int) -> tuple
             if role_start >= start_index and text[role_start:run_start] == _MYST_ROLE:
                 myst_pending[run_length] = role_start
 
+    return tuple(candidates)
+
+
+def scan_myst_roles(source: NormalizedSource, start: int, end: int) -> tuple[Candidate, ...]:
+    """Pair general MyST role/backtick spans by exact delimiter-run length."""
+    start_index, end_index = _scope_scalar_indexes(source, start, end)
+    pending: dict[int, int] = {}
+    candidates: list[Candidate] = []
+    text = source.text
+    for run_start, run_end in _backtick_runs(text, start_index, end_index):
+        run_length = run_end - run_start
+        opener = pending.pop(run_length, None)
+        if opener is not None:
+            candidates.append(_candidate(source, RegionKind.myst_role_inline, opener, run_end))
+            continue
+        if run_start <= start_index or text[run_start - 1] != "}":
+            continue
+        role_start = text.rfind("{", start_index, run_start - 1)
+        if role_start < start_index or not escape_is_even(text, role_start):
+            continue
+        role_name = text[role_start + 1 : run_start - 1]
+        if _GENERAL_MYST_ROLE.fullmatch(role_name) is not None:
+            pending[run_length] = role_start
+    return tuple(candidates)
+
+
+def scan_wikilinks(source: NormalizedSource, start: int, end: int) -> tuple[Candidate, ...]:
+    """Recognize balanced single-line wikilinks, embeds, aliases, and anchors."""
+    start_index, end_index = _scope_scalar_indexes(source, start, end)
+    text = source.text
+    candidates: list[Candidate] = []
+    index = start_index
+    while index + 1 < end_index:
+        if text[index : index + 2] != "[[" or not escape_is_even(text, index):
+            index += 1
+            continue
+        candidate_start = (
+            index - 1
+            if index > start_index and text[index - 1] == "!" and escape_is_even(text, index - 1)
+            else index
+        )
+        body_start = index + 2
+        cursor = body_start
+        depth = 1
+        while cursor + 1 < end_index:
+            if text[cursor] == "\n":
+                break
+            pair = text[cursor : cursor + 2]
+            if pair == "[[" and escape_is_even(text, cursor):
+                depth += 1
+                cursor += 2
+                continue
+            if pair == "]]" and escape_is_even(text, cursor):
+                depth -= 1
+                cursor += 2
+                if depth == 0:
+                    if text[body_start : cursor - 2].strip():
+                        candidates.append(
+                            _candidate(
+                                source,
+                                RegionKind.wikilink_inline,
+                                candidate_start,
+                                cursor,
+                            )
+                        )
+                    index = cursor
+                    break
+                continue
+            cursor += 1
+        else:
+            index += 1
+            continue
+        if depth != 0:
+            index += 1
     return tuple(candidates)
 
 
@@ -662,6 +737,8 @@ def scan_inline_scope(
     """Propose and arbitrate every built-in inline recognizer in one scope."""
     candidates = (
         *scan_composite_math(source, start, end),
+        *scan_myst_roles(source, start, end),
+        *scan_wikilinks(source, start, end),
         *scan_backtick_runs(source, start, end),
         *scan_paren_math(source, start, end),
         *scan_inline_environments(source, start, end),
@@ -2021,29 +2098,31 @@ def _table_cell_ranges(
     source: NormalizedSource, line_start: int, line_end: int
 ) -> tuple[ScalarRun, ...]:
     text = source.text
-    code_candidates = arbitrate_candidates(
-        scan_backtick_runs(
-            source,
-            source.byte_offset(line_start),
-            source.byte_offset(line_end),
+    line_start_byte = source.byte_offset(line_start)
+    line_end_byte = source.byte_offset(line_end)
+    atomic_candidates = arbitrate_candidates(
+        (
+            *scan_backtick_runs(source, line_start_byte, line_end_byte),
+            *scan_myst_roles(source, line_start_byte, line_end_byte),
+            *scan_wikilinks(source, line_start_byte, line_end_byte),
         ),
-        start=source.byte_offset(line_start),
-        end=source.byte_offset(line_end),
+        start=line_start_byte,
+        end=line_end_byte,
     )
-    code_ranges = tuple(
+    atomic_ranges = tuple(
         (source.scalar_index(candidate.start), source.scalar_index(candidate.end))
-        for candidate in code_candidates
+        for candidate in atomic_candidates
     )
     boundaries = [line_start]
-    code_index = 0
+    atomic_index = 0
     for index in range(line_start, line_end):
-        while code_index < len(code_ranges) and index >= code_ranges[code_index][1]:
-            code_index += 1
-        inside_code = (
-            code_index < len(code_ranges)
-            and code_ranges[code_index][0] <= index < code_ranges[code_index][1]
+        while atomic_index < len(atomic_ranges) and index >= atomic_ranges[atomic_index][1]:
+            atomic_index += 1
+        inside_atomic = (
+            atomic_index < len(atomic_ranges)
+            and atomic_ranges[atomic_index][0] <= index < atomic_ranges[atomic_index][1]
         )
-        if text[index] == "|" and escape_is_even(text, index) and not inside_code:
+        if text[index] == "|" and escape_is_even(text, index) and not inside_atomic:
             boundaries.append(index)
             boundaries.append(index + 1)
     boundaries.append(line_end)
