@@ -1,1 +1,1 @@
-Authored 󰀀󰀁 and 󰀀󰀀󰀁 remain beside math $󰀂 + x$.
+Authored 󰀀󰀁, 󰀂, and 󰀀󰀀󰀁 remain beside math $󰀂 + x$.

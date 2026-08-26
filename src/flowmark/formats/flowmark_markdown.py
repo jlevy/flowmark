@@ -26,19 +26,17 @@ from flowmark.linewrapping.line_wrappers import (
 from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 from flowmark.preservation.bridge import (
-    INDEX_END,
-    INDEX_START,
-    SENTINEL_END,
-    SENTINEL_REPEAT,
+    INDEX_SCALAR_END,
+    INDEX_SCALAR_START,
+    INDEX_WIDTH,
+    TOKEN_END,
+    TOKEN_START,
     ProtectedSource,
 )
 from flowmark.preservation.model import RegionForm
 
-_PRESERVATION_SENTINEL = rf"{SENTINEL_REPEAT}+{SENTINEL_END}"
 _PRESERVATION_TOKEN = (
-    rf"(?P<flowmark_sentinel>{_PRESERVATION_SENTINEL})"
-    rf"{INDEX_START}(?:0|[1-9a-z][0-9a-z]*){INDEX_END}"
-    rf"(?P=flowmark_sentinel)"
+    rf"{TOKEN_START}[{INDEX_SCALAR_START}-{INDEX_SCALAR_END}]{{{INDEX_WIDTH}}}{TOKEN_END}"
 )
 _PRESERVATION_INLINE_PATTERN = re.compile(_PRESERVATION_TOKEN)
 _PRESERVATION_BLOCK_PATTERN = re.compile(rf"(?P<flowmark_token>{_PRESERVATION_TOKEN})$\n?", re.M)

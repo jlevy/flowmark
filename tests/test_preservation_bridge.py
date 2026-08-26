@@ -12,12 +12,11 @@ from flowmark.formats.flowmark_markdown import (
     flowmark_markdown,
 )
 from flowmark.preservation.bridge import (
-    INDEX_END,
-    INDEX_START,
-    SENTINEL_END,
-    SENTINEL_REPEAT,
+    ESCAPE_MARKER,
+    TOKEN_END,
+    TOKEN_LENGTH,
+    TOKEN_START,
     InvalidTokenError,
-    choose_sentinel,
     encode_token,
     parse_token,
     protect_source,
@@ -41,34 +40,38 @@ def _protected(text: str):
     return protect_source(source, scan_protected_regions(source))
 
 
-def test_sentinel_selection_skips_every_authored_candidate_run() -> None:
-    source = (
-        f"a{SENTINEL_REPEAT}{SENTINEL_END}b"
-        f"c{SENTINEL_REPEAT * 3}{SENTINEL_END}d"
-        f"e{SENTINEL_REPEAT * 2}x{SENTINEL_END}f"
-    )
+def test_authored_markers_round_trip_with_bounded_parser_text() -> None:
+    collision = ESCAPE_MARKER * 4096 + TOKEN_START + TOKEN_END
+    normalized = normalize_source(collision + " " + "$x$" * 2048)
+    protected = protect_source(normalized, scan_protected_regions(normalized))
 
-    sentinel = choose_sentinel(source)
-
-    assert sentinel == SENTINEL_REPEAT * 4 + SENTINEL_END
-    assert sentinel not in source
+    assert len(protected.regions) == 2048
+    assert len(protected.text) <= 5 * len(normalized.text)
+    assert restore_source(protected.text, protected) == normalized.text
 
 
-@pytest.mark.parametrize("index", [0, 1, 35, 36, 1295, 1296])
-def test_token_encoding_is_canonical_lowercase_base36(index: int) -> None:
-    sentinel = choose_sentinel("")
-    token = encode_token(sentinel, index)
+@pytest.mark.parametrize("index", [0, 1, 255, 256, (1 << 64) - 1])
+def test_token_encoding_is_fixed_width(index: int) -> None:
+    token = encode_token(index)
 
-    assert parse_token(token, sentinel) == index
+    assert len(token) == TOKEN_LENGTH
+    assert parse_token(token) == index
 
 
-@pytest.mark.parametrize("digits", ["", "00", "01", "A", "-1", "１"])
-def test_token_parser_rejects_noncanonical_indexes(digits: str) -> None:
-    sentinel = choose_sentinel("")
-    token = f"{sentinel}{INDEX_START}{digits}{INDEX_END}{sentinel}"
+@pytest.mark.parametrize("index", [-1, True, 1 << 64])
+def test_token_encoder_rejects_indexes_outside_unsigned_64_bits(index: int) -> None:
+    with pytest.raises(InvalidTokenError, match="token index"):
+        encode_token(index)
+
+
+def test_token_parser_rejects_malformed_fixed_width_indexes() -> None:
+    token = encode_token(0)
+    malformed = token[:1] + "0" + token[2:]
 
     with pytest.raises(InvalidTokenError, match="token index"):
-        parse_token(token, sentinel)
+        parse_token(malformed)
+    with pytest.raises(InvalidTokenError, match="malformed preservation token"):
+        parse_token(token[:-1])
 
 
 def test_protection_retains_block_scaffold_but_keeps_exact_source_in_side_table() -> None:
@@ -111,7 +114,7 @@ def test_marko_adapter_round_trips_parser_collisions_and_distinguishes_forms() -
     restored = restore_source(rendered, protected)
 
     assert restored == normalize_source(text).text
-    assert protected.sentinel not in restored
+    assert all(token not in restored for token in protected.tokens)
 
 
 def test_an_inline_token_on_its_own_line_does_not_become_a_block() -> None:
@@ -140,16 +143,20 @@ def test_restoration_fails_closed_for_missing_duplicate_reordered_and_unknown_to
     with pytest.raises(InvalidTokenError, match="reordered"):
         restore_source(reordered, protected)
 
-    unknown = protected.text.replace(first, encode_token(protected.sentinel, 9))
+    unknown = protected.text.replace(first, encode_token(9))
     with pytest.raises(InvalidTokenError, match="reordered"):
         restore_source(unknown, protected)
 
 
 def test_restoration_rejects_malformed_tokens_side_tables_and_block_newlines() -> None:
     inline = _protected("$a$")
-    malformed = inline.text.replace(INDEX_START + "0" + INDEX_END, INDEX_START + "00" + INDEX_END)
+    token = inline.tokens[0]
+    malformed = inline.text.replace(token, token[:1] + "0" + token[2:])
     with pytest.raises(InvalidTokenError, match="token index"):
         restore_source(malformed, inline)
+
+    with pytest.raises(InvalidTokenError, match="marker escape"):
+        restore_source(ESCAPE_MARKER + "x" + inline.text, inline)
 
     with pytest.raises(InvalidTokenError, match="side table"):
         restore_source(inline.text, replace(inline, tokens=()))

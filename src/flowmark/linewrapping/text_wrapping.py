@@ -11,7 +11,12 @@ from flowmark.linewrapping.tag_handling import (
     denormalize_adjacent_tags,
     normalize_adjacent_tags,
 )
-from flowmark.preservation.bridge import InvalidTokenError, ProtectedSource
+from flowmark.preservation.bridge import (
+    TOKEN_LENGTH,
+    TOKEN_START,
+    InvalidTokenError,
+    ProtectedSource,
+)
 from flowmark.preservation.model import ProtectedRegion, RegionForm
 
 DEFAULT_LEN_FUNCTION = len
@@ -89,17 +94,14 @@ def _wrapping_fragments(
     fragments: list[_WrappingFragment] = []
     position = 0
     while True:
-        token_start = text.find(protected.sentinel, position)
+        token_start = text.find(TOKEN_START, position)
         if token_start < 0:
             if position < len(text):
                 fragments.append(_WrappingFragment(text[position:]))
             break
         if position < token_start:
             fragments.append(_WrappingFragment(text[position:token_start]))
-        sentinel_end = text.find(protected.sentinel, token_start + len(protected.sentinel))
-        if sentinel_end < 0:
-            raise InvalidTokenError("protected token lost its closing sentinel during wrapping")
-        token_end = sentinel_end + len(protected.sentinel)
+        token_end = token_start + TOKEN_LENGTH
         token = text[token_start:token_end]
         region = regions_by_token.get(token)
         if region is None:

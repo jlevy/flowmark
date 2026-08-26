@@ -243,20 +243,27 @@ regions.
 
 ### Collision-safe parser bridge
 
-Synthetic tokens use a deterministic sentinel that cannot occur in the source.
+Synthetic tokens use a fixed-width alphabet with reversible escaping. This avoids the
+quadratic expansion possible when an absent delimiter grows with authored text and is then
+repeated once per protected region.
 
-1. In one pass, find the maximum number `m` of consecutive `U+F0000` scalars immediately
-   before any `U+F0001`.
-2. Let `S` be `m + 1` copies of `U+F0000` followed by `U+F0001`. No suffix of a longer
-   authored run can collide with it because `m` is maximal.
-3. Encode region `i` as `S`, `U+F0002`, lowercase base-36 `i` without leading zeros,
-   `U+F0003`, then `S`.
+1. `U+F0000`, `U+F0001`, and `U+F0002` are the escape, token-start, and token-end control
+   scalars.
+2. Before parsing, an authored occurrence of those controls in an unprotected gap becomes
+   the escape scalar followed by `U+F0003`, `U+F0004`, or `U+F0005`, respectively.
+   Consequently, authored text cannot present an unescaped token start to the parser.
+3. A region index is an unsigned 64-bit integer. Its eight big-endian bytes are encoded as
+   exactly eight scalars in `U+F0100` through `U+F01FF`.
+4. Region `i` becomes token-start, the eight encoded bytes, then token-end: exactly ten
+   Unicode scalars for every index.
+5. The parser adapter recognizes only that fixed grammar and only tokens present in the
+   side table. Restoration validates and decodes token controls and authored-marker escapes
+   in one pass.
 
-The sentinel search terminates for every finite input and is linear. Supplementary private-
-use scalars are chosen because they are valid
-UTF-8 text and inert Markdown characters; corpus cases verify that Marko and comrak carry
-them unchanged. The collision case where the source already contains candidate private-use
-sequences is mandatory.
+Supplementary private-use scalars are valid UTF-8 text and inert Markdown characters.
+Corpus cases verify that Marko and comrak carry them unchanged, including source that
+already contains every control scalar. A native invariant bounds parser-facing text by a
+constant multiple of normalized source length.
 
 The literal token length never determines wrapping. The inline lexer carries explicit
 whitespace boundaries rather than rebuilding output by joining strings with spaces. Text
@@ -287,7 +294,7 @@ Restoration validates all invariants before producing output:
 - every token index exists;
 - every region is restored exactly once and in source order;
 - no token is missing, duplicated, reordered, nested, or malformed; and
-- no sentinel remains in the result.
+- no synthetic token or encoded marker escape remains in the result.
 
 An invariant failure returns a nonzero internal error with empty stdout. In-place writing
 uses the existing atomic commit boundary, so the original file remains unchanged. The
@@ -295,9 +302,11 @@ formatter never emits a partial document or an internal token.
 
 ### Complexity
 
-Delimiter scanning, sentinel selection, token replacement, and restoration are each
-O(n). Environment matching uses a stack bounded by source length. No rule backtracks over
-the body, recursively reparses substrings, or searches from every unmatched opener.
+Delimiter scanning, control-marker escaping, fixed-width token replacement, and restoration
+are each O(n). Parser-facing text is O(n), including adversarial authored private-use
+markers and O(n) protected regions. Environment matching uses a stack bounded by source
+length. No rule backtracks over the body, recursively reparses substrings, or searches from
+every unmatched opener.
 Candidate arbitration uses a fixed eight-pass radix order over unsigned 64-bit UTF-8 byte
 starts, followed by a single overlap pass; it is O(n) in the number of candidates and does
 not allocate a source-length bucket array.
@@ -518,7 +527,7 @@ The manifest is the porting ledger. These stable change IDs group the initial wo
 | Change ID | Contract | Python tracker | Required Rust result |
 | --- | --- | --- | --- |
 | `FM-CONFORMANCE-001` | Shared manifest, strict runners, fixture reachability, idempotence | `fm-o5vk` | Native runner reads `repos/flowmark`; no Python runtime. |
-| `FM-PRESERVE-CORE-001` | Normalization, region records, sentinel bridge, fail-closed restoration | `fm-2tto` | Same golden outputs and failure semantics. |
+| `FM-PRESERVE-CORE-001` | Normalization, region records, fixed-width token bridge, fail-closed restoration | `fm-2tto` | Same golden outputs and failure semantics. |
 | `FM-MATH-INLINE-001` | Dollar, paren, GitLab, MyST, and inline environment recognition | `fm-9jtc` plus implementation beads | Zero new divergence entries. |
 | `FM-MATH-BLOCK-001` | Container-aware display and environment blocks | `fm-6erm` | Zero new divergence entries. |
 | `FM-CLI-OUTPUT-001` | Atomic `--output` for exactly one direct input file | `fm-9r1n` | Same routing, bytes, and multiple-input rejection. |
@@ -544,7 +553,7 @@ interactions, and the topic-level `math.md` document:
 | Blocks | Labels, attributes, `align*`, nested and custom environments, mismatches, missing closers, code-block precedence |
 | Unicode and I/O | Non-ASCII letters/digits/space, CJK adjacency, combining marks, tabs, LF/CRLF, BOM, stdin, output file, in-place, check, config |
 | Modes | Default, semantic, smart quotes, ellipses, cleanups, auto, width zero and one |
-| Adversarial | Thousands of dollar runs, deep environments, very long bodies, sentinel collisions, linear-time watchdog |
+| Adversarial | Thousands of dollar runs, deep environments, very long bodies, token-marker collisions, linear-time watchdog |
 
 Exact expected bytes already prove protected content survived; the black-box runner does
 not reimplement the scanner to assert a second "protected slice" property. Python and Rust
@@ -608,7 +617,7 @@ runner uses the existing `toml` crate. The conformance design introduces no depe
 | `src/flowmark/preservation/normalization.py` | `normalize_source()`, `finalize_output()`, BOM/newline handling, and scalar-width helpers. |
 | `src/flowmark/preservation/registry.py` | Stable built-in recognizer kinds, precedence, and future extension registration. |
 | `src/flowmark/preservation/scanner.py` | `scan_protected_regions()`, inline-scope and block scans, container views, delimiter state machines, candidate arbitration, and fallback. |
-| `src/flowmark/preservation/bridge.py` | `choose_sentinel()`, token encoding/parsing, side-table substitution, and validated exact restoration. |
+| `src/flowmark/preservation/bridge.py` | Marker escaping, fixed-width token encoding/parsing, side-table substitution, and validated exact restoration. |
 | `src/flowmark/linewrapping/markdown_filling.py::fill_markdown()` | Pipeline integration: optional explicit dedent, normalize, scan/protect, parse/transform/render, restore, and finalize. |
 | `src/flowmark/formats/flowmark_markdown.py` | Thin Marko inline-token and opaque-block nodes plus renderer paths that carry tokens without recognizing their source syntax. |
 | `src/flowmark/linewrapping/text_wrapping.py` | Structured fragments and unbreakable clusters with side-table widths and authored internal-line handling. |
@@ -757,7 +766,7 @@ must follow the repository's supply-chain policy.
 | Risk | Mitigation |
 | --- | --- |
 | A parser alters or splits a synthetic token. | Collision and parser-round-trip cases plus restoration validation; fail closed before output. |
-| A sentinel collides with authored private-use text. | Deterministically choose an absent sequence and test inputs containing candidate sentinels. |
+| A token marker collides with authored private-use text. | Reversibly escape authored control scalars, use fixed-width tokens, and test every marker in shared and native cases. |
 | Broad dollar pairing inhibits wrapping in currency or shell prose. | Accept as the safe default, pin exact output, and consider an additive strict profile only after evidence. |
 | A block opener consumes unrelated trailing prose. | Commit only candidates with legal compatible closers; unmatched openers never own the suffix. |
 | Lists and blockquotes close at the wrong indentation. | Shared container vectors cover every nesting direction, tabs, lazy continuation, and boundary mismatch. |
