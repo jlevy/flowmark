@@ -27,6 +27,7 @@ class RegionKind(StrEnum):
 
     math_gitlab_inline = "math_gitlab_inline"
     math_myst_inline = "math_myst_inline"
+    raw_html_inline = "raw_html_inline"
     code_span = "code_span"
     math_paren_inline = "math_paren_inline"
     math_environment_inline = "math_environment_inline"
@@ -38,6 +39,7 @@ class RegionKind(StrEnum):
     toml_frontmatter = "toml_frontmatter"
     definition_list = "definition_list"
     pandoc_grid_table = "pandoc_grid_table"
+    raw_html_block = "raw_html_block"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -54,6 +56,7 @@ _INLINE_REGION_KINDS = frozenset(
     {
         RegionKind.math_gitlab_inline,
         RegionKind.math_myst_inline,
+        RegionKind.raw_html_inline,
         RegionKind.code_span,
         RegionKind.math_paren_inline,
         RegionKind.math_environment_inline,
@@ -69,6 +72,7 @@ _BLOCK_REGION_KINDS = frozenset(
         RegionKind.toml_frontmatter,
         RegionKind.definition_list,
         RegionKind.pandoc_grid_table,
+        RegionKind.raw_html_block,
         RegionKind.math_dollar_block,
         RegionKind.math_bracket_block,
         RegionKind.math_environment_block,

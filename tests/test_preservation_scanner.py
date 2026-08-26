@@ -162,6 +162,17 @@ def test_block_math_preserves_raw_container_prefixes_and_suffixes() -> None:
     assert [region.scaffold_prefix for region in regions] == ["> ", "- ", "1. > "]
 
 
+def test_block_scaffold_excludes_optional_markdown_indent() -> None:
+    source = normalize_source("  $$\n  body\n  $$\n\n>   $$\n>   quoted\n>   $$")
+    regions = scan_protected_regions(source)
+
+    assert [region.source for region in regions] == [
+        "  $$\n  body\n  $$\n",
+        ">   $$\n>   quoted\n>   $$\n",
+    ]
+    assert [region.scaffold_prefix for region in regions] == ["", "> "]
+
+
 def test_existing_opaque_blocks_win_before_math_scanning() -> None:
     source = normalize_source(
         "---\nitems:\n- one\nmath: $not_inline$\n---\n\n"
@@ -239,6 +250,23 @@ def test_grid_tables_require_compatible_outer_borders() -> None:
 
     assert [region.kind for region in regions] == [RegionKind.pandoc_grid_table]
     assert regions[0].source.endswith("| 1   | 2   |\n+-----+-----+\n")
+
+
+def test_raw_html_uses_explicit_and_blank_line_end_conditions() -> None:
+    source = normalize_source(
+        "<!-- raw\n\n-->\n\n<div>\n*raw*\n</div>\n\nFollowing\n\n"
+        "paragraph\n<x-card>\nnot type seven"
+    )
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [
+        RegionKind.raw_html_block,
+        RegionKind.raw_html_block,
+        RegionKind.raw_html_inline,
+    ]
+    assert regions[0].source == "<!-- raw\n\n-->\n"
+    assert regions[1].source == "<div>\n*raw*\n</div>\n"
+    assert regions[2].source == "<x-card>"
 
 
 def test_unmatched_outer_block_retains_closed_inner_and_not_sibling_closers() -> None:

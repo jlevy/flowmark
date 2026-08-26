@@ -1,0 +1,54 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.extension.raw-html.raw-tags"
+change_id = "FM-EXT-RAW-HTML-001"
+description = "CommonMark type-1 raw tags preserve blank lines, Markdown-like text, math, and exact closing lines."
+kind = "stdin"
+tags = ["commonmark", "desired-output", "extension", "html", "preservation", "raw", "stdin"]
+args = ["--width", "20", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/raw-html/raw-tags/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/raw-html/raw-tags/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.raw-html.declarations"
+change_id = "FM-EXT-RAW-HTML-001"
+description = "Comments, processing instructions, declarations, and CDATA use CommonMark type-2 through type-5 end conditions."
+kind = "stdin"
+tags = ["cdata", "comment", "commonmark", "declaration", "desired-output", "extension", "html", "preservation", "processing-instruction", "stdin"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/raw-html/declarations/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/raw-html/declarations/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.raw-html.blank-terminated"
+change_id = "FM-EXT-RAW-HTML-001"
+description = "Standard and custom blank-terminated HTML blocks preserve embedded Markdown in quote and list containers."
+kind = "stdin"
+tags = ["commonmark", "container", "custom-element", "desired-output", "extension", "html", "preservation", "stdin"]
+args = ["--width", "22", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/raw-html/blank-terminated/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/raw-html/blank-terminated/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.raw-html.fallback"
+change_id = "FM-EXT-RAW-HTML-001"
+description = "Inline tags, incomplete tag syntax, and type-7 tags interrupting paragraphs remain ordinary Markdown."
+kind = "stdin"
+tags = ["commonmark", "extension", "fallback", "html", "malformed", "stdin"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/raw-html/fallback/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/raw-html/fallback/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

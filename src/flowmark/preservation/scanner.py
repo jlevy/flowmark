@@ -32,6 +32,16 @@ _MULTILINE_TABLE_RULE = re.compile(r"-{3,}(?:[ \t]+-{3,})*\Z")
 _TABLE_CAPTION = re.compile(r"(?:(?:Table|table):|:)(?:[ \t]+|\Z)")
 _OBSIDIAN_CALLOUT = re.compile(r"\[![A-Za-z0-9][A-Za-z0-9_-]*\][+-]?(?:[ \t]+.*)?\Z")
 _COLON_FENCE = re.compile(r"(:{3,})(.*)\Z")
+_HTML_RAW_TAG = re.compile(r"<(script|pre|style|textarea)(?:[ \t>]|\Z)", re.IGNORECASE)
+_HTML_BLOCK_TAG = re.compile(
+    r"</?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|"
+    r"colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|"
+    r"form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|"
+    r"menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|"
+    r"table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[ \t]+|/?>|\Z)",
+    re.IGNORECASE,
+)
+_HTML_COMPLETE_TAG = re.compile(r"</?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+[^<>]*)?[ \t]*/?>[ \t]*\Z")
 
 
 class _DollarState(Enum):
@@ -302,6 +312,64 @@ def scan_composite_math(source: NormalizedSource, start: int, end: int) -> tuple
             if role_start >= start_index and text[role_start:run_start] == _MYST_ROLE:
                 myst_pending[run_length] = role_start
 
+    return tuple(candidates)
+
+
+def scan_angle_spans(source: NormalizedSource, start: int, end: int) -> tuple[Candidate, ...]:
+    """Protect balanced inline HTML, autolink, and declaration-like angle spans."""
+    start_index, end_index = _scope_scalar_indexes(source, start, end)
+    text = source.text
+    candidates: list[Candidate] = []
+    index = start_index
+    while index < end_index:
+        if text[index] != "<" or index + 1 >= end_index:
+            index += 1
+            continue
+        next_scalar = text[index + 1]
+        if next_scalar.isspace() or next_scalar in "<>":
+            index += 1
+            continue
+
+        terminator = None
+        if text.startswith("<!--", index, end_index):
+            terminator = "-->"
+        elif text.startswith("<![CDATA[", index, end_index):
+            terminator = "]]>"
+        elif text.startswith("<?", index, end_index):
+            terminator = "?>"
+        if terminator is not None:
+            close = text.find(terminator, index + 2, end_index)
+            if close >= 0:
+                span_end = close + len(terminator)
+                candidates.append(_candidate(source, RegionKind.raw_html_inline, index, span_end))
+                index = span_end
+                continue
+            index += 1
+            continue
+
+        fallback_close = text.find(">", index + 1, end_index)
+        quote = ""
+        cursor = index + 1
+        close = -1
+        while cursor < end_index:
+            scalar = text[cursor]
+            if quote:
+                if scalar == quote:
+                    quote = ""
+            elif scalar in "\"'":
+                quote = scalar
+            elif scalar == ">":
+                close = cursor
+                break
+            cursor += 1
+        if close < 0:
+            close = fallback_close
+        if close < 0:
+            index += 1
+            continue
+        span_end = close + 1
+        candidates.append(_candidate(source, RegionKind.raw_html_inline, index, span_end))
+        index = span_end
     return tuple(candidates)
 
 
@@ -801,9 +869,9 @@ def _line_payload(
 
 def _scaffold_prefix(source: NormalizedSource, line: ContainerLine) -> str:
     """Return the exact opening-line prefix needed to retain parser placement."""
-    delimiter_start, _ = _line_payload_bounds(source, line)
     line_start = source.scalar_index(line.start)
-    return source.text[line_start:delimiter_start]
+    content_start = source.scalar_index(line.content_start)
+    return source.text[line_start:content_start]
 
 
 def _raw_line_content(source: NormalizedSource, line: ContainerLine) -> str:
@@ -1608,6 +1676,90 @@ def scan_pandoc_grid_tables(
     return tuple(candidates)
 
 
+def _html_block_start(payload: str, *, allow_type_seven: bool) -> tuple[str | None, bool] | None:
+    raw_tag = _HTML_RAW_TAG.match(payload)
+    if raw_tag is not None:
+        return f"</{raw_tag.group(1).lower()}>", False
+    if payload.startswith("<!--"):
+        return "-->", False
+    if payload.startswith("<?"):
+        return "?>", False
+    if payload.startswith("<![CDATA["):
+        return "]]>", False
+    if (
+        len(payload) >= 3
+        and payload.startswith("<!")
+        and payload[2].isascii()
+        and payload[2].isalpha()
+    ):
+        return ">", False
+    if _HTML_BLOCK_TAG.match(payload) is not None:
+        return None, True
+    if allow_type_seven and _HTML_COMPLETE_TAG.fullmatch(payload) is not None:
+        return None, True
+    return None
+
+
+def scan_raw_html_blocks(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+    opaque_blocks: tuple[OpaqueBlock, ...] = (),
+) -> tuple[Candidate, ...]:
+    """Apply CommonMark's seven raw HTML block start and end conditions."""
+    views = build_container_view(source) if lines is None else lines
+    opaque = _opaque_line_flags(views, opaque_blocks)
+    candidates: list[Candidate] = []
+    opener_index = 0
+    while opener_index < len(views):
+        opener = views[opener_index]
+        previous_allows_type_seven = (
+            opener_index == 0
+            or views[opener_index - 1].frames != opener.frames
+            or _content_under_frames(source, views[opener_index - 1], opener.frames) is not None
+            and _line_payload(source, views[opener_index - 1], frames=opener.frames) == ""
+        )
+        start = (
+            None
+            if opaque[opener_index] or opener.lazy
+            else _html_block_start(
+                _line_payload(source, opener),
+                allow_type_seven=previous_allows_type_seven,
+            )
+        )
+        if start is None:
+            opener_index += 1
+            continue
+        terminator, blank_terminated = start
+        final_index = opener_index
+        scan_index = opener_index + 1
+        opener_payload = _line_payload(source, opener)
+        opener_is_closed = terminator is not None and terminator in opener_payload.lower()
+        while not opener_is_closed and scan_index < len(views):
+            line = views[scan_index]
+            if _content_under_frames(source, line, opener.frames) is None:
+                break
+            payload = _line_payload(source, line, frames=opener.frames)
+            if blank_terminated and scan_index > opener_index and payload == "":
+                break
+            final_index = scan_index
+            if terminator is not None and terminator in payload.lower():
+                break
+            scan_index += 1
+
+        candidates.append(
+            Candidate(
+                RegionKind.raw_html_block,
+                RegionForm.block,
+                opener.start,
+                views[final_index].end,
+                opener.context,
+                _scaffold_prefix(source, opener),
+            )
+        )
+        opener_index = final_index + 1
+    return tuple(candidates)
+
+
 def resolve_candidate_tree(
     source: NormalizedSource, candidates: tuple[Candidate, ...]
 ) -> tuple[Candidate, ...]:
@@ -1827,6 +1979,36 @@ def _default_inline_scopes(
     return tuple(scopes)
 
 
+def _angle_inline_scopes(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...],
+    excluded_ranges: tuple[ByteRange, ...],
+) -> tuple[InlineScope, ...]:
+    excluded = _range_line_flags(lines, excluded_ranges)
+    scopes: list[InlineScope] = []
+    start: int | None = None
+    end = 0
+    frames: tuple[_ContainerFrame, ...] | None = None
+    context = ContainerContext()
+    for line in lines:
+        blank = _line_payload(source, line) == ""
+        if excluded[line.index] or blank or frames is not None and line.frames != frames:
+            if start is not None:
+                scopes.append(InlineScope(start, end, context))
+                start = None
+                frames = None
+        if excluded[line.index] or blank:
+            continue
+        if start is None:
+            start = line.content_start
+            frames = line.frames
+            context = line.context
+        end = line.end
+    if start is not None:
+        scopes.append(InlineScope(start, end, context))
+    return tuple(scopes)
+
+
 def scan_protected_regions(
     source: NormalizedSource,
     *,
@@ -1844,6 +2026,7 @@ def scan_protected_regions(
             *scan_colon_containers(source, lines, opaque_blocks),
             *scan_definition_lists(source, lines, opaque_blocks),
             *scan_pandoc_grid_tables(source, lines, opaque_blocks),
+            *scan_raw_html_blocks(source, lines, opaque_blocks),
             *scan_display_math(source, lines, opaque_blocks),
             *scan_environment_blocks(source, lines, opaque_blocks),
         ),
@@ -1858,6 +2041,11 @@ def scan_protected_regions(
         else tuple(InlineScope(start, end, ContainerContext()) for start, end in inline_scopes)
     )
     inline_candidates: list[Candidate] = []
+    for scope in _angle_inline_scopes(source, lines, excluded_ranges):
+        inline_candidates.extend(
+            replace(candidate, container=scope.context)
+            for candidate in scan_angle_spans(source, scope.start, scope.end)
+        )
     previous_scope_end = 0
     excluded_index = 0
     for scope in scopes:
@@ -1876,7 +2064,12 @@ def scan_protected_regions(
         inline_candidates.extend(scan_inline_scope(source, start, end, container=scope.context))
         previous_scope_end = end
 
-    protected_candidates = _merge_candidates(block_candidates, tuple(inline_candidates))
+    selected_inline = arbitrate_candidates(
+        tuple(inline_candidates),
+        start=0,
+        end=source.byte_length,
+    )
+    protected_candidates = _merge_candidates(block_candidates, selected_inline)
     regions = tuple(
         candidate.to_region(source, index=index)
         for index, candidate in enumerate(protected_candidates)

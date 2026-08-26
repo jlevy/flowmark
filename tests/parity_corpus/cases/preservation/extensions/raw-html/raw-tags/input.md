@@ -1,0 +1,11 @@
+<script type="text/plain">
+const text = "raw"...
+$x_y$ and *not emphasis*
+
+</ScRiPt>
+
+<pre>
+  ``code  span``
+</pre>
+
+Outside "changes"...

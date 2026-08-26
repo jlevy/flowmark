@@ -13,6 +13,7 @@ from flowmark.preservation.model import InvalidRegionError, RegionForm, RegionKi
 # Lower bands win arbitration. Gaps permit additive recognizers without renumbering the
 # stable precedence families used by both ports.
 COMPOSITE_INLINE_PRIORITY = 10
+RAW_HTML_INLINE_PRIORITY = 15
 CODE_SPAN_PRIORITY = 20
 UNAMBIGUOUS_INLINE_PRIORITY = 30
 DOLLAR_INLINE_PRIORITY = 40
@@ -32,6 +33,7 @@ class BlockRuleKind(StrEnum):
     colon_container = "colon_container"
     definition_list = "definition_list"
     pandoc_grid_table = "pandoc_grid_table"
+    raw_html_block = "raw_html_block"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -57,6 +59,7 @@ class BlockRecognizerDescriptor:
             RegionKind.toml_frontmatter,
             RegionKind.definition_list,
             RegionKind.pandoc_grid_table,
+            RegionKind.raw_html_block,
             RegionKind.math_dollar_block,
             RegionKind.math_bracket_block,
             RegionKind.math_environment_block,
@@ -94,6 +97,12 @@ BUILTIN_RECOGNIZERS: Final[tuple[RecognizerDescriptor, ...]] = (
         RegionForm.inline,
         COMPOSITE_INLINE_PRIORITY,
         "FM-MATH-INLINE-001",
+    ),
+    RecognizerDescriptor(
+        RegionKind.raw_html_inline,
+        RegionForm.inline,
+        RAW_HTML_INLINE_PRIORITY,
+        "FM-EXT-RAW-HTML-001",
     ),
     RecognizerDescriptor(
         RegionKind.code_span,
@@ -160,6 +169,12 @@ BUILTIN_RECOGNIZERS: Final[tuple[RecognizerDescriptor, ...]] = (
         RegionForm.block,
         OPAQUE_EXTENSION_BLOCK_PRIORITY,
         "FM-EXT-GRID-TABLE-001",
+    ),
+    RecognizerDescriptor(
+        RegionKind.raw_html_block,
+        RegionForm.block,
+        OPAQUE_EXTENSION_BLOCK_PRIORITY,
+        "FM-EXT-RAW-HTML-001",
     ),
     RecognizerDescriptor(
         RegionKind.math_dollar_block,
@@ -229,6 +244,11 @@ BUILTIN_BLOCK_RECOGNIZERS: Final[tuple[BlockRecognizerDescriptor, ...]] = (
         BlockRuleKind.pandoc_grid_table,
         25,
         RegionKind.pandoc_grid_table,
+    ),
+    BlockRecognizerDescriptor(
+        BlockRuleKind.raw_html_block,
+        25,
+        RegionKind.raw_html_block,
     ),
     BlockRecognizerDescriptor(
         BlockRuleKind.math_dollar_block,

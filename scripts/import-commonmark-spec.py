@@ -51,6 +51,14 @@ ALTERNATE_EXAMPLES = (
     650,
 )
 
+# These examples contain HTML-shaped syntax, but their source-exact expectation also
+# depends on independently formatted Markdown outside the applicable CommonMark HTML
+# boundary. Keep them in the whole-document integration review rather than widening the
+# raw-HTML contract or making this registry own unrelated canonicalization behavior.
+MIXED_HTML_INTEGRATION_EXAMPLES = frozenset(
+    {91, 110, 148, 183, 184, 185, 187, 191, 195, 201, 309, 494, 621}
+)
+
 
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -105,20 +113,26 @@ def _contains_active(markdown: str, token: str) -> bool:
     return False
 
 
-def _deferral(markdown: str, section: str) -> tuple[str, str, str] | None:
+def _deferral(markdown: str, section: str, number: int) -> tuple[str, str, str] | None:
     if section == "Code spans":
         return "fm-ocpw", "FM-CODE-SPAN-001", "exercises CommonMark code-span syntax"
-    html_match = re.search(r"<[/!A-Za-z][^>]*>", markdown)
-    if section == "HTML blocks" or (
-        html_match is not None and _escape_is_even(markdown, html_match.start())
-    ):
-        return "fm-w1tn", "FM-EXT-RAW-HTML-001", "contains raw or inline HTML syntax"
+    if number in MIXED_HTML_INTEGRATION_EXAMPLES:
+        return (
+            "fm-w467",
+            "FM-COMMONMARK-001",
+            "mixes HTML-shaped syntax with independently formatted Markdown",
+        )
     if "`" in markdown:
         return (
             "fm-w467",
             "FM-COMMONMARK-001",
             "backtick syntax outside the Code spans section requires general review",
         )
+    html_match = re.search(r"<[/!A-Za-z][^>]*>", markdown)
+    if section == "HTML blocks" or (
+        html_match is not None and _escape_is_even(markdown, html_match.start())
+    ):
+        return "fm-w1tn", "FM-EXT-RAW-HTML-001", "contains raw or inline HTML syntax"
     active_dollars = sum(
         markdown[index] == "$" and _escape_is_even(markdown, index)
         for index in range(len(markdown))
@@ -238,7 +252,7 @@ def import_corpus(repo_root: Path, executable: Path, *, reclassify: bool = False
         output_file = case_dir / "expected.default.md"
         input_file.write_bytes(source)
 
-        deferral = _deferral(markdown, section)
+        deferral = _deferral(markdown, section, number)
         first = _run(executable, ("-",), source)
         second = _run(executable, ("-",), first.stdout) if first.returncode == 0 else first
         try:
