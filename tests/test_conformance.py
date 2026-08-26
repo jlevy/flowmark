@@ -39,15 +39,22 @@ def _installed_flowmark() -> Path:
 def test_shared_manifest_validates() -> None:
     manifest = load_manifest(CORPUS_ROOT / "manifest.toml", REPO_ROOT)
 
-    assert [case.id for case in manifest.cases[:6]] == [
+    assert [case.id for case in manifest.cases[:3]] == [
         "cli.stdin.wrap",
         "cli.files.inplace-backup",
         "reference.testdoc.plain",
+    ]
+    case_ids = {case.id for case in manifest.cases}
+    assert {
         "reference.testdoc.semantic",
         "reference.testdoc.cleaned",
         "reference.testdoc.auto",
-    ]
-    case_ids = {case.id for case in manifest.cases}
+        "parity.corner-cases.default",
+        "parity.corner-cases.auto",
+        "parity.corner-cases.tight",
+        "parity.corner-cases.loose",
+        "parity.corner-cases.plaintext",
+    } <= case_ids
     assert "commonmark.default.0001" in case_ids
     assert "commonmark.default.0652" in case_ids
     assert "commonmark.auto.0650" in case_ids
@@ -253,6 +260,9 @@ def test_conformance_coverage_rejects_a_dangling_case_payload(tmp_path: Path) ->
     copied_corpus = copied_root / "tests/parity_corpus"
     shutil.copytree(CORPUS_ROOT, copied_corpus, symlinks=True)
     shutil.copytree(REPO_ROOT / "tests/testdocs", copied_root / "tests/testdocs")
+    shutil.copytree(
+        REPO_ROOT / "tests/tryscript/fixtures", copied_root / "tests/tryscript/fixtures"
+    )
 
     check_conformance_coverage(copied_root, check_topics=False)
     dangling = copied_corpus / "cases/dangling.expected"

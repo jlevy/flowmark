@@ -48,6 +48,71 @@ expected_exit = 0
 idempotent = true
 
 [[case]]
+id = "parity.corner-cases.default"
+change_id = "FM-PARITY-BASELINE-001"
+description = "Historical cross-language corner cases match the reviewed default-mode output."
+kind = "stdin"
+tags = ["current-behavior", "historical", "parity", "stdin"]
+args = ["--width", "88", "-"]
+stdin = "tests/tryscript/fixtures/content/parity-corner-cases.md"
+expected_stdout = "tests/parity_corpus/cases/parity/corner-cases/default.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "parity.corner-cases.auto"
+change_id = "FM-PARITY-BASELINE-001"
+description = "Historical cross-language corner cases match the reviewed automatic-mode output."
+kind = "stdin"
+tags = ["auto", "current-behavior", "historical", "parity", "stdin"]
+args = ["--width", "88", "--semantic", "--cleanups", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/tryscript/fixtures/content/parity-corner-cases.md"
+expected_stdout = "tests/parity_corpus/cases/parity/corner-cases/auto.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = false
+
+[[case]]
+id = "parity.corner-cases.tight"
+change_id = "FM-PARITY-BASELINE-001"
+description = "Historical cross-language corner cases match the reviewed tight-list output."
+kind = "stdin"
+tags = ["current-behavior", "historical", "list-spacing", "parity", "stdin", "tight"]
+args = ["--width", "88", "--semantic", "--list-spacing", "tight", "-"]
+stdin = "tests/tryscript/fixtures/content/parity-corner-cases.md"
+expected_stdout = "tests/parity_corpus/cases/parity/corner-cases/tight.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "parity.corner-cases.loose"
+change_id = "FM-PARITY-BASELINE-001"
+description = "Historical cross-language corner cases match the reviewed loose-list output."
+kind = "stdin"
+tags = ["current-behavior", "historical", "list-spacing", "loose", "parity", "stdin"]
+args = ["--width", "88", "--semantic", "--list-spacing", "loose", "-"]
+stdin = "tests/tryscript/fixtures/content/parity-corner-cases.md"
+expected_stdout = "tests/parity_corpus/cases/parity/corner-cases/loose.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "parity.corner-cases.plaintext"
+change_id = "FM-PARITY-BASELINE-001"
+description = "Historical cross-language corner cases match the reviewed plaintext output."
+kind = "stdin"
+tags = ["current-behavior", "historical", "parity", "plaintext", "stdin"]
+args = ["--width", "88", "--plaintext", "-"]
+stdin = "tests/tryscript/fixtures/content/parity-corner-cases.md"
+expected_stdout = "tests/parity_corpus/cases/parity/corner-cases/plaintext.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
 id = "reference.testdoc.semantic"
 change_id = "FM-CONFORMANCE-001"
 description = "The reference document matches its reviewed semantic-mode output."
