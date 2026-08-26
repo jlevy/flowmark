@@ -187,3 +187,16 @@ expected_stdout = "tests/parity_corpus/cases/preservation/math-block/adversarial
 expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
 expected_exit = 0
 idempotent = true
+
+[[case]]
+id = "preservation.math.block.sibling-boundaries"
+change_id = "FM-MATH-BLOCK-001"
+description = "Unmatched display delimiters in sibling list items cannot pair across item identity."
+kind = "stdin"
+tags = ["block", "containers", "fallback", "list", "math", "smartquotes", "stdin"]
+args = ["--width", "0", "--smartquotes", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-block/sibling-boundaries/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/sibling-boundaries/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
