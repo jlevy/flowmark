@@ -49,7 +49,17 @@ def _apply_smart_quotes_to_text(text: str) -> str:
             # Replace single quotes with typographic quotes
             return prefix + "\u2018" + single_content + "\u2019" + suffix
 
-    result = QUOTE_PATTERN.sub(replace_quotes, text)
+    # A successful outer-pair conversion can expose a differently quoted nested
+    # pair that the non-overlapping regex could not visit in the same pass. Iterate
+    # locally until stable so one formatter run, not a second Markdown parse, owns
+    # the complete typography result. Every successful replacement removes two
+    # straight quote characters, so this loop is strictly bounded.
+    result = text
+    while True:
+        converted = QUOTE_PATTERN.sub(replace_quotes, result)
+        if converted == result:
+            break
+        result = converted
 
     # Handle apostrophes/contractions
     # Only convert single quotes that are:

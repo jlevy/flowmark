@@ -982,7 +982,7 @@ And let's try some links with angle brackets.
 [^53]: <https://www.fastcompany.com/90216464/the-29-billion-battle-to-own-how-america-sleeps>
 
 [^217]: Testing - : Is Ketamine Contraindicated in Patients with Psychiatric Disorders?
-    - REBEL EM - more words - accessed April 24, 2025,
+    \- REBEL EM - more words - accessed April 24, 2025,
     <https://rebelem.com/is-ketamine-contraindicated-in-patients-with-psychiatric-disorders/>
 
 [^multiline]: The distinction between “hiring” and “recruiting” isn’t universally agreed

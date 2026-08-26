@@ -117,6 +117,21 @@ def test_wrap_paragraph_lines_markdown_escaping():
     ]
 
 
+def test_semantic_sentence_break_escapes_a_new_markdown_block_marker() -> None:
+    wrapper = line_wrap_by_sentence(width=88, is_markdown=True)
+    text = (
+        "Testing - : Is Ketamine Contraindicated in Patients with Psychiatric Disorders? "
+        "- REBEL EM - more words - accessed April 24, 2025, "
+        "<https://rebelem.com/is-ketamine-contraindicated-in-patients-with-psychiatric-disorders/>"
+    )
+
+    assert wrapper(text, "[^217]: ", "    ") == (
+        "[^217]: Testing - : Is Ketamine Contraindicated in Patients with Psychiatric Disorders?\n"
+        "    \\- REBEL EM - more words - accessed April 24, 2025,\n"
+        "    <https://rebelem.com/is-ketamine-contraindicated-in-patients-with-psychiatric-disorders/>"
+    )
+
+
 def test_smart_splitter():
     splitter = _HtmlMdWordSplitter()
 

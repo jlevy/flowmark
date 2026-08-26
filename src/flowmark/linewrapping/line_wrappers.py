@@ -14,6 +14,7 @@ from flowmark.linewrapping.tag_handling import (
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 from flowmark.linewrapping.text_wrapping import (
     DEFAULT_LEN_FUNCTION,
+    markdown_escape_word,
     measure_protected_text,
     wrap_paragraph,
     wrap_paragraph_lines,
@@ -172,6 +173,7 @@ def line_wrap_by_sentence(
             sentences = split_sentences(text)
 
             for sentence in sentences:
+                starts_new_output_line = bool(lines)
                 current_column = initial_indent_len if first_line else subsequent_indent_len
                 if lines and logical_final_width(lines[-1]) < min_line_len:
                     current_column += logical_final_width(lines[-1])
@@ -201,6 +203,11 @@ def line_wrap_by_sentence(
                 ):
                     lines[-1] += " " + wrapped[0]
                     wrapped.pop(0)
+                    starts_new_output_line = False
+
+                if is_markdown and starts_new_output_line and wrapped:
+                    first_word, separator, remainder = wrapped[0].partition(" ")
+                    wrapped[0] = markdown_escape_word(first_word) + separator + remainder
 
                 lines.extend(wrapped)
 

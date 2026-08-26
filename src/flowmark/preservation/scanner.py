@@ -2018,12 +2018,33 @@ def scan_pandoc_line_blocks(
     """Recognize contiguous Pandoc line-block lines without consuming pipe tables."""
     views = build_container_view(source) if lines is None else lines
     opaque = _opaque_line_flags(views, opaque_blocks)
+    gfm_table_lines = [False] * len(views)
+    table_index = 0
+    while table_index + 1 < len(views):
+        if (
+            not opaque[table_index]
+            and not opaque[table_index + 1]
+            and _has_structural_pipe(source, views[table_index])
+            and _is_table_delimiter(_line_payload(source, views[table_index + 1]))
+        ):
+            table_end = table_index + 2
+            while (
+                table_end < len(views)
+                and not opaque[table_end]
+                and _has_structural_pipe(source, views[table_end])
+            ):
+                table_end += 1
+            gfm_table_lines[table_index:table_end] = [True] * (table_end - table_index)
+            table_index = table_end
+        else:
+            table_index += 1
     candidates: list[Candidate] = []
     opener_index = 0
     while opener_index < len(views):
         opener = views[opener_index]
         if (
             opaque[opener_index]
+            or gfm_table_lines[opener_index]
             or opener.lazy
             or not _is_pandoc_line(_exact_line_payload(source, opener))
         ):
@@ -2032,7 +2053,7 @@ def scan_pandoc_line_blocks(
         final_index = opener_index
         scan_index = opener_index + 1
         while scan_index < len(views):
-            if opaque[scan_index]:
+            if opaque[scan_index] or gfm_table_lines[scan_index]:
                 break
             line = views[scan_index]
             if _content_under_frames(source, line, opener.frames) is None or not _is_pandoc_line(
@@ -2065,7 +2086,7 @@ def resolve_candidate_tree(
 def _is_table_delimiter(line: str) -> bool:
     stripped = line.strip(" \t").strip("|")
     cells = [cell.strip(" \t") for cell in stripped.split("|")]
-    return len(cells) >= 2 and all(_TABLE_DELIMITER_CELL.fullmatch(cell) for cell in cells)
+    return bool(cells) and all(_TABLE_DELIMITER_CELL.fullmatch(cell) for cell in cells)
 
 
 def _plain_block_scopes(
@@ -2137,6 +2158,8 @@ def _table_cell_ranges(
 def _has_structural_pipe(source: NormalizedSource, line: ContainerLine) -> bool:
     start = source.scalar_index(line.content_start)
     end = source.scalar_index(line.content_end)
+    if start >= end:
+        return False
     cells = _table_cell_ranges(source, start, end)
     return len(cells) > 1 or source.text[start:end].lstrip(" \t").startswith("|")
 

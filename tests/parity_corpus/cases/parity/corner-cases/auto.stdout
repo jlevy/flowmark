@@ -247,7 +247,7 @@ All CommonMark escapable: \! \# \$ \% \& \' \( \) \* \+ \, \- . \/ \: \; \< \= \
 
 It’s a contraction.
 
-“Nested 'quotes' here” should work.
+“Nested ‘quotes’ here” should work.
 
 Don’t rebuild grep: full-text search is ripgrep’s job, not ours.
 

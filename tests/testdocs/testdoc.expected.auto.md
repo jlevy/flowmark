@@ -86,8 +86,8 @@ The stated reason—“I’m working on myself”—may be sincere on one level.
 Cas’ surprise at John’s question hung over them both for a brief moment, like a thinly
 disguised sack of potatoes.
 “From 2002-2004 I specialized in the Sarbanes-Oxley Act (Pub.L. 107–204, 116 Stat.
-745, enacted July 30, 2002), which was known (in the House) as the 'Corporate and
-Auditing Accountability, Responsibility, and Transparency Act' and--” But here he cut
+745, enacted July 30, 2002), which was known (in the House) as the ‘Corporate and
+Auditing Accountability, Responsibility, and Transparency Act’ and--” But here he cut
 her off! And who could blame him?
 He had spoken with the FBI. There was no time to lose.
 
@@ -950,7 +950,7 @@ not complaining)[^urbanthowt.wy49lp].
 ❗️️️ Having multiple automatic conversion thresholds can give the investor with a higher
 threshold leverage to block an IPO.[^210]
 
-1. **Initial Scan with -X importtime:** Run the application with python -X importtime...
+1. **Initial Scan with -X importtime:** Run the application with python -X importtime …
    \> import.log. Visualize the output using tuna import.log.<sup>42</sup> Look for
    modules with large *cumulative* times at the top level or deep in the call stack.
    These are the primary candidates for further investigation.<sup>1</sup>
@@ -982,7 +982,7 @@ And let’s try some links with angle brackets.
 [^53]: <https://www.fastcompany.com/90216464/the-29-billion-battle-to-own-how-america-sleeps>
 
 [^217]: Testing - : Is Ketamine Contraindicated in Patients with Psychiatric Disorders?
-    - REBEL EM - more words - accessed April 24, 2025,
+    \- REBEL EM - more words - accessed April 24, 2025,
     <https://rebelem.com/is-ketamine-contraindicated-in-patients-with-psychiatric-disorders/>
 
 [^multiline]: The distinction between “hiring” and “recruiting” isn’t universally agreed

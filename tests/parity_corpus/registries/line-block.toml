@@ -43,10 +43,10 @@ idempotent = true
 [[case]]
 id = "preservation.extension.line-block.fallback"
 change_id = "FM-EXT-LINE-BLOCK-001"
-description = "Pipe tables, escaped bars, missing marker spaces, and indented code do not become line blocks."
+description = "Multi- and single-column pipe tables, escaped bars, missing marker spaces, and indented code do not become line blocks."
 kind = "stdin"
 tags = ["extension", "fallback", "line-block", "malformed", "pandoc", "preservation", "stdin", "table"]
-args = ["--width", "0", "-"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
 stdin = "tests/parity_corpus/cases/preservation/extensions/line-block/fallback/input.md"
 expected_stdout = "tests/parity_corpus/cases/preservation/extensions/line-block/fallback/expected.stdout"
 expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"

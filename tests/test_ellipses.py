@@ -21,6 +21,7 @@ def test_ellipses():
     assert ellipses("...") == "…"
 
     assert ellipses("I think... well... maybe...") == "I think … well … maybe …"
+    assert ellipses("importtime... > import.log") == "importtime … > import.log"
     assert ellipses("First...second...third") == "First … second … third"
     assert ellipses("Wait... what... really?") == "Wait … what … really?"
     assert (

@@ -215,6 +215,12 @@ def test_line_blocks_require_active_spaced_bars_and_do_not_claim_tables() -> Non
     ]
 
 
+def test_line_blocks_do_not_claim_single_column_gfm_tables() -> None:
+    source = normalize_source("| Header |\n| --- |\n| There’s a value |\n")
+
+    assert scan_protected_regions(source) == ()
+
+
 def test_general_myst_roles_and_wikilinks_preserve_priority_and_nesting() -> None:
     source = normalize_source(
         "{ref}`target` {custom:name}``body `tick` `` {math}`x_y`\n\n"

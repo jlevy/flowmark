@@ -53,8 +53,8 @@ def test_all_valid_alert_types():
         assert normalized_doc.startswith(">"), f"Quote formatting lost for {alert_type}"
 
 
-def test_lowercase_alert_normalized_to_uppercase():
-    """Test that lowercase alert types are normalized to uppercase."""
+def test_lowercase_alert_source_is_preserved_exactly():
+    """Test that a valid lowercase alert remains source-exact."""
     input_doc = dedent(
         """
         > [!note]
@@ -64,11 +64,7 @@ def test_lowercase_alert_normalized_to_uppercase():
 
     normalized_doc = fill_markdown(input_doc, semantic=True)
 
-    # Should be normalized to uppercase
-    assert "> [!NOTE]" in normalized_doc
-    assert "> [!note]" not in normalized_doc
-    # Content preserved
-    assert "normalized" in normalized_doc
+    assert normalized_doc == input_doc + "\n"
 
 
 def test_misspelled_alert_preserves_quote():
@@ -173,8 +169,7 @@ def test_alert_with_multiple_paragraphs():
         """
     ).strip()
 
-    # Note: blank lines in quotes are rendered as "> " (with trailing space)
-    expected_doc = "> [!TIP]\n> First paragraph.\n> \n> Second paragraph.\n"
+    expected_doc = "> [!TIP]\n> First paragraph.\n>\n> Second paragraph.\n"
 
     normalized_doc = fill_markdown(input_doc, semantic=True)
     assert normalized_doc == expected_doc
