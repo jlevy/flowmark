@@ -1,0 +1,189 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.math.block.display-dollar"
+change_id = "FM-MATH-BLOCK-001"
+description = "A labeled multiline double-dollar display retains every authored line and delimiter byte."
+kind = "stdin"
+tags = ["block", "deferred", "display", "dollar", "math", "owner-fm-ucy8", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-block/display-dollar/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/display-dollar/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.block.bracket-environments"
+change_id = "FM-MATH-BLOCK-001"
+description = "Bracket displays and nested, starred, and custom LaTeX environments remain opaque blocks."
+kind = "stdin"
+tags = ["block", "bracket", "deferred", "environment", "math", "owner-fm-ucy8", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-block/bracket-environments/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/bracket-environments/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.block.containers"
+change_id = "FM-MATH-BLOCK-001"
+description = "Display blocks preserve quote depth, list content columns, labels, attributes, and tabs."
+kind = "stdin"
+tags = ["block", "blockquote", "containers", "deferred", "list", "math", "owner-fm-ucy8", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-block/containers/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/containers/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.block.document-adjacency"
+change_id = "FM-MATH-BLOCK-001"
+description = "Math blocks remain exact beside frontmatter, tables, and raw HTML blocks."
+kind = "stdin"
+tags = ["adjacency", "block", "deferred", "frontmatter", "html", "math", "owner-fm-ucy8", "stdin", "table"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-block/document-adjacency/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/document-adjacency/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.block.code-precedence"
+change_id = "FM-MATH-BLOCK-001"
+description = "Fenced and indented code own math-shaped text before display recognition."
+kind = "stdin"
+tags = ["block", "code", "deferred", "math", "owner-fm-ucy8", "precedence", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-block/code-precedence/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/code-precedence/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.block.malformed-fallback"
+change_id = "FM-MATH-BLOCK-001"
+description = "Unmatched and mismatched block openers cannot consume independently formattable trailing content."
+kind = "stdin"
+tags = ["block", "deferred", "fallback", "malformed", "math", "owner-fm-ucy8", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-block/malformed-fallback/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/malformed-fallback/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.block.normalization-bom-crlf"
+change_id = "FM-PRESERVE-CORE-001"
+description = "A BOM-prefixed CRLF display without a final newline normalizes around an exact block slice."
+kind = "stdin"
+tags = ["block", "bom", "crlf", "deferred", "normalization", "owner-fm-ucy8", "preservation-core", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-block/normalization-bom-crlf/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/normalization-bom-crlf/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.topic.width-zero"
+change_id = "FM-MATH-BLOCK-001"
+description = "The shared whole-topic math document preserves all inline and block forms at width zero."
+kind = "stdin"
+tags = ["block", "deferred", "inline", "math", "owner-fm-ucy8", "stdin", "topic", "whole-document"]
+args = ["--width", "0", "-"]
+stdin = "tests/tryscript/fixtures/content/math.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/topic-width-zero/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.io.output-file"
+change_id = "FM-CLI-OUTPUT-001"
+description = "Formatting to an output file preserves the input and writes the exact display document."
+kind = "files"
+tags = ["block", "deferred", "files", "math", "output", "owner-fm-ucy8"]
+args = ["--output", "workspace/output.md", "workspace/input.md"]
+before_tree = "tests/parity_corpus/cases/preservation/math-block/io-output-file/before"
+after_tree = "tests/parity_corpus/cases/preservation/math-block/io-output-file/after"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/io-output-file/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.io.inplace-normalization"
+change_id = "FM-PRESERVE-CORE-001"
+description = "In-place formatting atomically normalizes CRLF around a preserved display block."
+kind = "files"
+tags = ["block", "crlf", "deferred", "files", "inplace", "math", "normalization", "owner-fm-ucy8", "preservation-core"]
+args = ["--inplace", "--nobackup", "workspace/input.md"]
+before_tree = "tests/parity_corpus/cases/preservation/math-block/io-inplace-normalization/before"
+after_tree = "tests/parity_corpus/cases/preservation/math-block/io-inplace-normalization/after"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/io-inplace-normalization/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.io.check-no-mutation"
+change_id = "FM-PRESERVE-CORE-001"
+description = "Check mode reports a missing final LF without mutating the math document."
+kind = "files"
+tags = ["block", "check", "deferred", "files", "math", "normalization", "owner-fm-ucy8", "preservation-core"]
+args = ["--check", "workspace/input.md"]
+before_tree = "tests/parity_corpus/cases/preservation/math-block/io-check-no-mutation/before"
+after_tree = "tests/parity_corpus/cases/preservation/math-block/io-check-no-mutation/after"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/io-check-no-mutation/expected.stdout"
+expected_stderr = "tests/parity_corpus/cases/preservation/math-block/io-check-no-mutation/expected.stderr"
+expected_exit = 1
+idempotent = false
+
+[[case]]
+id = "preservation.math.io.config-width"
+change_id = "FM-MATH-INLINE-001"
+description = "A project config width moves an inline math region whole without changing its bytes."
+kind = "files"
+tags = ["config", "deferred", "files", "inline", "math", "owner-fm-ucy8", "wrapping"]
+args = ["workspace/input.md"]
+before_tree = "tests/parity_corpus/cases/preservation/math-block/io-config-width/before"
+after_tree = "tests/parity_corpus/cases/preservation/math-block/io-config-width/after"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/io-config-width/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.core.invalid-file-no-mutation"
+change_id = "FM-PRESERVE-CORE-001"
+description = "Invalid UTF-8 in-place input fails atomically and leaves the original file unchanged."
+kind = "files"
+tags = ["deferred", "error", "files", "inplace", "invalid-utf8", "owner-fm-ucy8", "preservation-core"]
+args = ["--inplace", "--nobackup", "workspace/input.md"]
+before_tree = "tests/parity_corpus/cases/preservation/math-block/invalid-file-no-mutation/before"
+after_tree = "tests/parity_corpus/cases/preservation/math-block/invalid-file-no-mutation/after"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/invalid-file-no-mutation/expected.stdout"
+expected_stderr = "tests/parity_corpus/cases/preservation/math-block/invalid-file-no-mutation/expected.stderr"
+expected_exit = 2
+idempotent = false
+
+[[case]]
+id = "preservation.math.block.adversarial-linear"
+change_id = "FM-MATH-BLOCK-001"
+description = "Thousands of dollar transitions, deep environments, and a long body finish within the shared timeout."
+kind = "stdin"
+tags = ["adversarial", "block", "deferred", "environment", "linear-time", "math", "owner-fm-ucy8", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-block/adversarial-linear/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-block/adversarial-linear/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

@@ -58,6 +58,20 @@ def test_shared_manifest_validates() -> None:
     assert "commonmark.default.0001" in case_ids
     assert "commonmark.default.0652" in case_ids
     assert "commonmark.auto.0650" in case_ids
+    assert {
+        "preservation.core.invalid-utf8",
+        "preservation.math.inline.dollar-boundaries",
+        "preservation.math.block.display-dollar",
+        "preservation.math.topic.width-zero",
+        "preservation.core.invalid-file-no-mutation",
+    } <= case_ids
+    assert (
+        sum(
+            case.stdin == PurePosixPath("tests/tryscript/fixtures/content/math.md")
+            for case in manifest.cases
+        )
+        == 1
+    )
 
 
 def test_shared_invalid_manifest_fixtures_have_stable_error_codes() -> None:
@@ -291,6 +305,21 @@ def test_conformance_coverage_rejects_dead_topics_and_implementation_paths(
     assert caught.value.code == "implementation-path"
 
     script.write_bytes(original)
+    registry = copied_root / "tests/parity_corpus/registries/math-inline.toml"
+    registry_original = registry.read_text(encoding="utf-8")
+    registry.write_text(
+        registry_original.replace(
+            'args = ["--width", "0", "-"]',
+            'args = [".venv/bin/flowmark", "--width", "0", "-"]',
+            1,
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ConformanceError) as caught:
+        check_conformance_coverage(copied_root)
+    assert caught.value.code == "implementation-path"
+
+    registry.write_text(registry_original, encoding="utf-8")
     (copied_root / "tests/tryscript/fixtures/content/dead.md").write_bytes(b"dead\n")
     with pytest.raises(ConformanceError) as caught:
         check_conformance_coverage(copied_root)

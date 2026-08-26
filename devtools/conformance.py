@@ -991,12 +991,13 @@ def _topic_deferred_paths(repo_root: Path) -> set[PurePosixPath]:
     return deferred
 
 
-def _validate_topic_reachability(repo_root: Path) -> None:
+def _validate_topic_reachability(manifest: ConformanceManifest, repo_root: Path) -> None:
     topic_root = repo_root / "tests/tryscript/fixtures/content"
     if not topic_root.is_dir():
         raise ConformanceError("missing-path", f"missing topic fixture directory: {topic_root}")
     deferred = _topic_deferred_paths(repo_root)
-    reference_text = (repo_root / "tests/parity_corpus/manifest.toml").read_text(encoding="utf-8")
+    referenced_manifest_paths = {case.stdin for case in manifest.cases if case.stdin is not None}
+    reference_text = ""
     for script in sorted((repo_root / "tests/tryscript").glob("*.tryscript.md")):
         reference_text += script.read_text(encoding="utf-8")
 
@@ -1008,7 +1009,11 @@ def _validate_topic_reachability(repo_root: Path) -> None:
         topics.add(relative)
     for topic in sorted(topics):
         short_path = topic.as_posix().removeprefix("tests/tryscript/")
-        referenced = short_path in reference_text or topic.as_posix() in reference_text
+        referenced = (
+            topic in referenced_manifest_paths
+            or short_path in reference_text
+            or topic.as_posix() in reference_text
+        )
         is_deferred = topic in deferred
         if referenced and is_deferred:
             raise ConformanceError(
@@ -1024,14 +1029,19 @@ def _validate_topic_reachability(repo_root: Path) -> None:
         )
 
 
-def _validate_portable_test_definitions(repo_root: Path) -> None:
+def _validate_portable_test_definitions(manifest: ConformanceManifest, repo_root: Path) -> None:
     implementation_path = re.compile(
         r"\.venv/bin|target/(?:debug|release)|python(?:\s+-m)?\s+flowmark|"
         r"uv\s+run\s+flowmark"
     )
-    definitions = [repo_root / "tests/parity_corpus/manifest.toml"]
-    definitions.extend(sorted((repo_root / "tests/tryscript").glob("*.tryscript.md")))
-    for path in definitions:
+    for case in manifest.cases:
+        if implementation_path.search(" ".join(case.args)):
+            raise ConformanceError(
+                "implementation-path",
+                f"case {case.id!r} embeds an implementation-specific executable",
+            )
+
+    for path in sorted((repo_root / "tests/tryscript").glob("*.tryscript.md")):
         for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if implementation_path.search(line):
                 relative = path.relative_to(repo_root)
@@ -1078,8 +1088,8 @@ def check_conformance_coverage(repo_root: Path, *, check_topics: bool = True) ->
     _validate_case_deferrals(manifest, repo_root)
     _validate_case_payload_reachability(manifest, repo_root)
     if check_topics:
-        _validate_topic_reachability(repo_root)
-        _validate_portable_test_definitions(repo_root)
+        _validate_topic_reachability(manifest, repo_root)
+        _validate_portable_test_definitions(manifest, repo_root)
 
 
 def _add_run_arguments(parser: ArgumentParser) -> None:

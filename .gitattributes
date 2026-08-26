@@ -1,2 +1,5 @@
 # CommonMark examples intentionally exercise significant trailing whitespace and tabs.
 tests/parity_corpus/spec/commonmark-*/examples/** -whitespace
+
+# Preservation payloads are byte contracts, including CRLF, invalid UTF-8, and tabs.
+tests/parity_corpus/cases/preservation/** -text -whitespace

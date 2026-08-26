@@ -1,6 +1,10 @@
 schema_version = 1
 corpus = "flowmark-language-neutral-conformance"
-case_registry = ["tests/parity_corpus/spec/commonmark-0.31.2/manifest.toml"]
+case_registry = [
+    "tests/parity_corpus/registries/math-inline.toml",
+    "tests/parity_corpus/registries/math-block.toml",
+    "tests/parity_corpus/spec/commonmark-0.31.2/manifest.toml",
+]
 
 [defaults.env]
 NO_COLOR = "1"

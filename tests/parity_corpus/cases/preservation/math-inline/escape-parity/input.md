@@ -1,0 +1,3 @@
+Odd \$x'y$ stays ordinary; even \\$x'y$ opens; odd \\\$x'y$ stays ordinary; even \\\\$x'y$ opens.
+
+Inside $x'y\$ + c$ the escaped dollar is body text, while $x'y\\$ closes at the active dollar.

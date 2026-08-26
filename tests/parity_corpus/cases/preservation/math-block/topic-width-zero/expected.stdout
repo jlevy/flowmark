@@ -1,16 +1,10 @@
 # Math and Dollar-Sign Content
 
-A broad integration corpus for common math notations, Markdown contexts, parser
-collisions, and ordinary dollar-sign prose.
+A broad integration corpus for common math notations, Markdown contexts, parser collisions, and ordinary dollar-sign prose.
 
-Formatting must preserve every recognized math slice exactly after Flowmark's documented
-newline normalization. It must not introduce a line ending inside inline math or collapse
-a display block. Dollar-shaped prose must remain byte-safe even when the
-preservation-biased recognizer conservatively treats a balanced pair as atomic. Reflowing
-surrounding prose is expected.
+Formatting must preserve every recognized math slice exactly after Flowmark's documented newline normalization. It must not introduce a line ending inside inline math or collapse a display block. Dollar-shaped prose must remain byte-safe even when the preservation-biased recognizer conservatively treats a balanced pair as atomic. Reflowing surrounding prose is expected.
 
-Long cases carry filler so the wrap column falls *inside* the construct. That is the
-condition most of these defects need, and the reason a short example proves nothing.
+Long cases carry filler so the wrap column falls *inside* the construct. That is the condition most of these defects need, and the reason a short example proves nothing.
 
 ## Part A: Inline Forms
 
@@ -44,13 +38,11 @@ Given $a > 0$ and $b > 0$, the identity $\sqrt{ab} \le \tfrac{1}{2}(a + b)$ hold
 
 ### A8. Pandoc intraword forms
 
-Water is H$_2$O, a coefficient may be written 1$a$, and a formula may be followed
-immediately by a letter as in $a$B.
+Water is H$_2$O, a coefficient may be written 1$a$, and a formula may be followed immediately by a letter as in $a$B.
 
 ### A9. Whitespace-padded dollar math
 
-MyST can allow padding inside single-dollar math, so $ a + b $ is protected by default
-without asking Flowmark which dialect authored it.
+MyST can allow padding inside single-dollar math, so $ a + b $ is protected by default without asking Flowmark which dialect authored it.
 
 ### A10. Closing dollar followed by a digit
 
@@ -58,14 +50,12 @@ The preservation-biased union accepts $a$2 even though stricter dialects may rej
 
 ### A11. Soft newline inside inline math
 
-Pandoc accepts a soft newline inside inline math, and Flowmark must retain the authored
-break in $a +
+Pandoc accepts a soft newline inside inline math, and Flowmark must retain the authored break in $a +
 b$ rather than adding, removing, or relocating it.
 
 ### A12. Unicode adjacency and combining marks
 
-Inline forms may touch non-ASCII text: 水$x_1$量, α$e^{iπ}$β, and $á + b̂$ all remain
-intact.
+Inline forms may touch non-ASCII text: 水$x_1$量, α$e^{iπ}$β, and $á + b̂$ all remain intact.
 
 ### A13. Soft newline inside a blockquote
 
@@ -161,9 +151,7 @@ Text-like tokens _inside_ a custom environment remain source text.
 
 ## Part C: Interiors That Collide With Markdown
 
-Each interior contains characters that Flowmark treats as meaningful in prose. Long cases
-also cross the wrap column so the fragment landing at the start of a wrapped line is at
-risk of being escaped.
+Each interior contains characters that Flowmark treats as meaningful in prose. Long cases also cross the wrap column so the fragment landing at the start of a wrapped line is at risk of being escaped.
 
 ### C1. Underscores, which prose would read as emphasis
 
@@ -195,8 +183,7 @@ Filler words to push the formula across the wrap column boundary here now ok $a 
 
 ### C8. An apostrophe, which the typographer would curl
 
-Only an apostrophe between two word characters is curled, so these two lines differ:
-$x'y$ is rewritten and $f'(x)$ is not. Both are valid TeX and neither may change.
+Only an apostrophe between two word characters is curled, so these two lines differ: $x'y$ is rewritten and $f'(x)$ is not. Both are valid TeX and neither may change.
 
 Short line with a transposed product $x'y$ and an index $n'th$ here.
 
@@ -243,9 +230,7 @@ $$
 
 ## Part D: Dollar-Shaped Prose and Escape Parity
 
-These cases must remain byte-safe. Balanced currency and shell examples may be treated as
-atomic by the preservation-biased default; that conservative classification is preferable
-to mutating a valid math form in another dialect.
+These cases must remain byte-safe. Balanced currency and shell examples may be treated as atomic by the preservation-biased default; that conservative classification is preferable to mutating a valid math form in another dialect.
 
 ### D1. A single currency amount
 
@@ -296,8 +281,7 @@ If the noteholders had converted their $420K at the 20% discount, they would be 
 
 ### D12. Currency in a table cell
 
-An unclosed currency dollar in one cell must never pair with a math dollar in the next
-cell and hide the structural pipe from the table parser.
+An unclosed currency dollar in one cell must never pair with a math dollar in the next cell and hide the structural pipe from the table parser.
 
 | Item | Price | Formula |
 | --- | --- | --- |
@@ -322,14 +306,11 @@ Even escape parity allows \\\\$a + b$ to open a protected span.
 
 ### D17. Escaped and active candidate closers
 
-The escaped dollar inside $a + b\$ + c$ stays in the body, while the final active dollar
-closes it. With even parity, $a + b\\$ ends at that dollar and leaves the slashes intact.
+The escaped dollar inside $a + b\$ + c$ stays in the body, while the final active dollar closes it. With even parity, $a + b\\$ ends at that dollar and leaves the slashes intact.
 
 ## Part E: Malformed and Ambiguous
 
-These cases are invalid or ambiguous in at least one dialect. Flowmark must not crash,
-emit an internal token, or let an unmatched block opener consume unrelated trailing
-prose. Exact committed output and a second pass define safe, deterministic degradation.
+These cases are invalid or ambiguous in at least one dialect. Flowmark must not crash, emit an internal token, or let an unmatched block opener consume unrelated trailing prose. Exact committed output and a second pass define safe, deterministic degradation.
 
 ### E1. An unclosed inline span
 
@@ -343,8 +324,7 @@ Para two has b$ and more text to make this paragraph long enough to wrap somewhe
 
 ### E3. An unclosed display block
 
-$$
-a + b = c
+$$ a + b = c
 
 Text following an unterminated display opener.
 
@@ -354,8 +334,7 @@ Filler words to push the formula across the wrap column boundary here now ok $$a
 
 ### E5. Whitespace immediately inside the delimiters
 
-MyST can enable this single-dollar form. The preservation-biased default accepts it even
-though Pandoc and GitHub use narrower whitespace rules.
+MyST can enable this single-dollar form. The preservation-biased default accepts it even though Pandoc and GitHub use narrower whitespace rules.
 
 Filler words to push the formula across the wrap column boundary here now ok $ a + b + c + d $ tail.
 
@@ -374,15 +353,14 @@ Filler words to push the formula across the wrap column boundary here now ok $a$
 
 ### E9. Mismatched environment closer
 
-\begin{align*}
-a + b = c
-\end{equation}
+\begin{align*} a + b = c \end{equation}
 
 Text after a mismatched closer must not disappear into an opaque suffix.
 
 ### E10. Unmatched outer environment with a closed nested environment
 
 \begin{outer}
+
 \begin{inner}
 a + b = c
 \end{inner}
@@ -391,5 +369,4 @@ Text after the unmatched outer environment remains independently formattable.
 
 ### E11. Unmatched double-dollar opener before valid single-dollar math
 
-An unmatched $$ opener before later valid $a + b$ math must not suppress the closed inner
-candidate when the outer candidate is discarded.
+An unmatched $$ opener before later valid $a + b$ math must not suppress the closed inner candidate when the outer candidate is discarded.

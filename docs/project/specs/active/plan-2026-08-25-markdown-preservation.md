@@ -507,6 +507,7 @@ The manifest is the porting ledger. These stable change IDs group the initial wo
 | `FM-PRESERVE-CORE-001` | Normalization, region records, sentinel bridge, fail-closed restoration | `fm-2tto` | Same golden outputs and failure semantics. |
 | `FM-MATH-INLINE-001` | Dollar, paren, GitLab, MyST, and inline environment recognition | `fm-9jtc` plus implementation beads | Zero new divergence entries. |
 | `FM-MATH-BLOCK-001` | Container-aware display and environment blocks | `fm-6erm` | Zero new divergence entries. |
+| `FM-CLI-OUTPUT-001` | Atomic `--output` for exactly one direct input file | `fm-9r1n` | Same routing, bytes, and multiple-input rejection. |
 | `FM-CODE-SPAN-001` | Arbitrary delimiters and source-exact code spans | `fm-fa8p`, `fm-9ey6` | Same cases pass after the math port. |
 | `FM-OPAQUE-P0-001` | P0 extension registry families | Track B beads under `fm-7vtx` | Port family by family against shared IDs. |
 
@@ -599,7 +600,7 @@ runner uses the existing `toml` crate. The conformance design introduces no depe
 | `src/flowmark/linewrapping/text_wrapping.py` | Structured fragments and unbreakable clusters with side-table widths and authored internal-line handling. |
 | `src/flowmark/linewrapping/line_wrappers.py` | Width and semantic wrappers that never collapse protected gaps or measure token spelling. |
 | `src/flowmark/transforms/doc_transforms.py` and typography modules | Walkers that skip typed protected nodes/tokens. |
-| `src/flowmark/reformat_api.py` | Strict UTF-8 byte I/O for stdin/files, no implicit document dedent, deterministic errors, and atomic no-partial writes. |
+| `src/flowmark/reformat_api.py` | Strict UTF-8 byte I/O for stdin/files, no implicit document dedent, deterministic errors, atomic no-partial writes, and direct single-file output routing. |
 | `tests/test_preservation_*.py` | Small native tests for byte offsets, scanner states, arbitration, parser-token round trips, width metadata, and fail-closed invariants only. |
 
 `atomic_patterns.py` and `block_heuristics.py` may keep their existing public or diagnostic
@@ -614,7 +615,7 @@ roles. They are not extended into a second preservation scanner. `iter_atomic_sp
 | `src/formatter/filling.rs::fill_markdown()` | Comrak-side protection pipeline and replacement of overlapping ad hoc PUA workarounds. |
 | `src/formatter/markdown.rs` | Thin protected-node/parser-renderer adapter; comrak is not the syntax-recognition authority. |
 | `src/wrapping/text_wrapping.rs` | Structured protected fragments and logical widths; replace preservation uses of NUL placeholder-length approximation. |
-| `src/lib.rs` and `src/main.rs` | Library and CLI normalization, strict byte I/O, deterministic failure, and atomic output semantics. |
+| `src/lib.rs` and `src/main.rs` | Library and CLI normalization, strict byte I/O, deterministic failure, atomic output semantics, and the direct single-file output route. |
 | `tests/support/conformance.rs` and `tests/test_conformance.rs` | Independent native runner against `repos/flowmark/tests/parity_corpus/` and the shared runner fixtures. |
 | `tests/test_tryscript_golden.rs` | Run upstream scripts with `FLOWMARK_BIN_DIR`; retain only genuinely Rust-specific workflows locally. |
 | `tests/test_ref_docs.rs` and CommonMark tests | Read upstream assets directly below `repos/flowmark`; do not maintain synchronized copies. |
@@ -670,8 +671,10 @@ distinct boundary.
 5. `fm-bsan` makes wrapping and transforms token-aware after `fm-idkl`.
 6. `fm-ybpd` integrates `fill_markdown()`, public formatting paths, strict byte I/O, and
    fail-closed atomic output after `fm-bsan`.
-7. `fm-ucy8` reviews all Python golden layers and adversarial behavior after `fm-ybpd`,
-   `fm-okli`, and `fm-shou`.
+7. `fm-9r1n` makes direct single-file `--output` succeed atomically after `fm-bsan`, while
+   retaining the multiple-file rejection.
+8. `fm-ucy8` reviews all Python golden layers and adversarial behavior after `fm-ybpd`,
+   `fm-9r1n`, `fm-okli`, and `fm-shou`.
 
 The closed experimental regex beads `fm-q32c` and `fm-mu4s` are historical evidence, not
 implementation prerequisites. Their proposed post-parse fixes are superseded.
