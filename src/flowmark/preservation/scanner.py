@@ -795,6 +795,13 @@ def _line_payload(
     return source.text[start:end].rstrip(" \t")
 
 
+def _scaffold_prefix(source: NormalizedSource, line: ContainerLine) -> str:
+    """Return the exact opening-line prefix needed to retain parser placement."""
+    delimiter_start, _ = _line_payload_bounds(source, line)
+    line_start = source.scalar_index(line.start)
+    return source.text[line_start:delimiter_start]
+
+
 def _raw_line_content(source: NormalizedSource, line: ContainerLine) -> str:
     start, end = _scalar_line_bounds(source, line)
     return source.text[start:end]
@@ -981,6 +988,7 @@ def scan_display_math(
                         opener.start,
                         line.end,
                         opener.context,
+                        _scaffold_prefix(source, opener),
                     )
                 )
             continue
@@ -994,6 +1002,7 @@ def scan_display_math(
                         opener.start,
                         line.end,
                         opener.context,
+                        _scaffold_prefix(source, opener),
                     )
                 )
             continue
@@ -1010,6 +1019,7 @@ def scan_display_math(
                         opener.start,
                         line.end,
                         opener.context,
+                        _scaffold_prefix(source, opener),
                     )
                 )
     return tuple(candidates)
@@ -1049,6 +1059,7 @@ def scan_environment_blocks(
                         opener.start,
                         line.end,
                         opener.context,
+                        _scaffold_prefix(source, opener),
                     )
                 )
     return tuple(candidates)

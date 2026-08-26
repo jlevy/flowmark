@@ -79,6 +79,37 @@ def test_candidate_builds_a_source_exact_region() -> None:
     assert validate_regions(normalized, (region,)) == (region,)
 
 
+def test_block_region_retains_its_exact_parser_scaffold() -> None:
+    normalized = normalize_source("\t- $$\n\t  x\n\t  $$")
+    candidate = Candidate(
+        kind=RegionKind.math_dollar_block,
+        form=RegionForm.block,
+        start=0,
+        end=normalized.byte_length,
+        scaffold_prefix="\t- ",
+    )
+
+    region = candidate.to_region(normalized, index=0)
+
+    assert region.scaffold_prefix == "\t- "
+    assert region.source == normalized.text
+
+    with pytest.raises(InvalidRegionError, match="must match"):
+        replace(region, scaffold_prefix="> ")
+
+    with pytest.raises(InvalidRegionError, match="cannot define"):
+        ProtectedRegion(
+            index=0,
+            kind=RegionKind.math_dollar_inline,
+            form=RegionForm.inline,
+            start=0,
+            end=3,
+            source="$x$",
+            logical_widths=(3,),
+            scaffold_prefix="- ",
+        )
+
+
 def test_region_validation_rejects_overlap_source_drift_and_bad_indexes() -> None:
     normalized = normalize_source("$a$ and $b$")
     first = Candidate(

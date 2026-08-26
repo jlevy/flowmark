@@ -234,6 +234,7 @@ source             exact normalized UTF-8 slice
 form               inline or block
 logical_widths     Unicode-scalar width of each physical fragment for inline forms
 container          blockquote depth and list/content-column metadata when applicable
+scaffold_prefix    exact opening-line prefix needed to retain block parser placement
 ```
 
 Records are sorted, non-overlapping, and cover only recognized regions. Outer opaque
@@ -275,6 +276,11 @@ Typography and cleanup walkers skip tokens. Block tokens are represented as opaq
 nodes by the parser adapter so paragraph rendering cannot add or remove container
 structure. Shared intraword, multiline, list, quote, and width-boundary cases constrain
 both thin adapters; neither port may approximate token width with placeholder text length.
+For a block region, substitution retains `scaffold_prefix` before the token so the parser
+places it in the authored quote/list/indent context. The opaque renderer emits the token
+without its current render prefix. Restoration consumes that token's structural LF and
+substitutes the complete source slice, which already contains the authored scaffold and
+terminal LF. Inline regions always have an empty scaffold prefix.
 
 Restoration validates all invariants before producing output:
 

@@ -178,6 +178,7 @@ class ProtectedRegion:
     source: str
     logical_widths: tuple[int, ...] = ()
     container: ContainerContext = field(default_factory=ContainerContext)
+    scaffold_prefix: str = ""
 
     def __post_init__(self) -> None:
         _validate_kind_form(self.kind, self.form)
@@ -194,11 +195,18 @@ class ProtectedRegion:
         if source_length != self.end - self.start:
             raise InvalidRegionError("region byte length does not match its source")
         if self.form is RegionForm.inline:
+            if self.scaffold_prefix:
+                raise InvalidRegionError("inline regions cannot define a block scaffold prefix")
             expected_widths = tuple(len(fragment) for fragment in self.source.split("\n"))
             if self.logical_widths != expected_widths:
                 raise InvalidRegionError("inline logical widths do not match its source")
-        elif self.logical_widths:
-            raise InvalidRegionError("block regions cannot define inline logical widths")
+        else:
+            if self.logical_widths:
+                raise InvalidRegionError("block regions cannot define inline logical widths")
+            if "\n" in self.scaffold_prefix or "\r" in self.scaffold_prefix:
+                raise InvalidRegionError("block scaffold prefix must fit on the opening line")
+            if not self.source.startswith(self.scaffold_prefix):
+                raise InvalidRegionError("block scaffold prefix must match the source opening line")
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,6 +218,7 @@ class Candidate:
     start: int
     end: int
     container: ContainerContext = field(default_factory=ContainerContext)
+    scaffold_prefix: str = ""
 
     def __post_init__(self) -> None:
         _validate_kind_form(self.kind, self.form)
@@ -217,6 +226,10 @@ class Candidate:
             raise InvalidRegionError("candidate offsets must be nonnegative integers")
         if self.start >= self.end:
             raise InvalidRegionError("candidate start must be before candidate end")
+        if self.form is RegionForm.inline and self.scaffold_prefix:
+            raise InvalidRegionError("inline candidates cannot define a block scaffold prefix")
+        if "\n" in self.scaffold_prefix or "\r" in self.scaffold_prefix:
+            raise InvalidRegionError("candidate scaffold prefix must fit on one line")
 
     def to_region(self, source: NormalizedSource, *, index: int) -> ProtectedRegion:
         """Materialize this candidate from the exact normalized source slice."""
@@ -235,6 +248,7 @@ class Candidate:
             source=region_source,
             logical_widths=logical_widths,
             container=self.container,
+            scaffold_prefix=self.scaffold_prefix,
         )
 
 

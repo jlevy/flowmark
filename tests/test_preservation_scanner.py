@@ -158,6 +158,7 @@ def test_block_math_preserves_raw_container_prefixes_and_suffixes() -> None:
         "- $$\n  listed\n  $$ {#id .wide}\n",
         "1. > \\[\n   > nested\n   > \\]\n",
     ]
+    assert [region.scaffold_prefix for region in regions] == ["> ", "- ", "1. > "]
 
 
 def test_existing_opaque_blocks_win_before_math_scanning() -> None:
