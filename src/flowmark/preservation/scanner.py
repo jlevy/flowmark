@@ -1321,15 +1321,9 @@ def scan_protected_regions(
         inline_candidates.extend(scan_inline_scope(source, start, end, container=scope.context))
         previous_scope_end = end
 
-    math_candidates = _merge_candidates(
-        block_candidates,
-        tuple(
-            candidate
-            for candidate in inline_candidates
-            if candidate.kind is not RegionKind.code_span
-        ),
-    )
+    protected_candidates = _merge_candidates(block_candidates, tuple(inline_candidates))
     regions = tuple(
-        candidate.to_region(source, index=index) for index, candidate in enumerate(math_candidates)
+        candidate.to_region(source, index=index)
+        for index, candidate in enumerate(protected_candidates)
     )
     return validate_regions(source, regions)

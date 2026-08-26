@@ -57,6 +57,7 @@ def test_composites_and_code_use_exact_backtick_run_lengths() -> None:
     assert [region.source for region in protected] == [
         "$``a ` b``$",
         "{math}``x ` y``",
+        "``code ` body``",
         "$z$",
     ]
 

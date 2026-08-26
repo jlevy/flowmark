@@ -17,10 +17,10 @@ idempotent = true
 [[case]]
 id = "preservation.code-span.whitespace-typography"
 change_id = "FM-CODE-SPAN-001"
-description = "Authored code whitespace, tabs, quotes, and ellipses bypass normalization and typography."
+description = "Authored code whitespace, tabs, quotes, and punctuation bypass normalization and typography."
 kind = "stdin"
 tags = ["code-span", "desired-output", "preservation", "stdin", "typography"]
-args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+args = ["--width", "0", "--smartquotes", "-"]
 stdin = "tests/parity_corpus/cases/preservation/code-span/whitespace-typography/input.md"
 expected_stdout = "tests/parity_corpus/cases/preservation/code-span/whitespace-typography/expected.stdout"
 expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"

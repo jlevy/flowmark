@@ -127,6 +127,17 @@ def test_an_inline_token_on_its_own_line_does_not_become_a_block() -> None:
     assert restore_source(markdown.render(document), protected) == "$x$\n"
 
 
+def test_protected_code_supplies_immutable_context_to_cross_inline_rewrites() -> None:
+    protected = _protected("The ``config``'s value and `` x ``'s type.")
+    markdown = flowmark_markdown(_identity_wrapper, _protected_source=protected)
+    document = markdown.parse(protected.text)
+
+    rewrite_text_across_inlines(document, smart_quotes, protected_source=protected)
+    restored = restore_source(markdown.render(document), protected)
+
+    assert restored == "The ``config``’s value and `` x ``’s type.\n"
+
+
 def test_restoration_fails_closed_for_missing_duplicate_reordered_and_unknown_tokens() -> None:
     protected = _protected("first $a$ then $b$")
     first, second = protected.tokens

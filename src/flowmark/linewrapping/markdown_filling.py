@@ -94,7 +94,7 @@ def fill_markdown(
     if cleanups:
         doc_cleanups(document)
     if smartquotes:
-        rewrite_text_across_inlines(document, smart_quotes)
+        rewrite_text_across_inlines(document, smart_quotes, protected_source=protected)
     if ellipses:
         rewrite_text_content(document, apply_ellipses, coalesce_lines=True)
     rendered = marko.render(document)
