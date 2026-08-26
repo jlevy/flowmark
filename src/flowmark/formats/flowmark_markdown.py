@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Generator, Iterator
+from collections.abc import Generator, Iterator, Sequence
 from contextlib import contextmanager
 from enum import Enum
-from typing import Any, NamedTuple, cast
+from typing import Any, NamedTuple, cast, final
 
 from marko import Markdown, Renderer, block, inline
 from marko.block import HTMLBlock
+from marko.element import Element
 from marko.ext import footnote
 from marko.ext.gfm import GFM
 from marko.ext.gfm import elements as gfm_elements
@@ -23,6 +24,23 @@ from flowmark.linewrapping.line_wrappers import (
 )
 from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
+from flowmark.preservation.bridge import (
+    INDEX_END,
+    INDEX_START,
+    SENTINEL_END,
+    SENTINEL_REPEAT,
+    ProtectedSource,
+)
+from flowmark.preservation.model import RegionForm
+
+_PRESERVATION_SENTINEL = rf"{SENTINEL_REPEAT}+{SENTINEL_END}"
+_PRESERVATION_TOKEN = (
+    rf"(?P<flowmark_sentinel>{_PRESERVATION_SENTINEL})"
+    rf"{INDEX_START}(?:0|[1-9a-z][0-9a-z]*){INDEX_END}"
+    rf"(?P=flowmark_sentinel)"
+)
+_PRESERVATION_INLINE_PATTERN = re.compile(_PRESERVATION_TOKEN)
+_PRESERVATION_BLOCK_PATTERN = re.compile(rf"(?P<flowmark_token>{_PRESERVATION_TOKEN})$\n?", re.M)
 
 
 class ListSpacing(str, Enum):
@@ -291,12 +309,102 @@ class CustomListItem(block.ListItem):
 CustomListItem.override = True
 
 
+@final
+class ProtectedInline(inline.InlineElement):
+    """Thin parser node for an exact inline token selected by the source scanner."""
+
+    pattern: re.Pattern[str] | str = _PRESERVATION_INLINE_PATTERN
+    priority: int = 100
+    parse_group: int = 0
+    _flowmark_protected: bool = True
+
+    @override
+    @classmethod
+    def find(cls, text: str, *, source: Source) -> Iterator[re.Match[str]]:
+        parser = cast(CustomParser, source.parser)
+        return (
+            match
+            for match in _PRESERVATION_INLINE_PATTERN.finditer(text)
+            if match.group() in parser.protected_inline_tokens
+        )
+
+
+@final
+class ProtectedBlock(block.BlockElement):
+    """Thin parser node for an exact opaque-block token selected by the scanner."""
+
+    priority: int = 100
+    _flowmark_protected: bool = True
+
+    def __init__(self, token: str) -> None:
+        self.token: str = token
+        self.children: Sequence[Element] = []
+
+    @override
+    @classmethod
+    def match(cls, source: Source) -> re.Match[str] | None:
+        match = source.expect_re(_PRESERVATION_BLOCK_PATTERN)
+        if match is None:
+            return None
+        parser = cast(CustomParser, source.parser)
+        return match if match.group("flowmark_token") in parser.protected_block_tokens else None
+
+    @override
+    @classmethod
+    def parse(cls, source: Source) -> str:
+        line = source.next_line()
+        source.consume()
+        return line.removesuffix("\n")
+
+
+class Paragraph(gfm_elements.Paragraph):
+    """Paragraph parser that yields before scanner-selected opaque block tokens."""
+
+    @override
+    @classmethod
+    def break_paragraph(cls, source: Source, lazy: bool = False) -> bool:
+        previous_match = source.match
+        try:
+            protected_block = cast(
+                type[ProtectedBlock], source.parser.block_elements["ProtectedBlock"]
+            )
+            if protected_block.match(source):
+                return True
+        finally:
+            source.match = previous_match
+        return super().break_paragraph(source, lazy)
+
+
+Paragraph.override = True
+
+
 class CustomParser(Parser):
-    def __init__(self) -> None:
+    def __init__(self, protected_source: ProtectedSource | None = None) -> None:
         super().__init__()
         self.block_elements["HTMLBlock"] = CustomHTMLBlock
         self.block_elements["FencedCode"] = CustomFencedCode
         self.block_elements["ListItem"] = CustomListItem
+        self.block_elements["Paragraph"] = Paragraph
+        self.add_element(ProtectedInline)
+        self.add_element(ProtectedBlock)
+        self.configure_protected_source(protected_source)
+
+    def configure_protected_source(self, protected_source: ProtectedSource | None) -> None:
+        """Install exact token sets without making Marko a syntax authority."""
+        if protected_source is None:
+            self.protected_inline_tokens: frozenset[str] = frozenset()
+            self.protected_block_tokens: frozenset[str] = frozenset()
+            return
+        self.protected_inline_tokens = frozenset(
+            token
+            for token, region in zip(protected_source.tokens, protected_source.regions, strict=True)
+            if region.form is RegionForm.inline
+        )
+        self.protected_block_tokens = frozenset(
+            token
+            for token, region in zip(protected_source.tokens, protected_source.regions, strict=True)
+            if region.form is RegionForm.block
+        )
 
     @override
     def parse_source(self, source: Source) -> list[block.BlockElement]:
@@ -705,6 +813,19 @@ class MarkdownNormalizer(Renderer):
         self._current_inline_text += text
         return text
 
+    def render_protected_inline(self, element: ProtectedInline) -> str:
+        """Carry a parser-inert inline token through rendering unchanged."""
+        token = cast(str, element.children)
+        self._current_inline_text += token
+        return token
+
+    def render_protected_block(self, element: ProtectedBlock) -> str:
+        """Emit an opaque token without a synthesized quote/list render prefix."""
+        self._skip_next_blank_line = False
+        self._prefix = self._second_prefix
+        self._suppress_item_break = False
+        return element.token + "\n"
+
     def render_line_break(self, element: inline.LineBreak) -> str:
         return "\n" if element.soft else "\\\n"
 
@@ -830,6 +951,8 @@ Default line wrapper for fixed-width line wrapping.
 def flowmark_markdown(
     line_wrapper: LineWrapper = DEFAULT_SEMANTIC_LINE_WRAPPER,
     list_spacing: ListSpacing = ListSpacing.preserve,
+    *,
+    _protected_source: ProtectedSource | None = None,
 ) -> Markdown:
     """
     Marko Markdown setup for GFM with a few customizations for Flowmark and a new
@@ -852,11 +975,13 @@ def flowmark_markdown(
         def _setup_extensions(self) -> None:
             # Using Marko's full extension system is tricky with our customizations so simpler
             # to do this manually.
-            custom_parser = CustomParser()
+            custom_parser = CustomParser(_protected_source)
             # Add GFM support, using our fixed Strikethrough with proper flanking rules.
             for e in GFM.elements:
                 if e is gfm_elements.Strikethrough:
                     e = CustomStrikethrough
+                elif e is gfm_elements.Paragraph:
+                    e = Paragraph
                 assert (
                     e not in custom_parser.block_elements and e not in custom_parser.inline_elements
                 )

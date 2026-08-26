@@ -38,6 +38,9 @@ def transform_tree(element: Element, transformer: Callable[[Element], None]) -> 
     """
     Recursively traverse the element tree and apply a transformer function to each node.
     """
+    if getattr(element, "_flowmark_protected", False):
+        return
+
     transformer(element)
 
     # Recursively process children for known container types
