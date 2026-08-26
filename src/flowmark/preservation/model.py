@@ -37,6 +37,7 @@ class RegionKind(StrEnum):
     colon_container = "colon_container"
     toml_frontmatter = "toml_frontmatter"
     definition_list = "definition_list"
+    pandoc_grid_table = "pandoc_grid_table"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -67,6 +68,7 @@ _BLOCK_REGION_KINDS = frozenset(
         RegionKind.colon_container,
         RegionKind.toml_frontmatter,
         RegionKind.definition_list,
+        RegionKind.pandoc_grid_table,
         RegionKind.math_dollar_block,
         RegionKind.math_bracket_block,
         RegionKind.math_environment_block,

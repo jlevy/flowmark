@@ -1520,6 +1520,94 @@ def scan_definition_lists(
     return tuple(candidates)
 
 
+def _grid_border(payload: str) -> tuple[str, tuple[int, ...]] | None:
+    if len(payload) < 3 or not payload.startswith("+") or not payload.endswith("+"):
+        return None
+    segments = payload[1:-1].split("+")
+    if not segments:
+        return None
+    character = segments[0][0] if segments[0] else ""
+    if character not in "-=" or any(
+        not segment or set(segment) != {character} for segment in segments
+    ):
+        return None
+    return character, tuple(len(segment) for segment in segments)
+
+
+def scan_pandoc_grid_tables(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+    opaque_blocks: tuple[OpaqueBlock, ...] = (),
+) -> tuple[Candidate, ...]:
+    """Recognize complete Pandoc grid tables by compatible outer borders."""
+    views = build_container_view(source) if lines is None else lines
+    opaque = _opaque_line_flags(views, opaque_blocks)
+    candidates: list[Candidate] = []
+    opener_index = 0
+    while opener_index < len(views):
+        opener = views[opener_index]
+        opener_border = (
+            None
+            if opaque[opener_index] or opener.lazy
+            else _grid_border(_line_payload(source, opener))
+        )
+        if opener_border is None or opener_border[0] != "-":
+            opener_index += 1
+            continue
+
+        opener_width = len(_line_payload(source, opener).encode())
+        opener_signature = opener_border[1]
+        content_since_border = False
+        closer_index: int | None = None
+        scan_index = opener_index + 1
+        while scan_index < len(views):
+            line = views[scan_index]
+            if opaque[scan_index] or _content_under_frames(source, line, opener.frames) is None:
+                break
+            payload = _line_payload(source, line, frames=opener.frames)
+            border = _grid_border(payload)
+            if border is not None:
+                if not content_since_border or len(payload.encode()) != opener_width:
+                    break
+                next_payload = (
+                    _line_payload(source, views[scan_index + 1], frames=opener.frames)
+                    if scan_index + 1 < len(views)
+                    and _content_under_frames(source, views[scan_index + 1], opener.frames)
+                    is not None
+                    else ""
+                )
+                if border[1] == opener_signature and not (
+                    next_payload.startswith("|") and next_payload.endswith("|")
+                ):
+                    closer_index = scan_index
+                    break
+                content_since_border = False
+                scan_index += 1
+                continue
+            if payload.startswith("|") and payload.endswith("|"):
+                content_since_border = True
+                scan_index += 1
+                continue
+            break
+
+        if closer_index is None:
+            opener_index += 1
+            continue
+        final_index = _caption_extent_after(source, views, closer_index, opener)
+        candidates.append(
+            Candidate(
+                RegionKind.pandoc_grid_table,
+                RegionForm.block,
+                opener.start,
+                views[final_index].end,
+                opener.context,
+                _scaffold_prefix(source, opener),
+            )
+        )
+        opener_index = final_index + 1
+    return tuple(candidates)
+
+
 def resolve_candidate_tree(
     source: NormalizedSource, candidates: tuple[Candidate, ...]
 ) -> tuple[Candidate, ...]:
@@ -1755,6 +1843,7 @@ def scan_protected_regions(
             *scan_obsidian_callouts(source, lines, opaque_blocks),
             *scan_colon_containers(source, lines, opaque_blocks),
             *scan_definition_lists(source, lines, opaque_blocks),
+            *scan_pandoc_grid_tables(source, lines, opaque_blocks),
             *scan_display_math(source, lines, opaque_blocks),
             *scan_environment_blocks(source, lines, opaque_blocks),
         ),

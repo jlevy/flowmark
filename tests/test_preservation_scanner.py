@@ -230,6 +230,17 @@ def test_definition_lists_require_marker_columns_and_stop_before_plain_suffix() 
     assert regions[0].source == "Term\n: Definition\n\n  Continued block\n"
 
 
+def test_grid_tables_require_compatible_outer_borders() -> None:
+    source = normalize_source(
+        "+-----+-----+\n| A   | B   |\n+=====+=====+\n| 1   | 2   |\n+-----+-----+\n\n"
+        "+---+---+\nnot a table\n+---+---+"
+    )
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [RegionKind.pandoc_grid_table]
+    assert regions[0].source.endswith("| 1   | 2   |\n+-----+-----+\n")
+
+
 def test_unmatched_outer_block_retains_closed_inner_and_not_sibling_closers() -> None:
     source = normalize_source("\\begin{outer}\n\\begin{inner}\nbody\n\\end{inner}\n\n- $$\n- $$")
 
