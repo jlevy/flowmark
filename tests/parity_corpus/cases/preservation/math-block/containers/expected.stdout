@@ -12,3 +12,20 @@
 1. > \[
    > x + y = z
    > \]
+
+> > $$
+> > nested quote
+> > $$
+
+> - $$
+>   list inside quote
+>   $$
+
+- Outer item
+  - $$
+    nested list
+    $$
+
+-	$$
+	tab-indented list
+	$$

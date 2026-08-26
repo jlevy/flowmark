@@ -134,7 +134,7 @@ idempotent = true
 [[case]]
 id = "preservation.math.inline.authored-newlines"
 change_id = "FM-MATH-INLINE-001"
-description = "Permissive inline forms retain authored soft newlines and container prefixes."
+description = "Permissive inline forms retain authored soft newlines, explicit prefixes, and lazy container continuations."
 kind = "stdin"
 tags = ["blockquote", "deferred", "inline", "math", "multiline", "owner-fm-ucy8", "stdin"]
 args = ["--width", "0", "-"]

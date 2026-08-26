@@ -94,7 +94,7 @@ together.
 
 ## Golden review corrections
 
-Review caught and corrected five traps before implementation:
+Review caught and corrected six traps before implementation:
 
 1. Registry fragments live outside `cases/`; otherwise reachability treats TOML as an
    unreferenced payload.
@@ -107,6 +107,8 @@ Review caught and corrected five traps before implementation:
    outside that slice.
 5. Escape-parity and malformed-dollar examples use separate blank-line scopes so an
    unmatched delimiter in one scanner vector cannot pair with a delimiter in the next.
+6. Container coverage includes lazy quote/list continuation, nested marker order, and
+   tab indentation rather than treating body tabs as evidence for indentation behavior.
 
 The topic source and reviewed expected file have different whole-file digests by design;
 their protected slices match.

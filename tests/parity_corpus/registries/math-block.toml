@@ -30,7 +30,7 @@ idempotent = true
 [[case]]
 id = "preservation.math.block.containers"
 change_id = "FM-MATH-BLOCK-001"
-description = "Display blocks preserve quote depth, list content columns, labels, attributes, and tabs."
+description = "Display blocks preserve nested container order, list content columns, labels, attributes, and tab indentation."
 kind = "stdin"
 tags = ["block", "blockquote", "containers", "deferred", "list", "math", "owner-fm-ucy8", "stdin"]
 args = ["--width", "0", "-"]
