@@ -656,6 +656,42 @@ parallel structure. Neither track blocks on it; both should be written so their 
 migrate.
 
 
+## Implementation Beads
+
+Epic `fm-7vtx`. The phase beads hold the sequencing; the beads below hold the
+file-and-function detail, each naming its site, its approach, and the corpus sections
+that verify it.
+
+| Bead | Work | Site |
+| --- | --- | --- |
+| `fm-fa8p` | C1 fix: delimiter from the longest backtick run | `formats/flowmark_markdown.py:711` `render_code_span` |
+| `fm-9ey6` | C2 fix: exclude atomic spans from whitespace normalisation | `linewrapping/text_wrapping.py:112,118` `wrap_paragraph_lines`; `line_wrappers.py:130` |
+| `fm-uzvf` | `tests/test_code_spans.py`, property assertions | new file |
+| `fm-okli` | Wire both corpora into the tryscript goldens | `formatting.tryscript.md`, `auto-mode.tryscript.md` |
+| `fm-ocpw` | Survey and regenerate the changed goldens | `tests/testdocs/`, `fixtures/content/` |
+| `fm-q32c` | M1 fix: three inline math atomic patterns | `linewrapping/atomic_patterns.py` |
+| `fm-mu4s` | M3 fix: typography through `iter_atomic_spans` | `typography/smartquotes.py`, `ellipses.py` |
+| `fm-6erm` | M4 fix: opaque display-math blocks | `linewrapping/block_heuristics.py` |
+
+Two findings from reading the code at this level are worth surfacing here, because they
+change how big the work looks.
+
+**C1 is a four-line function.** `render_code_span` widens the delimiter only when the
+content's *first or last* character is a backtick, so a backtick in the middle emits a
+single-backtick delimiter the content then closes early. The fix is to derive the run
+from the longest backtick run anywhere in the content — a well-defined CommonMark rule,
+not a judgement call.
+
+**The C2 fix has a working reference in-tree.** `render_heading` and the table renderer
+never call the line wrapper, which is exactly why the measurement found headings and
+table cells preserving interiors while paragraphs, list items, blockquotes and link text
+do not. So the correct behaviour already exists on two code paths; the paragraph path
+needs to stop normalising before the tokenizer runs.
+
+**M2 needs no bead.** Once a math span is one atomic word, `_md_specials_pat` cannot
+match it — that pattern is anchored to the whole word — so escape injection falls out of
+M1. A test pins it against regression.
+
 ## Phases
 
 Sequenced so the mechanism is proven on the smallest fully-measured surface first.
