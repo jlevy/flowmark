@@ -1,0 +1,5 @@
+Ordinary prose {braces} and detached {.not-attached} stay ordinary “text”…
+
+Escaped \{.not-an-attribute} and malformed {#} {.} {key=} {key="unclosed}.
+
+[link](url){.outer {#nested}} and an unclosed [link](url){.open

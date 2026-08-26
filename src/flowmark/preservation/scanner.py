@@ -42,6 +42,7 @@ _HTML_BLOCK_TAG = re.compile(
     re.IGNORECASE,
 )
 _HTML_COMPLETE_TAG = re.compile(r"</?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+[^<>]*)?[ \t]*/?>[ \t]*\Z")
+_SETEXT_HEADING = re.compile(r" {0,3}(?:=+|-+)[ \t]*\Z")
 
 
 class _DollarState(Enum):
@@ -373,6 +374,131 @@ def scan_angle_spans(source: NormalizedSource, start: int, end: int) -> tuple[Ca
     return tuple(candidates)
 
 
+def _attribute_atom_end(text: str, index: int, end: int, *, value: bool) -> int | None:
+    start = index
+    while index < end and not text[index].isspace():
+        if text[index] == "\\":
+            if index + 1 >= end:
+                return None
+            index += 2
+            continue
+        if text[index] in "{}\"'" or not value and text[index] == "=":
+            break
+        index += 1
+    return index if index > start else None
+
+
+def _valid_attribute_body(text: str, start: int, end: int) -> bool:
+    index = start
+    attributes = 0
+    while True:
+        while index < end and text[index].isspace():
+            index += 1
+        if index == end:
+            return attributes > 0
+        if text[index] in ".#":
+            token_end = _attribute_atom_end(text, index + 1, end, value=False)
+            if token_end is None:
+                return False
+            index = token_end
+            attributes += 1
+            continue
+
+        key_end = _attribute_atom_end(text, index, end, value=False)
+        if key_end is None or key_end >= end or text[key_end] != "=":
+            return False
+        index = key_end + 1
+        if index < end and text[index] in "\"'":
+            quote = text[index]
+            index += 1
+            while index < end and text[index] != quote:
+                if text[index] == "\\":
+                    if index + 1 >= end:
+                        return False
+                    index += 2
+                else:
+                    index += 1
+            if index >= end:
+                return False
+            index += 1
+        else:
+            value_end = _attribute_atom_end(text, index, end, value=True)
+            if value_end is None:
+                return False
+            index = value_end
+        attributes += 1
+
+
+def _attribute_group_end(text: str, start: int, end: int) -> int | None:
+    if start >= end or text[start] != "{" or not escape_is_even(text, start):
+        return None
+    index = start + 1
+    quote = ""
+    while index < end:
+        scalar = text[index]
+        if scalar == "\n":
+            return None
+        if scalar == "\\":
+            index += 2
+            continue
+        if quote:
+            if scalar == quote:
+                quote = ""
+        elif scalar in "\"'":
+            quote = scalar
+        elif scalar == "{":
+            return None
+        elif scalar == "}":
+            return index + 1 if _valid_attribute_body(text, start + 1, index) else None
+        index += 1
+    return None
+
+
+def _compatible_attribute_predecessor(
+    text: str, start: int, group_end: int, scope_end: int
+) -> bool:
+    if start == 0:
+        return False
+    previous = text[start - 1]
+    if not previous.isspace():
+        return previous in ")]}`$>*_"
+
+    line_start = text.rfind("\n", 0, start) + 1
+    prefix = text[line_start:start].lstrip(" \t")
+    if _ATX_HEADING.match(prefix) is not None:
+        return True
+    line_end = text.find("\n", group_end, scope_end)
+    if line_end < 0:
+        return False
+    if text[group_end:line_end].strip(" \t"):
+        return False
+    next_end = text.find("\n", line_end + 1, scope_end)
+    if next_end < 0:
+        next_end = scope_end
+    return _SETEXT_HEADING.fullmatch(text[line_end + 1 : next_end]) is not None
+
+
+def scan_attribute_groups(source: NormalizedSource, start: int, end: int) -> tuple[Candidate, ...]:
+    """Recognize valid attribute groups attached to portable inline constructs."""
+    start_index, end_index = _scope_scalar_indexes(source, start, end)
+    text = source.text
+    candidates: list[Candidate] = []
+    index = start_index
+    while index < end_index:
+        if text[index] != "{":
+            index += 1
+            continue
+        group_end = _attribute_group_end(text, index, end_index)
+        if group_end is None or not _compatible_attribute_predecessor(
+            text, index, group_end, end_index
+        ):
+            index += 1
+            continue
+        candidates.append(_candidate(source, RegionKind.attribute_group_inline, index, group_end))
+        index = group_end
+    return tuple(candidates)
+
+
 def scan_paren_math(source: NormalizedSource, start: int, end: int) -> tuple[Candidate, ...]:
     """Pair active LaTeX parenthesis delimiters within one inline scope."""
     start_index, end_index = _scope_scalar_indexes(source, start, end)
@@ -539,6 +665,7 @@ def scan_inline_scope(
         *scan_backtick_runs(source, start, end),
         *scan_paren_math(source, start, end),
         *scan_inline_environments(source, start, end),
+        *scan_attribute_groups(source, start, end),
         *scan_dollar_runs(source, start, end),
     )
     selected = arbitrate_candidates(candidates, start=start, end=end)
@@ -1760,6 +1887,34 @@ def scan_raw_html_blocks(
     return tuple(candidates)
 
 
+def scan_attribute_group_blocks(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+    opaque_blocks: tuple[OpaqueBlock, ...] = (),
+) -> tuple[Candidate, ...]:
+    """Recognize one valid standalone attribute group per logical line."""
+    views = build_container_view(source) if lines is None else lines
+    opaque = _opaque_line_flags(views, opaque_blocks)
+    candidates: list[Candidate] = []
+    for line in views:
+        payload = _line_payload(source, line)
+        if opaque[line.index] or line.lazy or not payload.startswith("{"):
+            continue
+        if _attribute_group_end(payload, 0, len(payload)) != len(payload):
+            continue
+        candidates.append(
+            Candidate(
+                RegionKind.attribute_group_block,
+                RegionForm.block,
+                line.start,
+                line.end,
+                line.context,
+                _scaffold_prefix(source, line),
+            )
+        )
+    return tuple(candidates)
+
+
 def resolve_candidate_tree(
     source: NormalizedSource, candidates: tuple[Candidate, ...]
 ) -> tuple[Candidate, ...]:
@@ -2027,6 +2182,7 @@ def scan_protected_regions(
             *scan_definition_lists(source, lines, opaque_blocks),
             *scan_pandoc_grid_tables(source, lines, opaque_blocks),
             *scan_raw_html_blocks(source, lines, opaque_blocks),
+            *scan_attribute_group_blocks(source, lines, opaque_blocks),
             *scan_display_math(source, lines, opaque_blocks),
             *scan_environment_blocks(source, lines, opaque_blocks),
         ),

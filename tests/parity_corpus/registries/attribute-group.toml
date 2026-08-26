@@ -1,0 +1,54 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.extension.attribute-group.inline-compatible"
+change_id = "FM-EXT-ATTRIBUTE-GROUP-001"
+description = "Inline attribute groups preserve classes, IDs, quoted values, escapes, Unicode, and multiple adjacent groups."
+kind = "stdin"
+tags = ["attribute", "desired-output", "extension", "inline", "preservation", "stdin", "unicode"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/attribute-group/inline-compatible/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/attribute-group/inline-compatible/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.attribute-group.standalone-containers"
+change_id = "FM-EXT-ATTRIBUTE-GROUP-001"
+description = "Standalone attribute groups remain opaque at root and inside quote and list containers."
+kind = "stdin"
+tags = ["attribute", "block", "container", "desired-output", "extension", "preservation", "stdin"]
+args = ["--width", "18", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/attribute-group/standalone-containers/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/attribute-group/standalone-containers/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.attribute-group.headings-table"
+change_id = "FM-EXT-ATTRIBUTE-GROUP-001"
+description = "ATX and Setext heading attributes plus table-cell span attributes keep exact adjacency."
+kind = "stdin"
+tags = ["attribute", "desired-output", "extension", "heading", "preservation", "stdin", "table"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/attribute-group/headings-table/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/attribute-group/headings-table/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.attribute-group.fallback"
+change_id = "FM-EXT-ATTRIBUTE-GROUP-001"
+description = "Ordinary prose braces, detached groups, escaped openers, nesting, and malformed values remain ordinary Markdown."
+kind = "stdin"
+tags = ["attribute", "extension", "fallback", "malformed", "preservation", "stdin"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/attribute-group/fallback/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/attribute-group/fallback/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

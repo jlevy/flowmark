@@ -31,6 +31,7 @@ class RegionKind(StrEnum):
     code_span = "code_span"
     math_paren_inline = "math_paren_inline"
     math_environment_inline = "math_environment_inline"
+    attribute_group_inline = "attribute_group_inline"
     math_dollar_inline = "math_dollar_inline"
     math_double_dollar_inline = "math_double_dollar_inline"
     pandoc_multiline_table = "pandoc_multiline_table"
@@ -40,6 +41,7 @@ class RegionKind(StrEnum):
     definition_list = "definition_list"
     pandoc_grid_table = "pandoc_grid_table"
     raw_html_block = "raw_html_block"
+    attribute_group_block = "attribute_group_block"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -60,6 +62,7 @@ _INLINE_REGION_KINDS = frozenset(
         RegionKind.code_span,
         RegionKind.math_paren_inline,
         RegionKind.math_environment_inline,
+        RegionKind.attribute_group_inline,
         RegionKind.math_dollar_inline,
         RegionKind.math_double_dollar_inline,
     }
@@ -73,6 +76,7 @@ _BLOCK_REGION_KINDS = frozenset(
         RegionKind.definition_list,
         RegionKind.pandoc_grid_table,
         RegionKind.raw_html_block,
+        RegionKind.attribute_group_block,
         RegionKind.math_dollar_block,
         RegionKind.math_bracket_block,
         RegionKind.math_environment_block,

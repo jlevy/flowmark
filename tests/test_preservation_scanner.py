@@ -173,6 +173,29 @@ def test_block_scaffold_excludes_optional_markdown_indent() -> None:
     assert [region.scaffold_prefix for region in regions] == ["", "> "]
 
 
+def test_attribute_groups_require_valid_attributes_and_compatible_placement() -> None:
+    source = normalize_source(
+        '# Heading {#id .wide key="raw ..."}\n\n'
+        "[link](url){.button}{#second} ordinary {.detached}\n\n"
+        '{.standalone data-ü="välue"}\n\n'
+        "[bad](url){#} [nested](url){.outer {#inner}}"
+    )
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [
+        RegionKind.attribute_group_inline,
+        RegionKind.attribute_group_inline,
+        RegionKind.attribute_group_inline,
+        RegionKind.attribute_group_block,
+    ]
+    assert [region.source for region in regions] == [
+        '{#id .wide key="raw ..."}',
+        "{.button}",
+        "{#second}",
+        '{.standalone data-ü="välue"}\n',
+    ]
+
+
 def test_existing_opaque_blocks_win_before_math_scanning() -> None:
     source = normalize_source(
         "---\nitems:\n- one\nmath: $not_inline$\n---\n\n"

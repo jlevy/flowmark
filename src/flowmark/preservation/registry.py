@@ -16,6 +16,7 @@ COMPOSITE_INLINE_PRIORITY = 10
 RAW_HTML_INLINE_PRIORITY = 15
 CODE_SPAN_PRIORITY = 20
 UNAMBIGUOUS_INLINE_PRIORITY = 30
+ATTRIBUTE_GROUP_INLINE_PRIORITY = 35
 DOLLAR_INLINE_PRIORITY = 40
 OPAQUE_EXTENSION_BLOCK_PRIORITY = 45
 BLOCK_MATH_PRIORITY = 50
@@ -34,6 +35,7 @@ class BlockRuleKind(StrEnum):
     definition_list = "definition_list"
     pandoc_grid_table = "pandoc_grid_table"
     raw_html_block = "raw_html_block"
+    attribute_group_block = "attribute_group_block"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -60,6 +62,7 @@ class BlockRecognizerDescriptor:
             RegionKind.definition_list,
             RegionKind.pandoc_grid_table,
             RegionKind.raw_html_block,
+            RegionKind.attribute_group_block,
             RegionKind.math_dollar_block,
             RegionKind.math_bracket_block,
             RegionKind.math_environment_block,
@@ -123,6 +126,12 @@ BUILTIN_RECOGNIZERS: Final[tuple[RecognizerDescriptor, ...]] = (
         "FM-MATH-INLINE-001",
     ),
     RecognizerDescriptor(
+        RegionKind.attribute_group_inline,
+        RegionForm.inline,
+        ATTRIBUTE_GROUP_INLINE_PRIORITY,
+        "FM-EXT-ATTRIBUTE-GROUP-001",
+    ),
+    RecognizerDescriptor(
         RegionKind.math_dollar_inline,
         RegionForm.inline,
         DOLLAR_INLINE_PRIORITY,
@@ -175,6 +184,12 @@ BUILTIN_RECOGNIZERS: Final[tuple[RecognizerDescriptor, ...]] = (
         RegionForm.block,
         OPAQUE_EXTENSION_BLOCK_PRIORITY,
         "FM-EXT-RAW-HTML-001",
+    ),
+    RecognizerDescriptor(
+        RegionKind.attribute_group_block,
+        RegionForm.block,
+        OPAQUE_EXTENSION_BLOCK_PRIORITY,
+        "FM-EXT-ATTRIBUTE-GROUP-001",
     ),
     RecognizerDescriptor(
         RegionKind.math_dollar_block,
@@ -249,6 +264,11 @@ BUILTIN_BLOCK_RECOGNIZERS: Final[tuple[BlockRecognizerDescriptor, ...]] = (
         BlockRuleKind.raw_html_block,
         25,
         RegionKind.raw_html_block,
+    ),
+    BlockRecognizerDescriptor(
+        BlockRuleKind.attribute_group_block,
+        25,
+        RegionKind.attribute_group_block,
     ),
     BlockRecognizerDescriptor(
         BlockRuleKind.math_dollar_block,
