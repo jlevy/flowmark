@@ -3,9 +3,9 @@ type: is
 id: is-01m0xpsz0wkaw5gvdzc6q1xa9b
 title: "Phase 3: preserve inline code source-exactly in Python and Rust"
 kind: feature
-status: open
+status: closed
 priority: 1
-version: 11
+version: 12
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
@@ -19,7 +19,11 @@ child_order_hints:
   - is-01m0xsczjbncpddwkvxsehvmsz
   - is-01m0y06s6yse0c28j4fa8mz1vs
 created_at: 2026-08-26T00:16:33.308Z
-updated_at: 2026-08-26T03:03:47.329Z
+updated_at: 2026-08-26T11:36:45.516Z
+closed_at: 2026-08-26T11:36:45.515Z
+close_reason: Phase 3 is complete in Python and Rust with 29 exact shared code-span cases and fixed-point topic coverage.
+resolution: null
+duplicate_of: null
 ---
 Parent for FM-CODE-SPAN-001 after math parity. Define exact shared behavior first, add code-span recognition to the established scanner, route valid spans through the same side table and structured wrapper, review Python blast radius, then port the same change ID to Rust.
 
