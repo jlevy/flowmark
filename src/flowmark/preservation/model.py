@@ -42,6 +42,7 @@ class RegionKind(StrEnum):
     pandoc_grid_table = "pandoc_grid_table"
     raw_html_block = "raw_html_block"
     attribute_group_block = "attribute_group_block"
+    pandoc_line_block = "pandoc_line_block"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -77,6 +78,7 @@ _BLOCK_REGION_KINDS = frozenset(
         RegionKind.pandoc_grid_table,
         RegionKind.raw_html_block,
         RegionKind.attribute_group_block,
+        RegionKind.pandoc_line_block,
         RegionKind.math_dollar_block,
         RegionKind.math_bracket_block,
         RegionKind.math_environment_block,

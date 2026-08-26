@@ -1915,6 +1915,68 @@ def scan_attribute_group_blocks(
     return tuple(candidates)
 
 
+def _exact_line_payload(
+    source: NormalizedSource,
+    line: ContainerLine,
+    *,
+    frames: tuple[_ContainerFrame, ...] | None = None,
+) -> str:
+    start, end = _line_payload_bounds(source, line, frames=frames)
+    return source.text[start:end]
+
+
+def _is_pandoc_line(payload: str) -> bool:
+    if payload != "|" and not payload.startswith("| "):
+        return False
+    # GFM/Pandoc table rows are structurally more specific than line-block markers.
+    return not (payload.endswith("|") and payload.count("|") >= 3)
+
+
+def scan_pandoc_line_blocks(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+    opaque_blocks: tuple[OpaqueBlock, ...] = (),
+) -> tuple[Candidate, ...]:
+    """Recognize contiguous Pandoc line-block lines without consuming pipe tables."""
+    views = build_container_view(source) if lines is None else lines
+    opaque = _opaque_line_flags(views, opaque_blocks)
+    candidates: list[Candidate] = []
+    opener_index = 0
+    while opener_index < len(views):
+        opener = views[opener_index]
+        if (
+            opaque[opener_index]
+            or opener.lazy
+            or not _is_pandoc_line(_exact_line_payload(source, opener))
+        ):
+            opener_index += 1
+            continue
+        final_index = opener_index
+        scan_index = opener_index + 1
+        while scan_index < len(views):
+            if opaque[scan_index]:
+                break
+            line = views[scan_index]
+            if _content_under_frames(source, line, opener.frames) is None or not _is_pandoc_line(
+                _exact_line_payload(source, line, frames=opener.frames)
+            ):
+                break
+            final_index = scan_index
+            scan_index += 1
+        candidates.append(
+            Candidate(
+                RegionKind.pandoc_line_block,
+                RegionForm.block,
+                opener.start,
+                views[final_index].end,
+                opener.context,
+                _scaffold_prefix(source, opener),
+            )
+        )
+        opener_index = final_index + 1
+    return tuple(candidates)
+
+
 def resolve_candidate_tree(
     source: NormalizedSource, candidates: tuple[Candidate, ...]
 ) -> tuple[Candidate, ...]:
@@ -2183,6 +2245,7 @@ def scan_protected_regions(
             *scan_pandoc_grid_tables(source, lines, opaque_blocks),
             *scan_raw_html_blocks(source, lines, opaque_blocks),
             *scan_attribute_group_blocks(source, lines, opaque_blocks),
+            *scan_pandoc_line_blocks(source, lines, opaque_blocks),
             *scan_display_math(source, lines, opaque_blocks),
             *scan_environment_blocks(source, lines, opaque_blocks),
         ),

@@ -36,6 +36,7 @@ class BlockRuleKind(StrEnum):
     pandoc_grid_table = "pandoc_grid_table"
     raw_html_block = "raw_html_block"
     attribute_group_block = "attribute_group_block"
+    pandoc_line_block = "pandoc_line_block"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -63,6 +64,7 @@ class BlockRecognizerDescriptor:
             RegionKind.pandoc_grid_table,
             RegionKind.raw_html_block,
             RegionKind.attribute_group_block,
+            RegionKind.pandoc_line_block,
             RegionKind.math_dollar_block,
             RegionKind.math_bracket_block,
             RegionKind.math_environment_block,
@@ -192,6 +194,12 @@ BUILTIN_RECOGNIZERS: Final[tuple[RecognizerDescriptor, ...]] = (
         "FM-EXT-ATTRIBUTE-GROUP-001",
     ),
     RecognizerDescriptor(
+        RegionKind.pandoc_line_block,
+        RegionForm.block,
+        OPAQUE_EXTENSION_BLOCK_PRIORITY,
+        "FM-EXT-LINE-BLOCK-001",
+    ),
+    RecognizerDescriptor(
         RegionKind.math_dollar_block,
         RegionForm.block,
         BLOCK_MATH_PRIORITY,
@@ -269,6 +277,11 @@ BUILTIN_BLOCK_RECOGNIZERS: Final[tuple[BlockRecognizerDescriptor, ...]] = (
         BlockRuleKind.attribute_group_block,
         25,
         RegionKind.attribute_group_block,
+    ),
+    BlockRecognizerDescriptor(
+        BlockRuleKind.pandoc_line_block,
+        25,
+        RegionKind.pandoc_line_block,
     ),
     BlockRecognizerDescriptor(
         BlockRuleKind.math_dollar_block,

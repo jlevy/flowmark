@@ -1,0 +1,8 @@
+| Header | Value |
+| --- | --- |
+| one | two |
+
+\| escaped bar
+|no required space
+
+    | indented code

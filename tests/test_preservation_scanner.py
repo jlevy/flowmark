@@ -196,6 +196,25 @@ def test_attribute_groups_require_valid_attributes_and_compatible_placement() ->
     ]
 
 
+def test_line_blocks_require_active_spaced_bars_and_do_not_claim_tables() -> None:
+    source = normalize_source(
+        "| first\n|\n| third $x$\n\n"
+        "> | quoted\n> | continued\n\n"
+        "| Header | Value |\n| --- | --- |\n| one | two |\n\n"
+        "\\| escaped\n|unspaced\n    | code"
+    )
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [
+        RegionKind.pandoc_line_block,
+        RegionKind.pandoc_line_block,
+    ]
+    assert [region.source for region in regions] == [
+        "| first\n|\n| third $x$\n",
+        "> | quoted\n> | continued\n",
+    ]
+
+
 def test_existing_opaque_blocks_win_before_math_scanning() -> None:
     source = normalize_source(
         "---\nitems:\n- one\nmath: $not_inline$\n---\n\n"
