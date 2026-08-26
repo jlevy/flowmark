@@ -3,9 +3,9 @@ type: is
 id: is-01kyss8fvgc7k0yb2xqjz8b0h2
 title: "Phase 4B: P1/P2 extension-registry vertical slices"
 kind: feature
-status: open
+status: closed
 priority: 2
-version: 9
+version: 10
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -19,7 +19,11 @@ child_order_hints:
   - is-01m0y0a2fn4je9ddv5s4h8aa5b
   - is-01m0y0a2zv7qvhbw4pfwhxkn8h
 created_at: 2026-07-30T15:11:05.072Z
-updated_at: 2026-08-26T03:03:48.147Z
+updated_at: 2026-08-26T13:15:00.639Z
+closed_at: 2026-08-26T13:15:00.638Z
+close_reason: null
+resolution: null
+duplicate_of: null
 ---
 Parent for lower-severity extension families after all P0 slices have Python/Rust parity: Pandoc grid tables, raw multiline HTML, attribute groups, line blocks, and general MyST roles/wikilinks.
 

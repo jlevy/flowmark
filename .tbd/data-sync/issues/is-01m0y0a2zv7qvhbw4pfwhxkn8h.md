@@ -3,15 +3,19 @@ type: is
 id: is-01m0y0a2zv7qvhbw4pfwhxkn8h
 title: "P2 vertical slice: MyST roles and wikilinks"
 kind: feature
-status: open
+status: closed
 priority: 2
-version: 1
+version: 2
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
 parent_id: is-01kyss8fvgc7k0yb2xqjz8b0h2
 created_at: 2026-08-26T03:02:38.842Z
-updated_at: 2026-08-26T03:02:38.842Z
+updated_at: 2026-08-26T13:15:00.434Z
+closed_at: 2026-08-26T13:15:00.433Z
+close_reason: null
+resolution: null
+duplicate_of: null
 ---
 After P0 parity, extend inline preservation to general MyST role/backtick spans and double-bracket wikilinks.
 
