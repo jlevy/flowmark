@@ -3,9 +3,9 @@ type: is
 id: is-01m0yfybntamn9fw3nefnr2fpt
 title: Support atomic --output for one direct input file
 kind: bug
-status: in_progress
+status: closed
 priority: 1
-version: 4
+version: 5
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -13,7 +13,11 @@ dependencies:
     target: is-01m0y042abxn1c7w256z31w81j
 parent_id: is-01m0xn1kf4s20aga85f298dzww
 created_at: 2026-08-26T07:35:51.737Z
-updated_at: 2026-08-26T09:27:31.542Z
+updated_at: 2026-08-26T09:34:26.384Z
+closed_at: 2026-08-26T09:34:26.382Z
+close_reason: Implemented atomic explicit output for one direct file while retaining deterministic multiple-file rejection. Native routing tests, FM-CLI-OUTPUT-001, and all file-ops tryscript cases pass in commit 8e7d178.
+resolution: null
+duplicate_of: null
 ---
 Implement the intentional FM-CLI-OUTPUT-001 behavior exposed by the shared preservation I/O matrix.
 
