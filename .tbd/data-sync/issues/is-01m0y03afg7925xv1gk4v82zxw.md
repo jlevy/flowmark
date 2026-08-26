@@ -3,9 +3,9 @@ type: is
 id: is-01m0y03afg7925xv1gk4v82zxw
 title: Make Python wrapping and transforms protected-token aware
 kind: task
-status: open
+status: closed
 priority: 1
-version: 3
+version: 5
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -15,7 +15,11 @@ dependencies:
     target: is-01m0yfybntamn9fw3nefnr2fpt
 parent_id: is-01m0xn1kf4s20aga85f298dzww
 created_at: 2026-08-26T02:58:57.125Z
-updated_at: 2026-08-26T07:35:51.737Z
+updated_at: 2026-08-26T09:15:13.036Z
+closed_at: 2026-08-26T09:15:13.035Z
+close_reason: Implemented structured token fragments/clusters, source-side scalar width accounting, authored-LF column resets, immutable built-in wrapper binding, and diagnostic wrapping tests in the current commit; 516 pytest tests and all lint/type gates pass.
+resolution: null
+duplicate_of: null
 ---
 Teach existing formatting stages to preserve token boundaries and use side-table widths.
 
