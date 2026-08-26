@@ -5,7 +5,7 @@ title: "Phase 1A: define shared desired-output math behavior"
 kind: feature
 status: closed
 priority: 1
-version: 9
+version: 11
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies: []
@@ -14,9 +14,9 @@ child_order_hints:
   - is-01m0y00nt855jn33j93519akpr
   - is-01m0y00zvn2e13edc2zyfx6jxn
 created_at: 2026-08-25T23:45:46.149Z
-updated_at: 2026-08-26T08:10:24.501Z
-closed_at: 2026-08-26T08:10:24.498Z
-close_reason: Shared desired math behavior remains complete after scanner-driven fixture review.
+updated_at: 2026-08-26T08:40:35.004Z
+closed_at: 2026-08-26T08:40:35.002Z
+close_reason: Shared desired math behavior now covers the scanner-discovered container gaps and remains intentionally red pre-integration.
 resolution: null
 duplicate_of: null
 ---

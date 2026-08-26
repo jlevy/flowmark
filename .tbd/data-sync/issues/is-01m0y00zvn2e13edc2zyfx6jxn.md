@@ -5,7 +5,7 @@ title: Add shared desired-output cases for math blocks and container boundaries
 kind: task
 status: closed
 priority: 1
-version: 5
+version: 8
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -15,9 +15,9 @@ dependencies:
     target: is-01m0xse3xhcna7jm56zb5vj4hk
 parent_id: is-01m0xn1k559xy7eg2a2zgpxqy5
 created_at: 2026-08-26T02:57:40.724Z
-updated_at: 2026-08-26T07:46:00.506Z
-closed_at: 2026-08-26T07:46:00.506Z
-close_reason: Committed reviewed language-neutral desired-output math contract and pre-fix classification in 9ee6444; full lint, type, conformance, pytest, and tryscript gates pass.
+updated_at: 2026-08-26T08:40:33.950Z
+closed_at: 2026-08-26T08:40:33.925Z
+close_reason: Shared display/container/I/O cases reviewed again; added nested marker order and real tab-indentation vectors.
 resolution: null
 duplicate_of: null
 ---

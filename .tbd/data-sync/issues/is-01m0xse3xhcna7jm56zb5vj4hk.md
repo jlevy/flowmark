@@ -3,9 +3,9 @@ type: is
 id: is-01m0xse3xhcna7jm56zb5vj4hk
 title: Implement the Python container-aware block scanner and math blocks
 kind: task
-status: open
+status: in_progress
 priority: 1
-version: 4
+version: 5
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels: []
 dependencies:
@@ -13,7 +13,7 @@ dependencies:
     target: is-01m0y02vbss1rhf6xgcwtf8qef
 parent_id: is-01m0xn1kf4s20aga85f298dzww
 created_at: 2026-08-26T01:02:30.833Z
-updated_at: 2026-08-26T02:58:41.654Z
+updated_at: 2026-08-26T08:15:06.194Z
 ---
 Implement FM-MATH-BLOCK-001 as a pre-parse source scanner, not in block_heuristics.py and not as a parser-specific workaround.
 
