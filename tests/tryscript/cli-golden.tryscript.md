@@ -5,6 +5,8 @@ env:
   LC_ALL: C
 path:
   - $FLOWMARK_BIN_DIR
+patterns:
+  VERSION: '(?:v\d+\.\d+\.\d+[^\r\n]*|flowmark \d+\.\d+\.\d+[^\r\n]*)'
 before: |
   mkdir -p project/docs project/node_modules/pkg project/.venv/lib project/drafts
   printf '# Root\n' > project/README.md
