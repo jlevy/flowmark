@@ -52,3 +52,16 @@ expected_stdout = "tests/parity_corpus/cases/preservation/extensions/raw-html/fa
 expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
 expected_exit = 0
 idempotent = true
+
+[[case]]
+id = "preservation.extension.raw-html.angle-comparisons"
+change_id = "FM-EXT-RAW-HTML-001"
+description = "Angle-bracket comparisons in GFM tables and prose stay ordinary Markdown while real tags and autolinks remain source-exact."
+kind = "stdin"
+tags = ["autolink", "comparison", "extension", "fallback", "gfm", "html", "stdin", "table"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/raw-html/angle-comparisons/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/raw-html/angle-comparisons/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

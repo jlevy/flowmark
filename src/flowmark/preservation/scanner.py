@@ -42,7 +42,17 @@ _HTML_BLOCK_TAG = re.compile(
     r"table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[ \t]+|/?>|\Z)",
     re.IGNORECASE,
 )
-_HTML_COMPLETE_TAG = re.compile(r"</?[A-Za-z][A-Za-z0-9-]*(?:[ \t]+[^<>]*)?[ \t]*/?>[ \t]*\Z")
+_HTML_COMPLETE_TAG = re.compile(
+    r"</?[A-Za-z][A-Za-z0-9-]*(?:[ \t\n]+[^<>]*)?[ \t\n]*/?>[ \t]*\Z"
+)
+_HTML_TAG_START = re.compile(r"</?[A-Za-z][A-Za-z0-9-]*(?:[ \t\n]|/?>)")
+_AUTOLINK_URI = re.compile(r"[A-Za-z][A-Za-z0-9.+-]{1,31}:[^<>\x00-\x20]*\Z")
+_AUTOLINK_EMAIL = re.compile(
+    r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@"
+    r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+\Z"
+)
+_HTML_DECLARATION = re.compile(r"<![A-Z][^<>]*>\Z")
 _SETEXT_HEADING = re.compile(r" {0,3}(?:=+|-+)[ \t]*\Z")
 
 
@@ -444,6 +454,18 @@ def scan_angle_spans(source: NormalizedSource, start: int, end: int) -> tuple[Ca
             index += 1
             continue
         span_end = close + 1
+        span = text[index:span_end]
+        body = span[1:-1]
+        if not (
+            _HTML_TAG_START.match(span) is not None
+            or _HTML_DECLARATION.fullmatch(span) is not None
+            or _AUTOLINK_URI.fullmatch(body) is not None
+            or _AUTOLINK_EMAIL.fullmatch(body) is not None
+            or index >= start_index + 2
+            and text[index - 2 : index] == "]("  # CommonMark angle link destination.
+        ):
+            index += 1
+            continue
         candidates.append(_candidate(source, RegionKind.raw_html_inline, index, span_end))
         index = span_end
     return tuple(candidates)

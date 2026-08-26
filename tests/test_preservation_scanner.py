@@ -348,6 +348,26 @@ def test_raw_html_uses_explicit_and_blank_line_end_conditions() -> None:
     assert regions[3].container.list_depth == 0
 
 
+def test_angle_scanner_rejects_comparisons_and_accepts_html_and_autolinks() -> None:
+    source = normalize_source(
+        "| Fast | Slow |\n"
+        "| --- | --- |\n"
+        "| <15min | >25min |\n"
+        "| <1.5x | >2.5x |\n\n"
+        "[link](<foo\nbar>) "
+        "<x-card data-label=\"raw\"> <https://example.com/a> <7@example.com> "
+        "<!DOCTYPE html>"
+    )
+
+    assert [region.source for region in scan_protected_regions(source)] == [
+        "<foo\nbar>",
+        '<x-card data-label="raw">',
+        "<https://example.com/a>",
+        "<7@example.com>",
+        "<!DOCTYPE html>",
+    ]
+
+
 def test_unmatched_outer_block_retains_closed_inner_and_not_sibling_closers() -> None:
     source = normalize_source("\\begin{outer}\n\\begin{inner}\nbody\n\\end{inner}\n\n- $$\n- $$")
 
