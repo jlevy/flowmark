@@ -67,6 +67,19 @@ expected_exit = 0
 idempotent = true
 
 [[case]]
+id = "preservation.math.inline.issue-70-wrap-corruption"
+change_id = "FM-MATH-INLINE-001"
+description = "Issue 70's wrap-boundary reproduction moves complete math and code spans without inserting escapes."
+kind = "stdin"
+tags = ["desired-output", "issue-70", "math", "preservation", "regression", "stdin", "wrapping"]
+args = ["--width", "88", "--semantic", "--cleanups", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/issue-70-wrap-corruption/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/issue-70-wrap-corruption/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
 id = "preservation.math.inline.dollar-boundaries"
 change_id = "FM-MATH-INLINE-001"
 description = "Broad single and double dollar boundaries remain source exact without dialect configuration."

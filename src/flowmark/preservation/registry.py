@@ -42,6 +42,7 @@ class BlockRuleKind(StableStrEnum):
     raw_html_block = "raw_html_block"
     attribute_group_block = "attribute_group_block"
     pandoc_line_block = "pandoc_line_block"
+    gitlab_multiline_blockquote = "gitlab_multiline_blockquote"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -70,6 +71,7 @@ class BlockRecognizerDescriptor:
             RegionKind.raw_html_block,
             RegionKind.attribute_group_block,
             RegionKind.pandoc_line_block,
+            RegionKind.gitlab_multiline_blockquote,
             RegionKind.math_dollar_block,
             RegionKind.math_bracket_block,
             RegionKind.math_environment_block,
@@ -125,6 +127,12 @@ BUILTIN_RECOGNIZERS: Final[tuple[RecognizerDescriptor, ...]] = (
         RegionForm.inline,
         OPAQUE_EXTENSION_INLINE_PRIORITY,
         "FM-EXT-MYST-WIKILINK-001",
+    ),
+    RecognizerDescriptor(
+        RegionKind.gitlab_reference_inline,
+        RegionForm.inline,
+        OPAQUE_EXTENSION_INLINE_PRIORITY,
+        "FM-EXT-GLFM-001",
     ),
     RecognizerDescriptor(
         RegionKind.code_span,
@@ -217,6 +225,12 @@ BUILTIN_RECOGNIZERS: Final[tuple[RecognizerDescriptor, ...]] = (
         "FM-EXT-LINE-BLOCK-001",
     ),
     RecognizerDescriptor(
+        RegionKind.gitlab_multiline_blockquote,
+        RegionForm.block,
+        OPAQUE_EXTENSION_BLOCK_PRIORITY,
+        "FM-EXT-GLFM-001",
+    ),
+    RecognizerDescriptor(
         RegionKind.math_dollar_block,
         RegionForm.block,
         BLOCK_MATH_PRIORITY,
@@ -299,6 +313,11 @@ BUILTIN_BLOCK_RECOGNIZERS: Final[tuple[BlockRecognizerDescriptor, ...]] = (
         BlockRuleKind.pandoc_line_block,
         25,
         RegionKind.pandoc_line_block,
+    ),
+    BlockRecognizerDescriptor(
+        BlockRuleKind.gitlab_multiline_blockquote,
+        25,
+        RegionKind.gitlab_multiline_blockquote,
     ),
     BlockRecognizerDescriptor(
         BlockRuleKind.math_dollar_block,

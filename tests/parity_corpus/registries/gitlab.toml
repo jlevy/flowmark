@@ -1,0 +1,54 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.extension.gitlab.references"
+change_id = "FM-EXT-GLFM-001"
+description = "GitLab bracketed references preserve source-exact values that resemble emphasis or typography."
+kind = "stdin"
+tags = ["desired-output", "extension", "gitlab", "glfm", "inline", "issue-67", "preservation", "reference", "stdin", "unicode"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/gitlab/references/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/gitlab/references/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.gitlab.reference-contexts"
+change_id = "FM-EXT-GLFM-001"
+description = "GitLab bracketed references stay atomic in headings, lists, links, quotes, and GFM tables."
+kind = "stdin"
+tags = ["context", "desired-output", "extension", "gitlab", "glfm", "heading", "issue-67", "list", "preservation", "reference", "stdin", "table"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/gitlab/reference-contexts/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/gitlab/reference-contexts/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.gitlab.multiline-blockquotes"
+change_id = "FM-EXT-GLFM-001"
+description = "Paired GitLab multiline-blockquote fences preserve complete multi-block quoted source exactly."
+kind = "stdin"
+tags = ["adjacency", "block", "blockquote", "desired-output", "extension", "gitlab", "glfm", "issue-67", "preservation", "stdin", "unicode"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/gitlab/multiline-blockquotes/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/gitlab/multiline-blockquotes/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.gitlab.multiline-blockquote-containers"
+change_id = "FM-EXT-GLFM-001"
+description = "GitLab multiline-blockquote fences retain exact source inside list and quote containers."
+kind = "stdin"
+tags = ["block", "blockquote", "container", "desired-output", "extension", "gitlab", "glfm", "issue-67", "list", "preservation", "stdin"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/gitlab/multiline-blockquote-containers/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/gitlab/multiline-blockquote-containers/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

@@ -1,0 +1,5 @@
+# Repro
+
+Filler words to push the formula across the wrap column boundary here now ok $a + b + c + d$ tail.
+
+Filler words to push the formula across the wrap column boundary here now ok `a + b + c + d` tail.

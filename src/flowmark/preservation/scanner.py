@@ -24,6 +24,18 @@ ScalarRun = tuple[int, int]
 
 _MYST_ROLE = "{math}"
 _GENERAL_MYST_ROLE = re.compile(r"[A-Za-z][A-Za-z0-9:_-]*\Z")
+_GITLAB_REFERENCE_TYPES = frozenset(
+    {
+        "cadence",
+        "contact",
+        "epic",
+        "feature_flag",
+        "issue",
+        "vulnerability",
+        "wiki_page",
+        "work_item",
+    }
+)
 _BEGIN_PREFIX = "\\begin{"
 _END_PREFIX = "\\end{"
 _TABLE_DELIMITER_CELL = re.compile(r":?-{3,}:?\Z")
@@ -399,6 +411,46 @@ def scan_wikilinks(source: NormalizedSource, start: int, end: int) -> tuple[Cand
     return tuple(candidates)
 
 
+def scan_gitlab_references(source: NormalizedSource, start: int, end: int) -> tuple[Candidate, ...]:
+    """Recognize source-exact bracketed references from the GLFM reference family."""
+    start_index, end_index = _scope_scalar_indexes(source, start, end)
+    text = source.text
+    candidates: list[Candidate] = []
+    index = start_index
+    while index < end_index:
+        opener = text.find("[", index, end_index)
+        if opener < 0:
+            break
+        index = opener + 1
+        if not escape_is_even(text, opener):
+            continue
+        colon = index
+        while colon < end_index and text[colon] not in ":[]\n":
+            colon += 1
+        if colon >= end_index or text[colon] != ":":
+            continue
+        if text[index:colon] not in _GITLAB_REFERENCE_TYPES:
+            continue
+        cursor = colon + 1
+        while cursor < end_index and text[cursor] != "\n":
+            if text[cursor] == "[":
+                break
+            if text[cursor] == "]" and escape_is_even(text, cursor):
+                if text[colon + 1 : cursor]:
+                    candidates.append(
+                        _candidate(
+                            source,
+                            RegionKind.gitlab_reference_inline,
+                            opener,
+                            cursor + 1,
+                        )
+                    )
+                    index = cursor + 1
+                break
+            cursor += 1
+    return tuple(candidates)
+
+
 def scan_angle_spans(source: NormalizedSource, start: int, end: int) -> tuple[Candidate, ...]:
     """Protect balanced inline HTML, autolink, and declaration-like angle spans."""
     start_index, end_index = _scope_scalar_indexes(source, start, end)
@@ -759,6 +811,7 @@ def scan_inline_scope(
         *scan_composite_math(source, start, end),
         *scan_myst_roles(source, start, end),
         *scan_wikilinks(source, start, end),
+        *scan_gitlab_references(source, start, end),
         *scan_backtick_runs(source, start, end),
         *scan_paren_math(source, start, end),
         *scan_inline_environments(source, start, end),
@@ -906,6 +959,16 @@ def _parse_new_frames(
     frames: list[_ContainerFrame],
 ) -> tuple[int, int]:
     while index < end:
+        payload_index, payload_column = _consume_indent(
+            text,
+            index,
+            end,
+            column,
+            maximum=3,
+        )
+        if text[payload_index:end] == ">>>":
+            return payload_index, payload_column
+
         quote = _consume_quote_marker(text, index, end, column)
         if quote is not None:
             marker_index, _ = _consume_indent(
@@ -2096,6 +2159,37 @@ def scan_pandoc_line_blocks(
     return tuple(candidates)
 
 
+def scan_gitlab_multiline_blockquotes(
+    source: NormalizedSource,
+    lines: tuple[ContainerLine, ...] | None = None,
+    opaque_blocks: tuple[OpaqueBlock, ...] = (),
+) -> tuple[Candidate, ...]:
+    """Pair exact GLFM multiline-blockquote fences within one Markdown container."""
+    views = build_container_view(source) if lines is None else lines
+    opaque = _opaque_line_flags(views, opaque_blocks)
+    pending: dict[tuple[tuple[str, int, int], ...], ContainerLine] = {}
+    candidates: list[Candidate] = []
+    for line in views:
+        if opaque[line.index] or line.lazy or _line_payload(source, line) != ">>>":
+            continue
+        opener = pending.pop(line.container_key, None)
+        if opener is None:
+            pending[line.container_key] = line
+            continue
+        if compatible_container(opener, line):
+            candidates.append(
+                Candidate(
+                    RegionKind.gitlab_multiline_blockquote,
+                    RegionForm.block,
+                    opener.start,
+                    line.end,
+                    opener.context,
+                    _scaffold_prefix(source, opener),
+                )
+            )
+    return tuple(candidates)
+
+
 def resolve_candidate_tree(
     source: NormalizedSource, candidates: tuple[Candidate, ...]
 ) -> tuple[Candidate, ...]:
@@ -2369,6 +2463,7 @@ def scan_protected_regions(
             *scan_raw_html_blocks(source, lines, opaque_blocks),
             *scan_attribute_group_blocks(source, lines, opaque_blocks),
             *scan_pandoc_line_blocks(source, lines, opaque_blocks),
+            *scan_gitlab_multiline_blockquotes(source, lines, opaque_blocks),
             *scan_display_math(source, lines, opaque_blocks),
             *scan_environment_blocks(source, lines, opaque_blocks),
         ),

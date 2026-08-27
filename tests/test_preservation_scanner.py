@@ -249,6 +249,50 @@ def test_general_myst_roles_and_wikilinks_preserve_priority_and_nesting() -> Non
     ]
 
 
+def test_gitlab_references_are_allowlisted_and_fail_closed() -> None:
+    source = normalize_source(
+        '[issue:_123_] [cadence:"plan a"] [wiki_page:首页] '
+        "[unknown:_123_] [issue:] \\[issue:_456_] `[issue:_789_]`"
+    )
+
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [
+        RegionKind.gitlab_reference_inline,
+        RegionKind.gitlab_reference_inline,
+        RegionKind.gitlab_reference_inline,
+        RegionKind.code_span,
+    ]
+    assert [region.source for region in regions] == [
+        "[issue:_123_]",
+        '[cadence:"plan a"]',
+        "[wiki_page:首页]",
+        "`[issue:_789_]`",
+    ]
+
+
+def test_gitlab_multiline_blockquotes_require_compatible_paired_fences() -> None:
+    source = normalize_source(
+        ">>>\nroot\n\nsecond root block\n>>>\n\n"
+        "- >>>\n  list body\n  >>>\n\n"
+        "> >>>\n> nested body\n> >>>\n\n"
+        ">>> unmatched\n\n    >>>\n    code\n    >>>\n\n>>>"
+    )
+
+    regions = scan_protected_regions(source)
+
+    assert [region.kind for region in regions] == [
+        RegionKind.gitlab_multiline_blockquote,
+        RegionKind.gitlab_multiline_blockquote,
+        RegionKind.gitlab_multiline_blockquote,
+    ]
+    assert [region.source for region in regions] == [
+        ">>>\nroot\n\nsecond root block\n>>>\n",
+        "- >>>\n  list body\n  >>>\n",
+        "> >>>\n> nested body\n> >>>\n",
+    ]
+
+
 def test_existing_opaque_blocks_win_before_math_scanning() -> None:
     source = normalize_source(
         "---\nitems:\n- one\nmath: $not_inline$\n---\n\n"

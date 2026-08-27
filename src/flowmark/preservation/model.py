@@ -40,6 +40,7 @@ class RegionKind(StableStrEnum):
     raw_html_inline = "raw_html_inline"
     myst_role_inline = "myst_role_inline"
     wikilink_inline = "wikilink_inline"
+    gitlab_reference_inline = "gitlab_reference_inline"
     code_span = "code_span"
     math_paren_inline = "math_paren_inline"
     math_environment_inline = "math_environment_inline"
@@ -55,6 +56,7 @@ class RegionKind(StableStrEnum):
     raw_html_block = "raw_html_block"
     attribute_group_block = "attribute_group_block"
     pandoc_line_block = "pandoc_line_block"
+    gitlab_multiline_blockquote = "gitlab_multiline_blockquote"
     math_dollar_block = "math_dollar_block"
     math_bracket_block = "math_bracket_block"
     math_environment_block = "math_environment_block"
@@ -74,6 +76,7 @@ _INLINE_REGION_KINDS = frozenset(
         RegionKind.raw_html_inline,
         RegionKind.myst_role_inline,
         RegionKind.wikilink_inline,
+        RegionKind.gitlab_reference_inline,
         RegionKind.code_span,
         RegionKind.math_paren_inline,
         RegionKind.math_environment_inline,
@@ -93,6 +96,7 @@ _BLOCK_REGION_KINDS = frozenset(
         RegionKind.raw_html_block,
         RegionKind.attribute_group_block,
         RegionKind.pandoc_line_block,
+        RegionKind.gitlab_multiline_blockquote,
         RegionKind.math_dollar_block,
         RegionKind.math_bracket_block,
         RegionKind.math_environment_block,

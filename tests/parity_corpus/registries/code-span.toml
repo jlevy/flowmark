@@ -2,6 +2,19 @@ schema_version = 1
 corpus = "flowmark-language-neutral-conformance"
 
 [[case]]
+id = "preservation.code-span.issue-58-escaped-backtick"
+change_id = "FM-CODE-SPAN-001"
+description = "Issue 58's escaped-backtick reproduction retains the spaces in every following code span."
+kind = "stdin"
+tags = ["code-span", "desired-output", "escape", "issue-58", "preservation", "regression", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/code-span/issue-58-escaped-backtick/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/code-span/issue-58-escaped-backtick/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
 id = "preservation.code-span.delimiter-runs"
 change_id = "FM-CODE-SPAN-001"
 description = "Arbitrary authored delimiter widths and unequal interior runs remain source-exact."
