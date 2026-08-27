@@ -14,10 +14,3 @@ tests/
 # mirror upstream (with intentional emoji and formatting) and are owned by `tbd`.
 docs/general/
 .claude/
-
-# The markdown-preservation spec documents the very constructs flowmark currently
-# corrupts, so formatting it rewrites its own evidence: on 2026-08-25 a format pass
-# re-paired the backticks in three code spans containing fenced-block info strings and
-# the GitLab dollar-backtick form (issue #58). Excluded until #58 and the preservation
-# work land, then re-check and remove this entry.
-docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
