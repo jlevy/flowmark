@@ -5,7 +5,7 @@ title: Write the official supported Markdown and math syntax guide
 kind: feature
 status: open
 priority: 1
-version: 5
+version: 7
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels:
   - docs
@@ -22,12 +22,6 @@ dependencies:
     target: is-01m0zvrghzj17ra8cg8zpqzncr
 parent_id: is-01m0zvnkyqktm79pza59a36k3b
 created_at: 2026-08-26T20:20:40.351Z
-updated_at: 2026-08-26T20:21:37.470Z
+updated_at: 2026-08-27T04:02:07.076Z
 ---
-Add a durable public guide at a self-evident path such as `docs/supported-markdown.md`. The guide is the detailed human-facing view of the language-neutral support catalog; do not duplicate low-level scanner design or the full test manifest.
-
-Lead with Flowmark's mixed-dialect, little-configuration preservation promise and give math the first detailed section. Show concise valid examples for every math form and explain delimiter matching, code precedence, wrapping as an atomic unit, container behavior, malformed fallback, line-ending/final-newline normalization, and what “source exact” does and does not include.
-
-Organize other syntax by useful buckets: CommonMark and GFM, source-exact inline code, YAML and TOML frontmatter, raw HTML, Pandoc multiline and grid tables, definition and line blocks, fenced divs/colon containers, attribute groups, Obsidian/GitHub-style callouts, MyST roles, wikilinks/embeds, template tags, and related opaque regions. Clearly list known gaps and intentional canonicalizations generated from or checked against the catalog.
-
-Link to the language-neutral conformance documentation for contributors. Follow the common documentation guidelines, use precise present-state prose, include exactly one required footer, run Flowmark, and verify every internal and external link.
+Add a durable public guide such as docs/supported-markdown.md as the human-facing view of the language-neutral support catalog. Lead with Flowmark's mixed-dialect, little-configuration practical support contract and give math the first detailed section. Explain that baseline support means preserved meaning/content, fixed-point output, and Python/Rust parity; strict CommonMark fidelity separately pursues source-exact spelling or documents intentional normalization. Show concise examples for every math form and explain matching, code precedence, atomic wrapping, containers, malformed fallback, and normalization boundaries. Organize other syntax by common CommonMark, GFM, and GLFM buckets first, then frontmatter, raw HTML, Pandoc tables, definitions/line blocks, containers/attributes, callouts, MyST, wikilinks/embeds, templates, and other opaque regions. List high-impact/common gaps before rare equivalent-spelling differences and generate or check them against the catalog. Link contributor conformance docs, follow common documentation/footer rules, run Flowmark, and verify links.

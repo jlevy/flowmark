@@ -5,7 +5,7 @@ title: "Documentation: publish Flowmark's cross-dialect Markdown and math suppor
 kind: epic
 status: open
 priority: 1
-version: 10
+version: 13
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels:
   - docs
@@ -22,11 +22,8 @@ child_order_hints:
   - is-01m0zvr4pywnx84bq8n8zn6jew
   - is-01m0zvr5089jta3pfz0328589y
   - is-01m0zvrghzj17ra8cg8zpqzncr
+  - is-01m10ntxm4570ja5wmb0zk7t7q
 created_at: 2026-08-26T20:20:02.645Z
-updated_at: 2026-08-26T20:21:37.470Z
+updated_at: 2026-08-27T04:02:06.429Z
 ---
-Turn the preservation work in Python PR #71 and Rust PR #81 into one accurate, maintainable public documentation system.
-
-The public contract must explain that Flowmark handles mixed Markdown dialects with little or no configuration, give math the highest visibility, list every supported syntax in an official guide, and summarize the differentiator in the README without a giant feature matrix. Claims must distinguish source-exact opaque preservation, intentional normalization, formatter-owned Markdown, safe fallback, and known gaps.
-
-Use the upstream shared corpus and a language-neutral support catalog as evidence. The Python and Rust builds must consume the same authored support content, and installed `flowmark --docs` output must remain useful outside a source checkout. All authored Markdown must follow the tbd common documentation guidelines, end with exactly one required footer unless it is a justified generated artifact, and be formatted with Flowmark. Code comments touched by the work must follow the tbd general comment rules.
+Turn the preservation work in Python PR #71 and Rust PR #81 into one accurate, maintainable public documentation system. State two levels of support. The baseline practical contract says common CommonMark, GFM, and GLFM forms and registered extensions are safe in mixed documents with little configuration: meaning and content survive, output reaches a fixed point, and Python/Rust agree. The stricter CommonMark fidelity contract classifies all 652 examples as source-exact, intentionally normalized with equivalent structure, or an open known gap. Public docs must give math highest visibility, list supported syntax in an official guide, summarize the differentiator in the README without a giant matrix, and lead with common/high-impact gaps before rare spelling differences. Claims distinguish source-exact protection, intentional normalization, formatter-owned Markdown, safe fallback, and known gaps. Use the shared corpus and language-neutral catalog as evidence. Python and Rust consume the same authored content, installed docs remain useful, and all governed Markdown follows common documentation/footer rules and Flowmark formatting.
