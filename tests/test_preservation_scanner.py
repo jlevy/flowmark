@@ -5,10 +5,12 @@ from flowmark.preservation.scanner import (
     arbitrate_candidates,
     build_container_view,
     escape_is_even,
+    scan_angle_spans,
     scan_dollar_runs,
     scan_existing_opaque_blocks,
     scan_inline_scope,
     scan_protected_regions,
+    scan_wikilinks,
 )
 
 
@@ -249,6 +251,23 @@ def test_general_myst_roles_and_wikilinks_preserve_priority_and_nesting() -> Non
     ]
 
 
+def test_wikilink_closability_preserves_nested_and_overlapping_fallbacks() -> None:
+    nested = normalize_source("[[ [[ y ]] x")
+    nested_candidates = scan_wikilinks(nested, 0, nested.byte_length)
+    assert [candidate.to_region(nested, index=0).source for candidate in nested_candidates] == [
+        "[[ y ]]"
+    ]
+
+    overlapping = normalize_source("[[[[x]]")
+    overlapping_candidates = scan_wikilinks(overlapping, 0, overlapping.byte_length)
+    assert [
+        candidate.to_region(overlapping, index=0).source for candidate in overlapping_candidates
+    ] == ["[[[x]]"]
+
+    unclosed = normalize_source("[[" * 32_768)
+    assert scan_wikilinks(unclosed, 0, unclosed.byte_length) == ()
+
+
 def test_gitlab_references_are_allowlisted_and_fail_closed() -> None:
     source = normalize_source(
         '[issue:_123_] [cadence:"plan a"] [wiki_page:首页] '
@@ -420,6 +439,11 @@ def test_angle_scanner_rejects_comparisons_and_accepts_html_and_autolinks() -> N
         "<7@example.com>",
         "<!DOCTYPE html>",
     ]
+
+
+def test_angle_scanner_handles_many_unclosed_prose_comparisons() -> None:
+    source = normalize_source("The build takes <15min and speedup is <1.5x.\n" * 8_192)
+    assert scan_angle_spans(source, 0, source.byte_length) == ()
 
 
 def test_unmatched_outer_block_retains_closed_inner_and_not_sibling_closers() -> None:

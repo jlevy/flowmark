@@ -364,10 +364,51 @@ def scan_wikilinks(source: NormalizedSource, start: int, end: int) -> tuple[Cand
     """Recognize balanced single-line wikilinks, embeds, aliases, and anchors."""
     start_index, end_index = _scope_scalar_indexes(source, start, end)
     text = source.text
+    closable: list[int] = []
+    summary_plus_one = (0, 0)
+    summary_plus_two = (0, 0)
+    for position in range(end_index - 1, start_index - 1, -1):
+        if text[position] == "\n":
+            summary = (0, 0)
+        elif (
+            position + 1 < end_index
+            and text[position : position + 2] == "[["
+            and escape_is_even(text, position)
+        ):
+            net = 1 + summary_plus_two[0]
+            summary = (net, min(0, 1 + summary_plus_two[1]))
+        elif (
+            position + 1 < end_index
+            and text[position : position + 2] == "]]"
+            and escape_is_even(text, position)
+        ):
+            net = -1 + summary_plus_two[0]
+            summary = (net, min(0, -1 + summary_plus_two[1]))
+        else:
+            summary = summary_plus_one
+
+        opener = position - 2
+        if (
+            opener >= start_index
+            and text[opener : opener + 2] == "[["
+            and escape_is_even(text, opener)
+            and summary[1] <= -1
+        ):
+            closable.append(opener)
+        summary_plus_two = summary_plus_one
+        summary_plus_one = summary
+    closable.reverse()
+
     candidates: list[Candidate] = []
+    closable_index = 0
     index = start_index
     while index + 1 < end_index:
         if text[index : index + 2] != "[[" or not escape_is_even(text, index):
+            index += 1
+            continue
+        while closable_index < len(closable) and closable[closable_index] < index:
+            closable_index += 1
+        if closable_index >= len(closable) or closable[closable_index] != index:
             index += 1
             continue
         candidate_start = (
@@ -400,6 +441,7 @@ def scan_wikilinks(source: NormalizedSource, start: int, end: int) -> tuple[Cand
                             )
                         )
                     index = cursor
+                    closable_index += 1
                     break
                 continue
             cursor += 1
@@ -456,69 +498,87 @@ def scan_angle_spans(source: NormalizedSource, start: int, end: int) -> tuple[Ca
     start_index, end_index = _scope_scalar_indexes(source, start, end)
     text = source.text
     candidates: list[Candidate] = []
-    index = start_index
-    while index < end_index:
-        if text[index] != "<" or index + 1 >= end_index:
-            index += 1
+    quote_free_close: int | None = None
+    single_quoted_close: int | None = None
+    double_quoted_close: int | None = None
+    fallback_close: int | None = None
+    comment_close: int | None = None
+    cdata_close: int | None = None
+    processing_close: int | None = None
+    processing_close_after: int | None = None
+
+    for index in range(end_index - 1, start_index - 1, -1):
+        if text.startswith("-->", index, end_index):
+            comment_close = index + 3
+        if text.startswith("]]>", index, end_index):
+            cdata_close = index + 3
+        if text.startswith("?>", index, end_index):
+            processing_close_after = processing_close
+            processing_close = index + 2
+
+        scalar = text[index]
+        if scalar == ">":
+            quote_free_close = index
+            fallback_close = index
+        elif scalar == "'":
+            quote_free_close, single_quoted_close = single_quoted_close, quote_free_close
+        elif scalar == '"':
+            quote_free_close, double_quoted_close = double_quoted_close, quote_free_close
+
+        if scalar != "<" or index + 1 >= end_index:
             continue
         next_scalar = text[index + 1]
         if next_scalar.isspace() or next_scalar in "<>":
-            index += 1
             continue
 
-        terminator = None
+        special_end = None
         if text.startswith("<!--", index, end_index):
-            terminator = "-->"
+            special_end = comment_close
         elif text.startswith("<![CDATA[", index, end_index):
-            terminator = "]]>"
+            special_end = cdata_close
         elif text.startswith("<?", index, end_index):
-            terminator = "?>"
-        if terminator is not None:
-            close = text.find(terminator, index + 2, end_index)
-            if close >= 0:
-                span_end = close + len(terminator)
-                candidates.append(_candidate(source, RegionKind.raw_html_inline, index, span_end))
-                index = span_end
-                continue
-            index += 1
+            # Match the forward scanner's search after the two-byte opener:
+            # the opener's own `?>` overlap in `<?>` is not a terminator.
+            special_end = (
+                processing_close_after if processing_close == index + 3 else processing_close
+            )
+        if (
+            text.startswith("<!--", index, end_index)
+            or text.startswith("<![CDATA[", index, end_index)
+            or text.startswith("<?", index, end_index)
+        ):
+            if special_end is not None:
+                candidates.append(
+                    _candidate(source, RegionKind.raw_html_inline, index, special_end)
+                )
             continue
 
-        fallback_close = text.find(">", index + 1, end_index)
-        quote = ""
-        cursor = index + 1
-        close = -1
-        while cursor < end_index:
-            scalar = text[cursor]
-            if quote:
-                if scalar == quote:
-                    quote = ""
-            elif scalar in "\"'":
-                quote = scalar
-            elif scalar == ">":
-                close = cursor
-                break
-            cursor += 1
-        if close < 0:
-            close = fallback_close
-        if close < 0:
-            index += 1
+        close = quote_free_close if quote_free_close is not None else fallback_close
+        if close is None:
             continue
         span_end = close + 1
         span = text[index:span_end]
         body = span[1:-1]
-        if not (
-            _HTML_TAG_START.match(span) is not None
-            or _HTML_DECLARATION.fullmatch(span) is not None
-            or _AUTOLINK_URI.fullmatch(body) is not None
-            or _AUTOLINK_EMAIL.fullmatch(body) is not None
-            or index >= start_index + 2
-            and text[index - 2 : index] == "]("  # CommonMark angle link destination.
+        html_tag = _HTML_TAG_START.match(span) is not None
+        if not html_tag and (
+            not (
+                _HTML_DECLARATION.fullmatch(span) is not None
+                or _AUTOLINK_URI.fullmatch(body) is not None
+                or _AUTOLINK_EMAIL.fullmatch(body) is not None
+                or index >= start_index + 2
+                and text[index - 2 : index] == "]("  # CommonMark angle link destination.
+            )
         ):
-            index += 1
             continue
         candidates.append(_candidate(source, RegionKind.raw_html_inline, index, span_end))
-        index = span_end
-    return tuple(candidates)
+    candidates.reverse()
+    selected: list[Candidate] = []
+    previous_end = start
+    for candidate in candidates:
+        if candidate.start >= previous_end:
+            selected.append(candidate)
+            previous_end = candidate.end
+    return tuple(selected)
 
 
 def _attribute_atom_end(text: str, index: int, end: int, *, value: bool) -> int | None:
