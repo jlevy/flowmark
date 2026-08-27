@@ -3,9 +3,9 @@ type: is
 id: is-01m0zvn8xkk9avdzmg1jh9tt65
 title: Map original preservation issues to exact shared regression cases
 kind: task
-status: in_progress
+status: closed
 priority: 1
-version: 4
+version: 6
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels:
   - traceability
@@ -16,7 +16,11 @@ dependencies:
     target: is-01m0zvpft5b6ft59jdxv76yc7b
 parent_id: is-01m0zvmjwn7hmgcxs7vs5d4py0
 created_at: 2026-08-26T20:19:51.346Z
-updated_at: 2026-08-27T04:58:30.932Z
+updated_at: 2026-08-27T05:14:51.596Z
+closed_at: 2026-08-27T05:14:51.595Z
+close_reason: "Mapped issues #58, #62, #67, and #70 from each promised behavior to exact stable shared case IDs, exact fixtures, fixed-point behavior, and both-port evidence in the active preservation spec."
+resolution: null
+duplicate_of: null
 ---
 Make GitHub issues #58, #62, #67, and #70 auditable from the language-neutral conformance corpus. Each original minimal reproduction and each distinct promised behavior must map to a stable shared case ID and change ID rather than only to a broader topic document or a language-specific unit test.
 
@@ -26,4 +30,4 @@ Acceptance requires a reviewer to move from each issue claim to exact input, exa
 
 ## Notes
 
-Added exact shared regressions and issue traceability for #58, #67, and #70; #62 maps to representative shared extension cases in the active spec. Python passes. Keep open until the unchanged cases pass in Rust and the final ledger is reviewed.
+Reviewed final issue ledger. #58 maps to preservation.code-span.issue-58-escaped-backtick; #70 to preservation.math.inline.issue-70-wrap-corruption; #67 to wikilink, definition-list, and all five GitLab cases; #62 maps each reported extension family to an exact representative shared case. Every referenced case is active, idempotent, and consumed unchanged by both native runners at Python 644be24 / Rust 8e65557.
