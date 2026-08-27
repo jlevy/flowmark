@@ -52,3 +52,16 @@ expected_stdout = "tests/parity_corpus/cases/preservation/extensions/callout/mal
 expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
 expected_exit = 0
 idempotent = true
+
+[[case]]
+id = "preservation.extension.callout.adjacent-inline"
+change_id = "FM-EXT-OBSIDIAN-CALLOUT-001"
+description = "Callout-like markers adjacent to protected inline forms never lose content or abort."
+kind = "stdin"
+tags = ["blockquote", "callout", "desired-output", "extension", "fallback", "inline", "obsidian", "preservation", "stdin"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/callout/adjacent-inline/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/callout/adjacent-inline/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
