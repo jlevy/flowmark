@@ -442,6 +442,14 @@ def test_angle_scanner_rejects_comparisons_and_accepts_html_and_autolinks() -> N
 
 
 def test_angle_scanner_handles_many_unclosed_prose_comparisons() -> None:
+    degenerate = normalize_source("<?>")
+    assert scan_angle_spans(degenerate, 0, degenerate.byte_length) == ()
+    complete = normalize_source("<??>")
+    assert [
+        candidate.to_region(complete, index=0).source
+        for candidate in scan_angle_spans(complete, 0, complete.byte_length)
+    ] == ["<??>"]
+
     source = normalize_source("The build takes <15min and speedup is <1.5x.\n" * 8_192)
     assert scan_angle_spans(source, 0, source.byte_length) == ()
 
