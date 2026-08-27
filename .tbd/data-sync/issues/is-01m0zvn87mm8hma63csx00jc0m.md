@@ -1,23 +1,21 @@
 ---
 type: is
 id: is-01m0zvn87mm8hma63csx00jc0m
-title: Classify and resolve the deferred CommonMark 0.31.2 corpus
+title: Classify and prioritize the live CommonMark 0.31.2 corpus
 kind: task
 status: open
 priority: 1
-version: 1
+version: 5
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels:
   - commonmark
   - conformance
   - parity
-dependencies: []
+dependencies:
+  - type: blocks
+    target: is-01m10nx6jr7fn9m30d8b483fm5
 parent_id: is-01m0zvmjwn7hmgcxs7vs5d4py0
 created_at: 2026-08-26T20:19:50.644Z
-updated_at: 2026-08-26T20:19:50.644Z
+updated_at: 2026-08-27T04:08:52.459Z
 ---
-The shared CommonMark 0.31.2 review report currently contains 652 cases: 363 active and 289 deferred. Every deferred case points to a closed owner bead (fm-ocpw: 71, fm-ucy8: 10, fm-w1tn: 102, fm-w467: 106), so the ledger no longer represents actionable ownership.
-
-Re-run all cases in both ports and classify every deferred result as source-exact preservation, intentional Flowmark normalization, an upstream-spec semantic equivalence, or a real bug. Activate reviewed cases with exact expected output; create narrowly scoped follow-up bugs for any behavior that should change. Regenerate the report from current evidence and reject stale closed owners.
-
-Acceptance requires no deferred case with a closed or missing owner, an explicit reviewed disposition for all 652 examples, stable shared case IDs, a documented distinction between CommonMark semantic support and source-exact spelling preservation, and zero unexplained Python/Rust differences.
+The live CommonMark 0.31.2 manifest contains 652 default cases: 394 active and 258 deferred. The checked-in review report records the historical 363/289 import split and must not be treated as live status. Deferred ownership is also stale: fm-w467 owns 166, fm-w1tn owns 91, and fm-5vlb owns one, although all three beads are closed. A 2026-08-26 direct audit of the 258 source-preserving desired outputs found Python at 116 exact passes and 142 failures (141 stdout, one exit), Rust at 119 exact passes and 139 stdout failures, 18 first-pass Python/Rust output differences, and 12 Python versus 6 Rust non-fixed-point cases. Re-run and classify every deferred case as compatible Flowmark formatting, selective source-exact treatment, or a real semantic, fixed-point, or parity bug. Prioritize common constructs and route high-impact fixes to fm-2zmv; route uncommon equivalent-spelling cleanup to fm-9wip. Regenerate a current report from executable evidence and replace every closed or missing owner. Acceptance: all 652 examples have a reviewed disposition; stable shared IDs remain; active cases have exact expected output; no deferred case has a closed/missing owner; reports distinguish semantic compatibility, formatter policy, fixed point, and port parity; no Python/Rust difference is unexplained.

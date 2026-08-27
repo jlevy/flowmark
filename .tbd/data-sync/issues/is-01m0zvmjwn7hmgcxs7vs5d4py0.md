@@ -5,7 +5,7 @@ title: "Follow-up: close remaining Markdown preservation evidence gaps"
 kind: epic
 status: open
 priority: 1
-version: 5
+version: 10
 spec_path: docs/project/specs/active/plan-2026-08-25-markdown-preservation.md
 labels:
   - preservation
@@ -17,11 +17,9 @@ child_order_hints:
   - is-01m0zvn87mm8hma63csx00jc0m
   - is-01m0zvn8jpssxjwtqqq058sxdz
   - is-01m0zvn8xkk9avdzmg1jh9tt65
+  - is-01m10nx6jr7fn9m30d8b483fm5
+  - is-01m10nx6xr86enx1x2h5mkcqs8
 created_at: 2026-08-26T20:19:28.780Z
-updated_at: 2026-08-26T20:19:51.346Z
+updated_at: 2026-08-27T04:08:52.189Z
 ---
-PR #71 and the Rust-port PR #81 have broad shared preservation coverage, but the senior review found correctness and evidence gaps that prevent an unqualified claim of universal Markdown preservation.
-
-Track only the remaining cross-language work here. Every behavior fix must begin with a language-neutral desired-output case in the upstream parity corpus, use a stable change ID, run unchanged through both native runners, and reach a fixed point. Small language-specific unit tests may cover scanner internals, but they cannot replace the shared behavioral case.
-
-The closeout must cover the unresolved GitLab Flavored Markdown examples from issue #67, classify the 289 deferred CommonMark 0.31.2 cases whose owner beads are already closed, verify the scanner complexity promised by the spec, and make the original issue reproductions directly traceable to shared cases. Do not close this epic based on test counts or broad family coverage; require reviewed exact outputs, Python/Rust parity, clean-package execution, and hosted CI evidence.
+PR #71 and Rust-port PR #81 have broad shared preservation coverage, but the senior review found correctness and evidence gaps that prevent an unqualified claim of universal Markdown preservation. The baseline contract is practical support: common CommonMark, GFM, and GLFM constructs plus registered extension forms must preserve meaning and content, reach a fixed point, and agree exactly across Python and Rust with little or no dialect configuration. CommonMark compatibility is mandatory; reviewed Flowmark line wrapping and canonicalization are expected, while source-exact treatment is selective for opaque or fragile syntax. Track only the remaining cross-language work here. Every behavior fix begins with a language-neutral desired-output case, uses a stable change ID, runs unchanged through both native runners, and reaches a fixed point. Small language-specific unit tests may cover internals but cannot replace shared observable evidence. The live CommonMark ledger is 394 active and 258 deferred default cases; the historical import report's 363/289 split is not current. Resolve the GitLab examples from issue #67, classify all deferred cases, fix common semantic/fixed-point/parity failures under fm-2zmv before lower-impact source-spelling work under fm-9wip, verify scanner complexity, and make issue reproductions traceable. Close only with reviewed exact outputs, documented remaining gaps, clean-package execution, and hosted CI.
