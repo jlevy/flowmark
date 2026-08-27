@@ -52,3 +52,16 @@ expected_stdout = "tests/parity_corpus/cases/preservation/extensions/gitlab/mult
 expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
 expected_exit = 0
 idempotent = true
+
+[[case]]
+id = "preservation.extension.gitlab.fallback"
+change_id = "FM-EXT-GLFM-001"
+description = "Escaped, unknown, empty, unmatched, and code-contained lookalikes retain ordinary Markdown behavior."
+kind = "stdin"
+tags = ["desired-output", "escape", "extension", "fallback", "gitlab", "glfm", "issue-67", "malformed", "preservation", "stdin"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/gitlab/fallback/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/gitlab/fallback/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

@@ -1,0 +1,1 @@
+Escaped \[issue:*123*] and unknown [unknown:*456*]. Empty [issue:] and unmatched [issue:*789*. Code `[issue:_101_]` remains code.
