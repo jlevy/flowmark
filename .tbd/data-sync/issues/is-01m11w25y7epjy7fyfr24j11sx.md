@@ -5,16 +5,16 @@ title: Share unterminated-fence escape cases for Rust parity
 kind: task
 status: closed
 priority: 2
-version: 2
+version: 5
 labels:
   - parity
   - preservation
   - pr-review
 dependencies: []
 created_at: 2026-08-27T15:05:23.142Z
-updated_at: 2026-08-27T15:30:15.525Z
-closed_at: 2026-08-27T15:30:15.525Z
-close_reason: Shared case preservation.fenced-code.false-opener-escaped-dollar added on branch claude/shared-fence-escape-goldens (commit d875661) and passing in Python. The two escape-in-fence divergences it also asked about turned out to be shared Python+Rust bugs and are tracked separately as fm-ww33 and fm-jtwj, which need an agreed target before a golden can pin them.
+updated_at: 2026-08-27T16:42:45.112Z
+closed_at: 2026-08-27T16:42:45.111Z
+close_reason: "Added the language-neutral FM-FENCED-CODE-001 regression on PR #71 at 85b6093; Rust PR #81 consumes it at c50df77. Full local validation and both hosted CI matrices passed."
 resolution: null
 duplicate_of: null
 ---
@@ -49,3 +49,7 @@ an executable target for the fix and the escape-inside-unterminated-fence
 behavior is pinned for both languages.
 
 No Python code change is expected; Python already produces the desired bytes.
+
+## Notes
+
+Reopened: Shared golden exists only on a side branch; reopen until it lands on PR #71 and the Rust submodule/mapping consumes it.
