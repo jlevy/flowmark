@@ -3,13 +3,17 @@ type: is
 id: is-01m10pya63krks99pmp51tsdcv
 title: Remove the preservation-spec entry from .flowmarkignore
 kind: task
-status: open
+status: closed
 priority: 2
-version: 1
+version: 2
 labels: []
 dependencies: []
 created_at: 2026-08-27T04:16:39.106Z
-updated_at: 2026-08-27T04:16:39.106Z
+updated_at: 2026-08-27T04:58:30.319Z
+closed_at: 2026-08-27T04:58:30.318Z
+close_reason: "Removed the obsolete preservation-spec exclusion after source-exact code spans and issue #58 coverage landed. Formatted the spec with Flowmark auto mode, verified the result is a fixed point with --auto --check, and retained the spec as a live real-world preservation regression."
+resolution: null
+duplicate_of: null
 ---
 Review suggestion from PR #71 (jlevy/flowmark#71): 'Once #58 is fixed, use this preservation spec itself as a real-world regression case before removing it from .flowmarkignore.'
 
