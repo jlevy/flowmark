@@ -3,16 +3,20 @@ type: is
 id: is-01m11w25y7epjy7fyfr24j11sx
 title: Share unterminated-fence escape cases for Rust parity
 kind: task
-status: open
+status: closed
 priority: 2
-version: 1
+version: 2
 labels:
   - parity
   - preservation
   - pr-review
 dependencies: []
 created_at: 2026-08-27T15:05:23.142Z
-updated_at: 2026-08-27T15:05:23.142Z
+updated_at: 2026-08-27T15:30:15.525Z
+closed_at: 2026-08-27T15:30:15.525Z
+close_reason: Shared case preservation.fenced-code.false-opener-escaped-dollar added on branch claude/shared-fence-escape-goldens (commit d875661) and passing in Python. The two escape-in-fence divergences it also asked about turned out to be shared Python+Rust bugs and are tracked separately as fm-ww33 and fm-jtwj, which need an agreed target before a golden can pin them.
+resolution: null
+duplicate_of: null
 ---
 Found during independent verification of flowmark-rs PR #81 at head f833ce8.
 Python behaves CORRECTLY here; this is a Rust divergence, but it needs a shared
