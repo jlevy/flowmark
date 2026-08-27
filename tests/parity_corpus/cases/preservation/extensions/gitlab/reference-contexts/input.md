@@ -9,3 +9,4 @@
 | Kind | Reference |
 | --- | --- |
 | Issue | [issue:_123_] |
+| Cadence | [cadence:"plan | a"] |

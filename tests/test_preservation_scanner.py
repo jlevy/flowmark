@@ -271,6 +271,16 @@ def test_gitlab_references_are_allowlisted_and_fail_closed() -> None:
     ]
 
 
+def test_gitlab_reference_pipe_is_not_a_table_cell_boundary() -> None:
+    source = normalize_source(
+        '| Kind | Reference |\n| --- | --- |\n| Cadence | [cadence:"plan | a"] |'
+    )
+
+    regions = scan_protected_regions(source)
+
+    assert [region.source for region in regions] == ['[cadence:"plan | a"]']
+
+
 def test_gitlab_multiline_blockquotes_require_compatible_paired_fences() -> None:
     source = normalize_source(
         ">>>\nroot\n\nsecond root block\n>>>\n\n"

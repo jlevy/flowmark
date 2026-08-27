@@ -2241,6 +2241,7 @@ def _table_cell_ranges(
             *scan_backtick_runs(source, line_start_byte, line_end_byte),
             *scan_myst_roles(source, line_start_byte, line_end_byte),
             *scan_wikilinks(source, line_start_byte, line_end_byte),
+            *scan_gitlab_references(source, line_start_byte, line_end_byte),
         ),
         start=line_start_byte,
         end=line_end_byte,
