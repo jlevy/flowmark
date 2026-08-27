@@ -4,6 +4,7 @@ case_registry = [
     "tests/parity_corpus/registries/math-inline.toml",
     "tests/parity_corpus/registries/math-block.toml",
     "tests/parity_corpus/registries/code-span.toml",
+    "tests/parity_corpus/registries/fenced-code.toml",
     "tests/parity_corpus/registries/pandoc-multiline-table.toml",
     "tests/parity_corpus/registries/obsidian-callout.toml",
     "tests/parity_corpus/registries/colon-container.toml",
