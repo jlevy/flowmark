@@ -23,6 +23,28 @@ binary directory.
 All expected payloads are compared as bytes without decoding, trimming,
 newline conversion, ANSI removal, or path replacement.
 
+## Support Classification
+
+Passing a case can establish several different claims.
+Authors and reports must keep them separate:
+
+1. **Practical support:** formatting preserves meaning and content, is deterministic and
+   idempotent, and agrees across Python and Rust.
+2. **CommonMark semantic compatibility:** the result retains the input’s CommonMark
+   block and inline structure.
+3. **Source treatment:** the result uses reviewed Flowmark line wrapping and
+   canonicalization, preserving authored spelling exactly only where that is the safer
+   or more useful formatter policy.
+
+The shared expected Markdown is the executable cross-language contract.
+Official CommonMark HTML and independent parse comparisons inform golden review; neither
+native runner derives expected Markdown from its implementation’s parser.
+
+Fix or activate cases in user-impact order: corruption or changed structure first, then
+fixed-point and Python/Rust differences in common constructs, then uncommon spec cases
+and semantically equivalent source spellings.
+Full-corpus counts never override that order.
+
 ## Manifest Version 1
 
 `manifest.toml` has these top-level fields:
@@ -117,6 +139,12 @@ Every deferred case has exactly one `owner-fm-*` tag naming its bead.
 Deferred CommonMark cases commit source-preserving desired output, never a known corrupt
 formatter result. Removing the deferral and owner tag is part of implementing the owning
 change.
+
+The live CommonMark default manifest contains 394 active and 258 deferred cases as of
+2026-08-26. The checked-in `review-report.json` describes the original import split, not
+the current ledger.
+A deferred case whose owner is closed or missing is invalid tracking,
+even when the desired output is already correct.
 
 ## Authoring and Acceptance
 

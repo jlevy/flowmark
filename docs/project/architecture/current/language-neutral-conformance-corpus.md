@@ -83,6 +83,39 @@ stable change mapping, and intentional behavior changes.
 - It does not treat the current Python output as correct when a case documents a known
   Python bug. Product intent, reviewed in the golden diff, is authoritative.
 
+## Support levels and triage
+
+The corpus distinguishes semantic compatibility from the source-form treatment chosen by
+the formatter.
+
+At the practical level, frequently used CommonMark, GitHub Flavored Markdown (GFM), and
+GitLab Flavored Markdown (GLFM) constructs plus registered extension forms must be safe
+in mixed documents with no dialect selection.
+“Safe” means no content loss, delimiter corruption, changed block or inline meaning,
+crash, non-determinism, second-pass change, or unexplained Python/Rust difference.
+This is the minimum bar for a public support claim.
+
+For CommonMark, every pinned example advances through four review gates:
+
+| Gate | Required evidence |
+| --- | --- |
+| Semantic compatibility | The formatted Markdown retains the input’s CommonMark block and inline meaning. |
+| Formatter policy | Line wrapping and canonical spelling are intentional, useful Flowmark behavior; source-exact treatment is required only where re-rendering is unsafe or clearly worse. |
+| Fixed point | A second formatting pass produces the same process and output bytes. |
+| Port parity | Python and Rust produce the same exact shared result. |
+
+The official CommonMark HTML and pinned independent parse checks are review oracles.
+Neither implementation generates expected Markdown from its parser during a test.
+The reviewed expected Markdown remains the shared executable truth, so Rust can validate
+parity offline without Python.
+
+Triage follows user impact.
+First fix data loss, changed structure, and corruption; then fixed-point and cross-port
+failures in common paragraphs, headings, emphasis, links and images, lists, blockquotes,
+code, raw HTML, autolinks, escapes, and widely used GFM and GLFM forms.
+Uncommon constructions and semantically equivalent spelling differences follow.
+Every deferred case still needs an open owner and an explicit disposition.
+
 ## Contract boundary
 
 The shared boundary is the built `flowmark` command.
@@ -324,6 +357,9 @@ bead directly runnable.
 A deferred case has exactly one `owner-fm-*` tag.
 Deferred CommonMark expectations equal their input bytes so the corpus states
 preservation-safe desired behavior instead of blessing a known defect.
+The live CommonMark default ledger contains 394 active and 258 deferred examples as of
+2026-08-26. `review-report.json` retains the historical import classification and is not
+a current completion report.
 
 ## Golden authoring and review
 
@@ -449,6 +485,12 @@ Alternate modes use a stable, reviewed subset plus all Flowmark-specific preserv
 cases. A case moves from the subset only through a manifest diff, so coverage cannot
 change because of hash order or runner implementation.
 
+Coverage of all examples is an inventory, not by itself a conformance claim.
+Reports must separate active from deferred cases and group failures by semantic
+compatibility, formatter policy, fixed point, or port parity.
+Raw pass counts cannot hide a common high-impact failure behind many rare passing
+examples.
+
 Adversarial linear-time inputs are committed or deterministically generated from a fixed
 recipe and hash. CI uses a generous watchdog to catch hangs, not a machine-sensitive
 microbenchmark threshold.
@@ -485,6 +527,11 @@ Rust PR and release notes.
 - New Rust divergences fail by default; stale divergence entries also fail.
 - Portable tryscript, topic-fixture, reference-document, and CommonMark tests are
   defined upstream once and run directly by both implementations.
+- Frequently used CommonMark, GFM, and GLFM constructs meet the practical support floor
+  before public support claims become unconditional.
+- Every CommonMark example has a reviewed compatible-normalization, selectively
+  source-exact, or open-gap disposition; semantic, formatter-policy, fixed-point, and
+  parity failures are reported separately from equivalent source-spelling differences.
 - Deliberate overlap between minimal parity cases, tryscript transcripts, and
   whole-document goldens is retained and documented by test boundary.
 - Native-only unit tests remain small; any cross-language behavior they expose also has

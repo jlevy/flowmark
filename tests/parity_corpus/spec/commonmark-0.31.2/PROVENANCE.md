@@ -28,6 +28,13 @@ bead, never a passing corrupt baseline.
 
 The manifest is the current execution ledger and can advance beyond that initial report
 only through exact golden review.
+As of 2026-08-26, the manifest contains 394 active and 258 deferred default cases, plus
+21 active alternate-mode cases.
+The deferred owner tags are 166 cases for `fm-w467`, 91 for `fm-w1tn`, and one for
+`fm-5vlb`. These counts describe tracking state, not severity or a blanket conformance
+percentage; the owner beads must be reopened or replaced when their cases remain
+deferred.
+
 After source-exact inline-code preservation landed, examples 328 through 349—the
 complete CommonMark Code spans section—were activated under `FM-CODE-SPAN-001`. Example
 334 intentionally normalizes the soft newline between two spans while preserving both
@@ -39,6 +46,12 @@ test preservation and formatting, not parser conformance.
 As a second review check, all 363 active defaults and 21 alternate outputs preserved the
 same parsed structure as their inputs under the locked MarkdownIt 4.2.0 CommonMark
 preset.
+
+Ongoing review prioritizes semantic or structural corruption, non-idempotence, and
+Python/Rust differences in common constructs.
+Rare constructions and semantically equivalent source-spelling differences follow, but
+every case still requires a reviewed compatible-normalization, selectively source-exact,
+or open-gap disposition.
 
 The explicit `reclassify` mode regenerates candidates from the pinned local inputs for a
 reviewed classifier change.

@@ -74,6 +74,52 @@ code-span path runs after parsing and cannot protect math from parser reinterpre
 - Fail without partial output or file mutation if internal protection/restoration
   invariants are violated.
 
+## Support and conformance policy
+
+Flowmark's default support contract has two levels. Public documentation and test reports
+must name the level they are claiming instead of using “supports Markdown” to mean several
+different things.
+
+### Practical Markdown support
+
+At the baseline level, a document may mix the ordinary CommonMark surface, widely used
+GitHub Flavored Markdown (GFM) and GitLab Flavored Markdown (GLFM) forms, math, and the
+supported extension families without selecting a dialect. Paragraphs, headings, emphasis,
+links and images, lists, blockquotes, code spans and blocks, thematic breaks, line breaks,
+escapes, entities, autolinks, raw HTML, tables, task lists, strikethrough, and registered
+GLFM forms are the first compatibility floor. Other registered dialect forms follow the
+same safety contract.
+
+“Supported” at this level means that formatting does not drop content, reinterpret block or
+inline structure, corrupt delimiters, crash, or depend on whether Python or Rust ran it. A
+successful result is deterministic and reaches a fixed point. Flowmark may still apply a
+documented, semantically equivalent canonical spelling outside source-exact protected
+regions.
+
+### CommonMark compatibility and formatting
+
+The stricter review applies these requirements to all 652 CommonMark 0.31.2 examples:
+
+1. Preserve the CommonMark block and inline meaning of the input.
+2. Apply reviewed Flowmark formatting, including useful line wrapping and intentional
+   canonical spelling, without changing that meaning.
+3. Reach a fixed point after the first formatted result.
+4. Produce the same exact bytes in Python and Rust.
+
+The CommonMark specification defines parsing semantics, not one canonical formatted
+Markdown spelling. Reproducing every input spelling is not a global goal: line wrapping
+and stable canonicalization are core formatter behavior. Source-exact preservation is
+required for opaque or fragile constructs whose safe meaning cannot be reconstructed, and
+may be chosen when it gives a better editing experience. The committed expected Markdown
+is the language-neutral executable contract; the pinned official CommonMark HTML and
+independent parse-structure checks are review evidence for that expected output.
+
+Work is triaged in that order. Data loss or changed structure, non-idempotence, and
+cross-port divergence in common constructs take precedence over uncommon examples and
+equivalent marker, indentation, blank-line, or delimiter spellings. Every remaining gap
+must still have an open owner and appear in the support catalog; lower priority means later,
+not invisible.
+
 ## Non-goals
 
 - Flowmark does not evaluate TeX, validate equations, or choose a renderer.
@@ -600,7 +646,9 @@ only there.
   process-level assertion.
 - The pinned CommonMark documents and reviewed outputs are shared inputs for both ports.
   All 652 CommonMark 0.31.2 examples seed default-mode recognition coverage; a reviewed
-  stable subset plus every preservation case exercises other modes.
+  stable subset plus every preservation case exercises other modes. The live manifest has
+  394 active default cases and 258 deferred default cases as of 2026-08-26; the import
+  report's 363/289 split is historical, not current status.
 - A small number of native unit and property tests cover scanner states, byte indexes,
   parser adapters, and fail-closed paths. Any result observable from both CLIs also gets a
   shared case.
@@ -805,6 +853,12 @@ must follow the repository's supply-chain policy.
 ## Acceptance criteria
 
 - All required math forms work without dialect configuration.
+- Ordinary CommonMark, GFM, and GLFM forms satisfy the practical support contract:
+  preserved meaning, deterministic fixed-point output, and exact Python/Rust parity.
+- All 652 CommonMark examples have a reviewed disposition as compatible Flowmark
+  normalization, source-exact where required, or a known gap with an open owner.
+- High-impact semantic, fixed-point, and cross-port failures in common constructs are
+  resolved before low-impact source-spelling differences.
 - Recognized math and extension regions are exact normalized-source slices after formatting.
 - Valid code spans preserve authored delimiters and body bytes exactly.
 - Display blocks retain line structure, prefixes, labels, attributes, and nesting.
