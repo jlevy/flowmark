@@ -286,6 +286,14 @@ File discovery flags:
 | `--force-exclude` | Apply exclusions (incl. `.flowmarkignore`) to explicitly-named files too (for pre-commit) |
 | `--files-max-size BYTES` | Skip files larger than this (default: 1 MiB) |
 
+Exit status is part of the Python/Rust parity contract:
+
+- `0`: the command completed successfully; in `--check` mode, no file would change.
+- `1`: an expected command-level condition prevented success, such as a dirty `--check`,
+  missing required arguments, or incompatible options.
+- `2`: an input or processing error occurred, such as an unreadable path or invalid
+  UTF-8.
+
 ## File Discovery
 
 When you pass a directory to Flowmark (e.g., `flowmark --auto .`), it recursively
