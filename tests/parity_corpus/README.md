@@ -135,10 +135,16 @@ Validation uses this order so malformed fixtures are deterministic:
 
 An unfiltered run skips a case tagged `deferred`; an explicit exact ID, change ID, or
 tag selection includes matching deferred cases so developers can work on them directly.
-Every deferred case has exactly one `owner-fm-*` tag naming its bead.
-Deferred CommonMark cases commit source-preserving desired output, never a known corrupt
-formatter result. Removing the deferral and owner tag is part of implementing the owning
-change.
+Every deferred case has exactly one `owner-fm-*` tag naming its bead, and that tag must
+be listed in `DEFERRED_OWNER_TAGS` in `devtools/conformance.py`. Coverage rejects a
+deferred case with no owner tag, a deferred case naming an owner outside that list, and
+an active case that still carries an owner tag.
+Whether the named bead is still open is not checkable offline, because bead records live
+on the `tbd-sync` branch rather than in the checkout; the allowlist stands in for that
+liveness check and is re-pointed by hand whenever an owner closes.
+All 258 deferred CommonMark cases name `fm-n0ww`. Deferred CommonMark cases commit
+source-preserving desired output, never a known corrupt formatter result.
+Removing the deferral and owner tag is part of implementing the owning change.
 
 The live CommonMark default manifest contains 394 active and 258 deferred cases as of
 2026-08-26. The checked-in `review-report.json` describes the original import split, not

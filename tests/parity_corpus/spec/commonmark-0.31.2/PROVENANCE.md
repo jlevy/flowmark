@@ -30,10 +30,21 @@ The manifest is the current execution ledger and can advance beyond that initial
 only through exact golden review.
 As of 2026-08-26, the manifest contains 394 active and 258 deferred default cases, plus
 21 active alternate-mode cases.
-The deferred owner tags are 166 cases for `fm-w467`, 91 for `fm-w1tn`, and one for
-`fm-5vlb`. These counts describe tracking state, not severity or a blanket conformance
-percentage; the owner beads must be reopened or replaced when their cases remain
-deferred.
+All 258 deferred cases carry the owner tag `owner-fm-n0ww`, the open bead that owns
+classifying the live corpus.
+They previously named `fm-w467` (166 cases), `fm-w1tn` (91), and `fm-5vlb` (one), and
+all three of those beads had closed, so every deferred case pointed at finished work
+while still reading as tracked.
+These counts describe tracking state, not severity or a blanket conformance percentage.
+
+Owner liveness is not machine-checkable in CI: bead records live on the `tbd-sync` Git
+branch, not in the checkout, so no offline check can tell whether a named owner is still
+open. The enforced invariant is instead the `DEFERRED_OWNER_TAGS` allowlist in
+`devtools/conformance.py`, which names the owner tags a deferred case may carry.
+`python -m devtools.conformance coverage` fails when a deferred case has no owner tag,
+names an owner outside that allowlist, or when an active case still carries one.
+Re-pointing the manifest tags and updating that constant is one edit, made whenever an
+owner bead closes.
 
 After source-exact inline-code preservation landed, examples 328 through 349—the
 complete CommonMark Code spans section—were activated under `FM-CODE-SPAN-001`. Example

@@ -60,6 +60,13 @@ MIXED_HTML_INTEGRATION_EXAMPLES = frozenset(
 )
 WIKILINK_EXAMPLES = frozenset({559})
 
+# Every generated deferral names one live bead that owns un-deferring it. The reason and
+# change ID below still record why a case was deferred; the owner is only the tracking
+# pointer, and a reclassify run must not resurrect an owner that has since closed. Keep
+# this in step with DEFERRED_OWNER_TAGS in devtools/conformance.py, which is what the
+# `coverage` check enforces.
+DEFERRED_OWNER = "fm-n0ww"
+
 
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -116,22 +123,22 @@ def _contains_active(markdown: str, token: str) -> bool:
 
 def _deferral(markdown: str, section: str, number: int) -> tuple[str, str, str] | None:
     if section == "Code spans":
-        return "fm-ocpw", "FM-CODE-SPAN-001", "exercises CommonMark code-span syntax"
+        return DEFERRED_OWNER, "FM-CODE-SPAN-001", "exercises CommonMark code-span syntax"
     if number in WIKILINK_EXAMPLES:
         return (
-            "fm-5vlb",
+            DEFERRED_OWNER,
             "FM-EXT-MYST-WIKILINK-001",
             "contains a complete double-bracket wikilink span",
         )
     if number in MIXED_HTML_INTEGRATION_EXAMPLES:
         return (
-            "fm-w467",
+            DEFERRED_OWNER,
             "FM-COMMONMARK-001",
             "mixes HTML-shaped syntax with independently formatted Markdown",
         )
     if "`" in markdown:
         return (
-            "fm-w467",
+            DEFERRED_OWNER,
             "FM-COMMONMARK-001",
             "backtick syntax outside the Code spans section requires general review",
         )
@@ -139,7 +146,7 @@ def _deferral(markdown: str, section: str, number: int) -> tuple[str, str, str] 
     if section == "HTML blocks" or (
         html_match is not None and _escape_is_even(markdown, html_match.start())
     ):
-        return "fm-w1tn", "FM-EXT-RAW-HTML-001", "contains raw or inline HTML syntax"
+        return DEFERRED_OWNER, "FM-EXT-RAW-HTML-001", "contains raw or inline HTML syntax"
     active_dollars = sum(
         markdown[index] == "$" and _escape_is_even(markdown, index)
         for index in range(len(markdown))
@@ -147,7 +154,7 @@ def _deferral(markdown: str, section: str, number: int) -> tuple[str, str, str] 
     if active_dollars >= 2 or any(
         _contains_active(markdown, token) for token in (r"\(", r"\[", r"\begin{")
     ):
-        return "fm-ucy8", "FM-MATH-INLINE-001", "contains math-shaped delimiter syntax"
+        return DEFERRED_OWNER, "FM-MATH-INLINE-001", "contains math-shaped delimiter syntax"
     return None
 
 
@@ -274,13 +281,13 @@ def import_corpus(repo_root: Path, executable: Path, *, reclassify: bool = False
             or second.stdout != first.stdout
         ):
             deferral = (
-                "fm-w467",
+                DEFERRED_OWNER,
                 "FM-COMMONMARK-001",
                 "baseline fails, writes stderr, or is not idempotent",
             )
         if deferral is None and not semantic_equal:
             deferral = (
-                "fm-w467",
+                DEFERRED_OWNER,
                 "FM-COMMONMARK-001",
                 "baseline changes the parser-visible HTML structure",
             )
