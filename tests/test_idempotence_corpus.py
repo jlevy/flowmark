@@ -21,14 +21,18 @@ is exactly what the pair is meant to make visible.
 
 from __future__ import annotations
 
+import sys
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
-import tomllib
-
 from flowmark import reformat_text
 from flowmark.formats.flowmark_markdown import ListSpacing
+
+if sys.version_info >= (3, 11):
+    import tomllib  # pyright: ignore[reportUnreachable]
+else:
+    import tomli as tomllib  # type: ignore[no-redef]  # pyright: ignore[reportUnreachable]
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -80,12 +84,13 @@ def corpus_documents() -> list[Path]:
 def load_ledger() -> set[str]:
     """A ledger entry names one document and one mode, keyed as ``relative/path::mode``."""
     path = REPO_ROOT / "tests" / "idempotence_known_divergences.toml"
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    data: dict[str, Any] = tomllib.loads(path.read_text(encoding="utf-8"))
     assert data.get("schema_version") == 1, "ledger schema_version must be 1"
+    entries: list[dict[str, Any]] = data.get("divergence", [])
     ledger: set[str] = set()
-    for entry in data.get("divergence", []):
-        document = entry.get("document")
-        mode = entry.get("mode")
+    for entry in entries:
+        document: str | None = entry.get("document")
+        mode: str | None = entry.get("mode")
         assert document, "each divergence needs a non-empty document"
         assert mode, "each divergence needs a non-empty mode"
         assert entry.get("bead"), f"each divergence needs a non-empty bead: {document}::{mode}"
