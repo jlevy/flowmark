@@ -68,9 +68,9 @@ def _normalize_title_quotes(title: str) -> str:
 # parentheses, and section 6.3 allows a destination in angle brackets. Marko stores both
 # on `LinkRefDef` exactly as authored, delimiters included, while an inline `Link` carries
 # the parsed inner text. Comparing the two forms directly never matches for a single-quoted
-# or parenthesized title, so a link that has a definition was written out as an inline link
-# and the now-orphaned definition was emitted alongside it: the same destination twice, with
-# `'title'` re-quoted as `"'title'"`. Unwrap the stored form before comparing.
+# or parenthesized title, so a reference link would be written out as an inline link and the
+# now-orphaned definition emitted alongside it: the same destination twice, with `'title'`
+# re-quoted as `"'title'"`. Unwrap the stored form before comparing.
 _TITLE_DELIMITERS = (('"', '"'), ("'", "'"), ("(", ")"))
 
 
@@ -87,6 +87,11 @@ def _ref_def_dest_text(dest: str) -> str:
     if len(dest) >= 2 and dest.startswith("<") and dest.endswith(">"):
         return dest[1:-1]
     return dest
+
+
+def _is_authored_reference(element: inline.Link) -> bool:
+    """Whether this link was written as a reference link rather than an inline one."""
+    return bool(getattr(element, "is_reference", False))
 
 
 def _min_fence_length(code_content: str, fence_char: str = "`") -> int:
@@ -310,6 +315,43 @@ class CustomFencedCode(block.FencedCode):
         )
 
 
+class CustomLink(inline.Link):
+    """
+    Link that remembers whether it was authored as a reference link.
+
+    Marko resolves `[text][label]`, `[text][]` and `[text]` against the document's link
+    reference definitions and hands the renderer a plain `Link` carrying only the resolved
+    destination — the same shape an inline `[text](url)` produces. Without this record the
+    renderer cannot tell the two apart, and recovering the reference form by searching the
+    definitions for a matching destination rewrites *inline* links that happen to point at
+    an already-defined URL.
+
+    The evidence is in the syntax, read from the match: an inline link is the only form whose
+    text is followed by `(`. A reference link is followed by `[label]`, by `[]`, or by
+    nothing at all.
+
+    Testing the *resolved destination* instead is tempting -- a reference link's destination
+    comes from the definition table, so its match group is zero-width -- but it misclassifies
+    two real forms, both of which reached CI as failures: `[text]()` is inline with an empty
+    destination and spans nothing either, and `[foo][]` against a `[foo]: <>` definition is a
+    reference that legitimately resolves to an empty destination.
+    """
+
+    def __init__(self, match: Any) -> None:
+        super().__init__(match)
+        tail_start = match.end(1) + 1 - match.start(0)
+        whole = match.group(0)
+        if 0 <= tail_start <= len(whole):
+            # Everything after the `]` closing the link text: `(...)`, `[label]`, `[]`, or "".
+            self.is_reference: bool = not whole[tail_start:].startswith("(")
+        else:
+            # Unreachable for a link marko actually matched, since the closing `]` always
+            # falls inside the match. Fall back to inline, which reproduces the source form
+            # verbatim; guessing "reference" here would reintroduce the rewrite this class
+            # exists to prevent.
+            self.is_reference = False
+
+
 class CustomListItem(block.ListItem):
     """
     A `ListItem` that records its own source span. `List.parse` creates items by
@@ -409,6 +451,7 @@ class CustomParser(Parser):
         self.block_elements["FencedCode"] = CustomFencedCode
         self.block_elements["ListItem"] = CustomListItem
         self.block_elements["Paragraph"] = Paragraph
+        self.inline_elements["Link"] = CustomLink
         self.add_element(ProtectedInline)
         self.add_element(ProtectedBlock)
         self.configure_protected_source(protected_source)
@@ -623,6 +666,11 @@ class MarkdownNormalizer(Renderer):
 
         with self.container("> ", "> "):
             result = self.render_children(element).rstrip("\n")
+        # A trailing block inside the quote (a heading, say) may have set the skip flag to
+        # account for a blank line it emitted -- but the rstrip above just removed it. The
+        # flag has to be cleared here or the blank line separating this quote from the next
+        # one is swallowed as well, silently merging two blockquotes into one.
+        self._skip_next_blank_line = False
         self._prefix = self._second_prefix
         # After rendering a quote block, don't suppress the next item break
         # This ensures proper spacing after list items with quote blocks
@@ -758,28 +806,41 @@ class MarkdownNormalizer(Renderer):
     def render_link(self, element: inline.Link) -> str:
         link_text = self.render_children(element)
         link_title = _normalize_title_quotes(element.title) if element.title else None
-        assert self.root_node
-        label = next(
-            (
-                k
-                for k, (dest, title) in self.root_node.link_ref_defs.items()
-                if _ref_def_dest_text(dest) == element.dest
-                and (_normalize_title_quotes(_ref_def_title_text(title)) if title else None)
-                == link_title
-            ),
-            None,
-        )
-        if label is not None:
-            if label == link_text:
-                # Use the collapsed reference form [label][] rather than the
-                # shortcut form [label]. A shortcut reference is fragile: it
-                # merges with a following "(...)" (becoming an inline link) or
-                # "[...]" (becoming a full/collapsed reference), silently
-                # changing or dropping links. See issue #45.
-                return f"[{label}][]"
-            return f"[{link_text}][{label}]"
+
+        # Only a link *authored* as a reference is written back as one. Matching on the
+        # destination alone would also rewrite inline links that happen to point at an
+        # already-defined URL, silently changing the author's source form. Which label such
+        # a link gets is unchanged: the definitions are keyed by normalized label, and a
+        # shortcut whose text differs from that key still renders as a full reference.
+        if _is_authored_reference(element):
+            assert self.root_node
+            label = next(
+                (
+                    k
+                    for k, (dest, title) in self.root_node.link_ref_defs.items()
+                    if _ref_def_dest_text(dest) == element.dest
+                    and (_normalize_title_quotes(_ref_def_title_text(title)) if title else None)
+                    == link_title
+                ),
+                None,
+            )
+            if label is not None:
+                if label == link_text:
+                    # Use the collapsed reference form [label][] rather than the
+                    # shortcut form [label]. A shortcut reference is fragile: it
+                    # merges with a following "(...)" (becoming an inline link) or
+                    # "[...]" (becoming a full/collapsed reference), silently
+                    # changing or dropping links. See issue #45.
+                    return f"[{label}][]"
+                return f"[{link_text}][{label}]"
+
         title = f" {link_title}" if link_title is not None else ""
         return f"[{link_text}]({element.dest}{title})"
+
+    def render_custom_link(self, element: CustomLink) -> str:
+        # Marko dispatches on the element's class name, so the custom subclass needs its
+        # own entry point; the reference-vs-inline decision lives in `render_link`.
+        return self.render_link(element)
 
     def render_auto_link(self, element: inline.AutoLink) -> str:
         return f"<{element.dest}>"
