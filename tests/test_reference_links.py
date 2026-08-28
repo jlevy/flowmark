@@ -137,3 +137,38 @@ def test_reference_link_to_an_also_inlined_url_keeps_its_label():
     assert "[text][ref]" in out, out
     assert "[text](https://example.com/z)" in out, out
     assert _html(src) == _html(out)
+
+
+def test_inline_link_with_an_empty_destination_stays_inline():
+    """`[text]()` resolves to an empty destination, like a reference can — but is inline."""
+    md = flowmark_markdown()
+    src = "An empty inline link: [text]() here.\n"
+    out = md.convert(src)
+
+    assert "[text]()" in out, out
+    assert _html(src) == _html(out)
+
+
+def test_collapsed_reference_to_an_empty_destination_stays_a_reference():
+    """A `[foo]: <>` definition resolves `[foo][]` to an empty destination."""
+    md = flowmark_markdown()
+    src = "[foo]: <>\n\n[foo][]\n"
+    out = md.convert(src)
+
+    assert "[foo][]" in out, out
+    assert _html(src) == _html(out)
+
+
+def test_shortcut_reference_keeps_the_normalized_label_when_case_differs():
+    """`[Foo]` against a `[Foo]:` definition renders full, not collapsed.
+
+    Definitions are keyed by normalized label, so the label is `foo` while the text is
+    `Foo`. Collapsing to `[Foo][]` would still resolve, but it is a different source form
+    than this formatter has always emitted, and the shared conformance corpus pins it.
+    """
+    md = flowmark_markdown()
+    src = "[Foo]: /url\n\n[Foo]\n"
+    out = md.convert(src)
+
+    assert "[Foo][foo]" in out, out
+    assert _html(src) == _html(out)
