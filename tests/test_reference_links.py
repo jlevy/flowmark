@@ -2,10 +2,13 @@
 
 Regression tests for https://github.com/jlevy/flowmark/issues/45
 
-marko's inline.Link element does not preserve the original reference style
+marko's stock inline.Link element does not preserve the original reference style
 (inline, full, collapsed, or shortcut); it only stores ``dest`` and ``title``.
-flowmark reconstructs a reference link by matching the destination/title back
-to a link reference definition.
+flowmark's ``CustomLink`` records the authored style and label at parse time, so an
+inline link and a reference link to the same destination stay distinguishable.
+Reconstructing the reference form by searching the definitions for a matching
+destination -- the earlier approach -- rewrote inline links that happened to point at
+an already-defined URL.
 
 When the link text equals the matched label, the link must NOT be collapsed to
 the shortcut form ``[label]``: a shortcut reference is fragile because it merges
@@ -97,3 +100,40 @@ def test_label_equals_text_followed_by_reference_keeps_both_links():
     assert _html(result) == _html(src)
     assert '<a href="https://example.com">flowmark</a>' in _html(result)
     assert '<a href="https://example.org">ref2</a>' in _html(result)
+
+
+def test_inline_link_sharing_a_definition_url_stays_inline():
+    """An inline link is not rewritten just because some definition shares its URL."""
+    md = flowmark_markdown()
+    src = (
+        "Per the [memory docs][cc-mem], see this.\n\n"
+        "[cc-mem]: https://example.com/memory\n\n"
+        "Later, an inline link: [memory docs](https://example.com/memory) here.\n"
+    )
+    out = md.convert(src)
+
+    assert "[memory docs](https://example.com/memory)" in out, out
+    assert "[memory docs][cc-mem]" in out, out
+    assert _html(src) == _html(out)
+
+
+def test_inline_link_with_a_defined_url_is_stable_across_passes():
+    """The rewrite was also non-idempotent: the inline form has to survive a second pass."""
+    md = flowmark_markdown()
+    src = "[docs]: https://example.com/x\n\nAn inline link to [docs](https://example.com/x) here.\n"
+    once = md.convert(src)
+    assert md.convert(once) == once, once
+
+
+def test_reference_link_to_an_also_inlined_url_keeps_its_label():
+    """A real reference link keeps reference form even when the URL is also used inline."""
+    md = flowmark_markdown()
+    src = (
+        "[ref]: https://example.com/z\n\n"
+        "A reference [text][ref] and an inline [text](https://example.com/z).\n"
+    )
+    out = md.convert(src)
+
+    assert "[text][ref]" in out, out
+    assert "[text](https://example.com/z)" in out, out
+    assert _html(src) == _html(out)

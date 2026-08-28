@@ -13,7 +13,7 @@ from marko.element import Element
 from marko.ext import footnote
 from marko.ext.gfm import GFM
 from marko.ext.gfm import elements as gfm_elements
-from marko.helpers import partition_by_spaces
+from marko.helpers import normalize_label, partition_by_spaces
 from marko.parser import Parser
 from marko.source import Source
 from typing_extensions import override
@@ -65,12 +65,10 @@ def _normalize_title_quotes(title: str) -> str:
 
 
 # CommonMark 0.31.2 section 4.7 allows a link title in double quotes, single quotes, or
-# parentheses, and section 6.3 allows a destination in angle brackets. Marko stores both
-# on `LinkRefDef` exactly as authored, delimiters included, while an inline `Link` carries
-# the parsed inner text. Comparing the two forms directly never matches for a single-quoted
-# or parenthesized title, so a link that has a definition was written out as an inline link
-# and the now-orphaned definition was emitted alongside it: the same destination twice, with
-# `'title'` re-quoted as `"'title'"`. Unwrap the stored form before comparing.
+# parentheses. Marko stores the title on `LinkRefDef` exactly as authored, delimiters
+# included, so re-quoting it unconditionally would push the authored delimiters into the
+# title text (`'title'` becoming `"'title'"`). Unwrap the stored form first to tell an
+# already-delimited title from a bare one.
 _TITLE_DELIMITERS = (('"', '"'), ("'", "'"), ("(", ")"))
 
 
@@ -82,11 +80,11 @@ def _ref_def_title_text(title: str) -> str:
     return title
 
 
-def _ref_def_dest_text(dest: str) -> str:
-    """Return a link reference definition's destination without its angle brackets."""
-    if len(dest) >= 2 and dest.startswith("<") and dest.endswith(">"):
-        return dest[1:-1]
-    return dest
+def _authored_ref_label(element: inline.Link) -> str | None:
+    """The label this link was authored with, or None if it was written inline."""
+    if not getattr(element, "is_reference", False):
+        return None
+    return cast("str | None", getattr(element, "ref_label", None))
 
 
 def _min_fence_length(code_content: str, fence_char: str = "`") -> int:
@@ -310,6 +308,49 @@ class CustomFencedCode(block.FencedCode):
         )
 
 
+class CustomLink(inline.Link):
+    """
+    Link that remembers whether it was authored as a reference link, and under what label.
+
+    Marko resolves `[text][label]`, `[text][]` and `[text]` against the document's link
+    reference definitions and hands the renderer a plain `Link` carrying only the resolved
+    destination — the same shape an inline `[text](url)` produces. Without this record the
+    renderer cannot tell the two apart, and recovering the reference form by searching the
+    definitions for a matching destination rewrites *inline* links that happen to point at
+    an already-defined URL.
+
+    The parser leaves the evidence in the match: a reference link's destination is filled in
+    from the definition table, so its group is zero-width, whereas an inline link's
+    destination is a real slice of the source.
+    """
+
+    def __init__(self, match: Any) -> None:
+        super().__init__(match)
+        self.is_reference: bool = False
+        self.ref_label: str | None = None
+
+        # An inline link spans its destination in the source; a reference link does not.
+        # `[text]()` is inline with an empty destination, so require a destination too.
+        if match.start(2) != match.end(2) or not self.dest:
+            return
+
+        whole = match.group(0)
+        # Everything after the `]` that closes the link text: `[label]`, `[]`, or nothing.
+        tail_start = match.end(1) + 1 - match.start(0)
+        tail = whole[tail_start:] if 0 <= tail_start <= len(whole) else ""
+
+        if tail.startswith("[") and tail.endswith("]"):
+            # Full `[text][label]`, or collapsed `[text][]` where the text is the label.
+            self.ref_label = tail[1:-1] or match.group(1)
+        elif not tail:
+            # Shortcut `[text]`, where the text is the label.
+            self.ref_label = match.group(1)
+        else:
+            return
+
+        self.is_reference = True
+
+
 class CustomListItem(block.ListItem):
     """
     A `ListItem` that records its own source span. `List.parse` creates items by
@@ -409,6 +450,7 @@ class CustomParser(Parser):
         self.block_elements["FencedCode"] = CustomFencedCode
         self.block_elements["ListItem"] = CustomListItem
         self.block_elements["Paragraph"] = Paragraph
+        self.inline_elements["Link"] = CustomLink
         self.add_element(ProtectedInline)
         self.add_element(ProtectedBlock)
         self.configure_protected_source(protected_source)
@@ -623,6 +665,11 @@ class MarkdownNormalizer(Renderer):
 
         with self.container("> ", "> "):
             result = self.render_children(element).rstrip("\n")
+        # A trailing block inside the quote (a heading, say) may have set the skip flag to
+        # account for a blank line it emitted -- but the rstrip above just removed it. The
+        # flag has to be cleared here or the blank line separating this quote from the next
+        # one is swallowed as well, silently merging two blockquotes into one.
+        self._skip_next_blank_line = False
         self._prefix = self._second_prefix
         # After rendering a quote block, don't suppress the next item break
         # This ensures proper spacing after list items with quote blocks
@@ -758,28 +805,29 @@ class MarkdownNormalizer(Renderer):
     def render_link(self, element: inline.Link) -> str:
         link_text = self.render_children(element)
         link_title = _normalize_title_quotes(element.title) if element.title else None
-        assert self.root_node
-        label = next(
-            (
-                k
-                for k, (dest, title) in self.root_node.link_ref_defs.items()
-                if _ref_def_dest_text(dest) == element.dest
-                and (_normalize_title_quotes(_ref_def_title_text(title)) if title else None)
-                == link_title
-            ),
-            None,
-        )
-        if label is not None:
-            if label == link_text:
+
+        # Only a link that was *authored* as a reference is written back as one. Searching
+        # the definitions for a matching destination instead would also rewrite inline links
+        # that happen to point at an already-defined URL, silently changing the author's
+        # source form.
+        ref_label = _authored_ref_label(element)
+        if ref_label is not None:
+            if normalize_label(ref_label) == normalize_label(link_text):
                 # Use the collapsed reference form [label][] rather than the
                 # shortcut form [label]. A shortcut reference is fragile: it
                 # merges with a following "(...)" (becoming an inline link) or
                 # "[...]" (becoming a full/collapsed reference), silently
                 # changing or dropping links. See issue #45.
-                return f"[{label}][]"
-            return f"[{link_text}][{label}]"
+                return f"[{link_text}][]"
+            return f"[{link_text}][{ref_label}]"
+
         title = f" {link_title}" if link_title is not None else ""
         return f"[{link_text}]({element.dest}{title})"
+
+    def render_custom_link(self, element: CustomLink) -> str:
+        # Marko dispatches on the element's class name, so the custom subclass needs its
+        # own entry point; the reference-vs-inline decision lives in `render_link`.
+        return self.render_link(element)
 
     def render_auto_link(self, element: inline.AutoLink) -> str:
         return f"<{element.dest}>"
