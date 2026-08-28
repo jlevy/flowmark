@@ -3,14 +3,18 @@ type: is
 id: is-01m12r7m2df85ykkw5d3r1a8wk
 title: "Vacuous exclusion assertions: file-discovery fixtures are deleted before the test runs"
 kind: bug
-status: open
+status: closed
 priority: 2
-version: 1
+version: 3
 labels:
   - testing
 dependencies: []
 created_at: 2026-08-27T23:17:41.580Z
-updated_at: 2026-08-27T23:17:41.580Z
+updated_at: 2026-08-28T00:06:25.251Z
+closed_at: 2026-08-28T00:06:25.250Z
+close_reason: "Implemented and verified: restored non-vacuous shared discovery fixtures and scenarios, added the exact wrapped-pipe continuation and adjacent line-block contracts, and passed the full Python gates plus hosted CI."
+resolution: null
+duplicate_of: null
 ---
 Found by auditing whether PR #81's test changes are strict improvements.
 
