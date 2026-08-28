@@ -90,6 +90,12 @@ The key differences from
   frontmatter**, **template tags** (Markdoc, Jinja, Nunjucks), and **inline HTML** and
   HTML comments.
 
+- [**Source-exact preservation**](#source-exact-preservation) of syntax a formatter
+  should not touch, with **LaTeX math** as the headline case.
+  Math, inline code, and a range of Pandoc, Obsidian and MyST constructs come back byte
+  for byte, while the prose around them is still wrapped and cleaned up normally.
+  No dialect flags to set.
+
 - All line wrapping is Markdown-aware.
   Flowmark offers advanced and customizable line-wrapping capabilities, including
   [semantic line breaks](#semantic-line-breaks), a feature that is especially helpful in
@@ -225,6 +231,53 @@ YAML is not normalized.
 > [!TIP]
 > See the [frontmatter format](https://github.com/jlevy/frontmatter-format) repo for
 > more discussion of YAML frontmatter and its benefits.
+
+## Source-Exact Preservation
+
+Some Markdown syntax is not safe to re-render.
+A formatter that “normalizes” a LaTeX equation or rewrites the delimiters of a code span
+has corrupted the document, even if the result still parses.
+
+Flowmark recognizes these constructs before parsing, formats everything around them
+normally, and restores the authored bytes exactly.
+Nothing needs to be enabled and there are no dialect flags:
+
+```markdown
+Prose "here" gets smart quotes... and is wrapped to your chosen width.
+
+Let $x_i = "a"...$ stay exactly as written.
+```
+
+With `--smartquotes --ellipses --width 40`, the prose is rewrapped and its quotes and
+ellipsis are converted, while `$x_i = "a"...$` is returned untouched — straight quotes,
+literal dots, original spacing.
+
+What is preserved:
+
+- **Math.** Inline `$...$`, display `$$...$$`, bracket forms `\(...\)` and `\[...\]`,
+  and LaTeX environments such as `\begin{align}`.
+
+- **Inline code.** The authored backtick run and body, including awkward cases like
+  ``` ``a `b` "c"...`` ```.
+
+- **Pandoc constructs.** Grid tables, multiline tables, definition lists, and line
+  blocks.
+
+- **Extension syntax.** Obsidian callouts (`> [!NOTE]`), fenced divs and colon
+  containers (`:::`), TOML frontmatter (`+++`), attribute groups (`{#id .class}`), MyST
+  roles (`` {ref}`target` ``), and wikilinks (`[[Page]]`).
+
+- **Raw HTML blocks**, whose contents are left alone rather than reflowed.
+
+> [!NOTE]
+> Preservation is deliberately selective, not a blanket freeze.
+> Ordinary Markdown is still normalized and wrapped, because that is the point of a
+> formatter.
+> Exact treatment is reserved for syntax where re-rendering is unsafe or clearly worse.
+
+Restoration is fail-closed: if the recognized regions cannot be put back byte for byte,
+Flowmark returns your input unchanged rather than writing a document it cannot vouch
+for.
 
 ## Usage
 
