@@ -41,6 +41,19 @@ expected_exit = 0
 idempotent = true
 
 [[case]]
+id = "preservation.extension.line-block.list-item-adjacency"
+change_id = "FM-EXT-LINE-BLOCK-001"
+description = "A line block that follows a paragraph line inside a list item keeps its authored bytes, exactly as one at the root does."
+tags = ["adjacency", "container", "desired-output", "extension", "line-block", "list", "pandoc", "preservation", "regression", "stdin"]
+kind = "stdin"
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/line-block/list-item-adjacency/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/line-block/list-item-adjacency/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
 id = "preservation.extension.line-block.fallback"
 change_id = "FM-EXT-LINE-BLOCK-001"
 description = "Multi- and single-column pipe tables, escaped bars, missing marker spaces, and indented code do not become line blocks."
