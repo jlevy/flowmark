@@ -362,11 +362,18 @@ def import_corpus(repo_root: Path, executable: Path, *, reclassify: bool = False
         )
 
     registry_path.write_text("\n".join(registry_parts), encoding="utf-8")
-    (corpus_root / "review-report.json").write_text(
+    # Local review evidence, deliberately not committed (see .gitignore and the corpus
+    # PROVENANCE.md). It is a snapshot of this one run: refreshing it means re-running
+    # this function, which rewrites every golden from the current binary and re-derives
+    # every deferral, so a committed copy can only go stale. Read it here, then record
+    # the reviewed outcome in the manifest, which is the live ledger.
+    report_path = corpus_root / "review-report.json"
+    report_path.write_text(
         json.dumps({"counts": counts, "cases": report}, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
     print(f"Imported {EXAMPLE_COUNT} examples: {dict(sorted(counts.items()))}")
+    print(f"Review the per-case classification in {report_path} (not committed).")
 
 
 def check_corpus(repo_root: Path) -> None:

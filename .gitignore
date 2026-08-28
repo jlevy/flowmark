@@ -184,3 +184,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Local evidence from `scripts/import-commonmark-spec.py import|reclassify`. The report
+# is a snapshot of one import run and cannot be refreshed without regenerating goldens,
+# so it is reviewed locally rather than committed. See the corpus PROVENANCE.md.
+tests/parity_corpus/spec/commonmark-0.31.2/review-report.json
