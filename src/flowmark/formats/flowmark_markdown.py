@@ -326,22 +326,30 @@ class CustomLink(inline.Link):
     definitions for a matching destination rewrites *inline* links that happen to point at
     an already-defined URL.
 
-    The parser leaves the evidence in the match: a reference link's destination is filled in
-    from the definition table, so its group is zero-width, whereas an inline link's
-    destination is a real slice of the source.
+    The evidence is in the syntax, read from the match: an inline link is the only form whose
+    text is followed by `(`. A reference link is followed by `[label]`, by `[]`, or by
+    nothing at all.
+
+    Testing the *resolved destination* instead is tempting -- a reference link's destination
+    comes from the definition table, so its match group is zero-width -- but it misclassifies
+    two real forms, both of which reached CI as failures: `[text]()` is inline with an empty
+    destination and spans nothing either, and `[foo][]` against a `[foo]: <>` definition is a
+    reference that legitimately resolves to an empty destination.
     """
 
     def __init__(self, match: Any) -> None:
         super().__init__(match)
-        # Read the syntax rather than the resolved destination: an inline link is the only
-        # form whose text is followed by `(`. A reference link is followed by `[label]`,
-        # by `[]`, or by nothing at all. Testing the destination instead misclassifies both
-        # `[text]()` (inline, empty destination) and `[foo][]` against a `[foo]: <>`
-        # definition (a reference that resolves to an empty destination).
         tail_start = match.end(1) + 1 - match.start(0)
         whole = match.group(0)
-        tail = whole[tail_start:] if 0 <= tail_start <= len(whole) else ""
-        self.is_reference: bool = not tail.startswith("(")
+        if 0 <= tail_start <= len(whole):
+            # Everything after the `]` closing the link text: `(...)`, `[label]`, `[]`, or "".
+            self.is_reference: bool = not whole[tail_start:].startswith("(")
+        else:
+            # Unreachable for a link marko actually matched, since the closing `]` always
+            # falls inside the match. Fall back to inline, which reproduces the source form
+            # verbatim; guessing "reference" here would reintroduce the rewrite this class
+            # exists to prevent.
+            self.is_reference = False
 
 
 class CustomListItem(block.ListItem):
