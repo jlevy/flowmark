@@ -22,6 +22,9 @@ from flowmark.linewrapping.line_wrappers import (
 from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.tag_handling import preprocess_tag_block_spacing
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
+from flowmark.preservation.bridge import protect_source, restore_source
+from flowmark.preservation.normalization import finalize_output, normalize_source
+from flowmark.preservation.scanner import scan_protected_regions
 from flowmark.transforms.doc_cleanups import doc_cleanups
 from flowmark.transforms.doc_transforms import rewrite_text_across_inlines, rewrite_text_content
 from flowmark.typography.ellipses import ellipses as apply_ellipses
@@ -49,8 +52,9 @@ def fill_markdown(
     With `list_spacing="loose"`, all lists have blank lines between items.
     With `list_spacing="tight"`, lists are made tight where possible.
 
-    Optionally also dedents and strips the input, so it can be used
-    on docstrings.
+    `dedent_input=True` is an explicit convenience for direct docstring use. It dedents
+    before source normalization. CLI and `reformat_text()` callers disable it so Markdown
+    indentation reaches the parser unchanged.
 
     With `semantic` enabled, the line breaks are wrapped approximately
     by sentence boundaries, to make diffs more readable.
@@ -67,36 +71,32 @@ def fill_markdown(
         else:
             line_wrapper = line_wrap_to_width(width=width, is_markdown=True)
 
-    # Extract frontmatter before any processing
-    frontmatter, content = split_frontmatter(markdown_text)
-
-    # Only format the content part if there's frontmatter
-    if frontmatter:
-        markdown_text = content
-
     if dedent_input:
-        markdown_text = dedent(markdown_text).strip()
+        markdown_text = dedent(markdown_text)
 
-    markdown_text = markdown_text.strip() + "\n"
+    source = normalize_source(markdown_text)
+    regions = scan_protected_regions(source)
+    protected = protect_source(source, regions)
+
+    # Frontmatter stays outside Marko, as before, but only after source normalization and
+    # protection have established the complete document contract.
+    frontmatter, parser_text = split_frontmatter(protected.text)
+    if frontmatter:
+        parser_text = parser_text.lstrip("\n")
 
     # Preprocess: ensure proper blank lines around block content within tags.
-    # This must happen before parsing to prevent CommonMark lazy continuation
-    # from incorrectly merging tags with lists/tables.
-    markdown_text = preprocess_tag_block_spacing(markdown_text)
+    # Protected bodies are tokens here, so preprocessing can inspect only unprotected gaps.
+    parser_text = preprocess_tag_block_spacing(parser_text)
 
     # Parse and render.
-    marko = flowmark_markdown(line_wrapper, list_spacing)
-    document = marko.parse(markdown_text)
+    marko = flowmark_markdown(line_wrapper, list_spacing, _protected_source=protected)
+    document = marko.parse(parser_text)
     if cleanups:
         doc_cleanups(document)
     if smartquotes:
-        rewrite_text_across_inlines(document, smart_quotes)
+        rewrite_text_across_inlines(document, smart_quotes, protected_source=protected)
     if ellipses:
         rewrite_text_content(document, apply_ellipses, coalesce_lines=True)
-    result = marko.render(document)
-
-    # Reattach frontmatter if it was present
-    if frontmatter:
-        result = frontmatter + result
-
-    return result
+    rendered = marko.render(document)
+    restored = restore_source(frontmatter + rendered, protected)
+    return finalize_output(source, restored)

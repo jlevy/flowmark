@@ -8,6 +8,9 @@ from marko.element import Element
 from marko.ext import footnote
 from marko.ext.gfm import elements as gfm_elements
 
+from flowmark.preservation.bridge import ProtectedSource
+from flowmark.preservation.model import InvalidRegionError, RegionKind
+
 ContainerElement = (
     block.Document,
     block.Quote,
@@ -38,6 +41,9 @@ def transform_tree(element: Element, transformer: Callable[[Element], None]) -> 
     """
     Recursively traverse the element tree and apply a transformer function to each node.
     """
+    if getattr(element, "_flowmark_protected", False):
+        return
+
     transformer(element)
 
     # Recursively process children for known container types
@@ -140,6 +146,7 @@ def rewrite_text_content(
 
 def _collect_inline_segments(
     element: Element,
+    protected_contexts: dict[str, str],
 ) -> list[tuple[str, inline.RawText | None]]:
     """
     Collect text segments from inline elements within an inline scope.
@@ -153,6 +160,10 @@ def _collect_inline_segments(
     if isinstance(element, inline.RawText):
         assert isinstance(element.children, str)
         segments.append((element.children, element))
+    elif getattr(element, "_flowmark_protected", False):
+        protected_text = getattr(element, "children", None)
+        assert isinstance(protected_text, str)
+        segments.append((protected_contexts.get(protected_text, protected_text), None))
     elif isinstance(element, inline.CodeSpan):
         # Include code span content for context (helps regex see surrounding text)
         # but mark as immutable — code content is never modified.
@@ -171,7 +182,7 @@ def _collect_inline_segments(
         # Recursive container (Emphasis, StrongEmphasis, Link, Strikethrough, etc.)
         children: list[Element] = element.children  # pyright: ignore
         for child in children:
-            segments.extend(_collect_inline_segments(child))
+            segments.extend(_collect_inline_segments(child, protected_contexts))
     elif hasattr(element, "children") and isinstance(element.children, str):  # pyright: ignore
         # Any other element with string content — include for context.
         segments.append((element.children, None))  # pyright: ignore
@@ -179,7 +190,36 @@ def _collect_inline_segments(
     return segments
 
 
-def rewrite_text_across_inlines(doc: Document, rewrite_func: Callable[[str], str]) -> None:
+def _code_span_rewrite_context(source: str) -> str:
+    delimiter_width = len(source) - len(source.lstrip("`"))
+    if delimiter_width == 0 or not source.endswith("`" * delimiter_width):
+        raise InvalidRegionError("protected code span has malformed delimiters")
+    body = source[delimiter_width:-delimiter_width].replace("\n", " ")
+    if body.strip() and body.startswith(" ") and body.endswith(" "):
+        body = body[1:-1]
+    return body
+
+
+def _protected_rewrite_contexts(protected_source: ProtectedSource | None) -> dict[str, str]:
+    if protected_source is None:
+        return {}
+    return {
+        token: _code_span_rewrite_context(region.source)
+        for token, region in zip(
+            protected_source.tokens,
+            protected_source.regions,
+            strict=True,
+        )
+        if region.kind is RegionKind.code_span
+    }
+
+
+def rewrite_text_across_inlines(
+    doc: Document,
+    rewrite_func: Callable[[str], str],
+    *,
+    protected_source: ProtectedSource | None = None,
+) -> None:
     """
     Apply a length-preserving rewrite function across all inline elements within
     each inline scope (Paragraph, Heading, TableCell).
@@ -204,6 +244,8 @@ def rewrite_text_across_inlines(doc: Document, rewrite_func: Callable[[str], str
     # function can see text spanning line breaks as a single unit.
     coalesce_raw_text_nodes(doc)
 
+    protected_contexts = _protected_rewrite_contexts(protected_source)
+
     def transformer(element: Element) -> None:
         if not isinstance(element, InlineScope):
             return
@@ -214,7 +256,7 @@ def rewrite_text_across_inlines(doc: Document, rewrite_func: Callable[[str], str
         # Collect all inline segments from this scope
         segments: list[tuple[str, inline.RawText | None]] = []
         for child in element.children:
-            segments.extend(_collect_inline_segments(child))
+            segments.extend(_collect_inline_segments(child, protected_contexts))
 
         if not segments:
             return

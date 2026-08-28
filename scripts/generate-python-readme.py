@@ -90,7 +90,9 @@ def render_readme(template_path: Path, shared_docs_body: str) -> str:
         keep_trailing_newline=True,
     )
     template = environment.from_string(template_path.read_text(encoding="utf-8"))
-    rendered = template.render(shared_docs_body=shared_docs_body.rstrip() + "\n")
+    # The template owns the separator and final newline around the inserted body.
+    # Supplying another LF here creates a trailing blank line on every regeneration.
+    rendered = template.render(shared_docs_body=shared_docs_body.rstrip())
     if not rendered.endswith("\n"):
         rendered += "\n"
     return rendered

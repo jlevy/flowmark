@@ -1,0 +1,54 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.extension.multiline-table.headered"
+change_id = "FM-EXT-MULTILINE-TABLE-001"
+description = "A headered Pandoc multiline table retains column rules, row gaps, and cell line structure."
+kind = "stdin"
+tags = ["desired-output", "extension", "multiline-table", "pandoc", "preservation", "stdin"]
+args = ["--width", "20", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/multiline-table/headered/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/multiline-table/headered/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.multiline-table.headerless-caption"
+change_id = "FM-EXT-MULTILINE-TABLE-001"
+description = "A headerless multiline table and its following multiline caption remain one exact block."
+kind = "stdin"
+tags = ["caption", "desired-output", "extension", "multiline-table", "pandoc", "preservation", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/multiline-table/headerless-caption/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/multiline-table/headerless-caption/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.multiline-table.containers"
+change_id = "FM-EXT-MULTILINE-TABLE-001"
+description = "A multiline table nested in a block quote retains every authored container prefix."
+kind = "stdin"
+tags = ["blockquote", "container", "desired-output", "extension", "multiline-table", "preservation", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/multiline-table/containers/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/multiline-table/containers/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.multiline-table.false-positive"
+change_id = "FM-EXT-MULTILINE-TABLE-001"
+description = "An ordinary thematic break without multiline-table structure is not protected as a table."
+kind = "stdin"
+tags = ["extension", "fallback", "multiline-table", "pandoc", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/multiline-table/false-positive/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/multiline-table/false-positive/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

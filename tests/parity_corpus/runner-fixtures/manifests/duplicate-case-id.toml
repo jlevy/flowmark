@@ -1,0 +1,28 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "fixture.duplicate"
+change_id = "FM-CONFORMANCE-001"
+description = "The first case has a duplicate identifier."
+kind = "stdin"
+tags = ["fixture"]
+args = ["-"]
+stdin = "tests/parity_corpus/runner-fixtures/payloads/input.md"
+expected_stdout = "tests/parity_corpus/runner-fixtures/payloads/expected.stdout"
+expected_stderr = "tests/parity_corpus/runner-fixtures/payloads/expected.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "fixture.duplicate"
+change_id = "FM-CONFORMANCE-001"
+description = "The second case has the same identifier."
+kind = "stdin"
+tags = ["fixture"]
+args = ["-"]
+stdin = "tests/parity_corpus/runner-fixtures/payloads/input.md"
+expected_stdout = "tests/parity_corpus/runner-fixtures/payloads/expected.stdout"
+expected_stderr = "tests/parity_corpus/runner-fixtures/payloads/expected.stderr"
+expected_exit = 0
+idempotent = true

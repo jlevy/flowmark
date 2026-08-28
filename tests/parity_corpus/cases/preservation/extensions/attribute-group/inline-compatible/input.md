@@ -1,0 +1,5 @@
+# Heading "changes"... {#résumé .wide data-title="raw \"quote\"..."}
+
+[link](https://example.test){.button key='raw ...'} and ![image](image.png){#hero}{.second}.
+
+`code`{.lang data-code="x_y"} $x_y${.math title="raw..."} <span>{.html}

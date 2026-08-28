@@ -4,7 +4,9 @@ env:
   NO_COLOR: "1"
   LC_ALL: C
 path:
-  - $TRYSCRIPT_GIT_ROOT/.venv/bin
+  - $FLOWMARK_BIN_DIR
+patterns:
+  VERSION: '(?:v\d+\.\d+\.\d+[^\r\n]*|flowmark \d+\.\d+\.\d+[^\r\n]*)'
 before: |
   mkdir -p project/docs project/node_modules/pkg project/.venv/lib project/drafts
   printf '# Root\n' > project/README.md
@@ -241,7 +243,6 @@ backup exists
 ```console
 $ printf '# No Backup\n' > nobackup.md && flowmark --inplace --nobackup nobackup.md && cat nobackup.md && test ! -f nobackup.bak && echo "no backup file"
 # No Backup
-
 no backup file
 ```
 

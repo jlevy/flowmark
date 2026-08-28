@@ -4,7 +4,7 @@ env:
   NO_COLOR: "1"
   LC_ALL: C
 path:
-  - $TRYSCRIPT_GIT_ROOT/.venv/bin
+  - $FLOWMARK_BIN_DIR
 before: |
   cp -r $TRYSCRIPT_TEST_DIR/fixtures/. fixtures/
 ---
@@ -25,7 +25,7 @@ She replied ‘goodbye’ quietly.
 
 It’s a beautiful day, and they don’t know it won’t last.
 
-“Nested 'single quotes’ inside double quotes” are tricky.
+“Nested ‘single quotes’ inside double quotes” are tricky.
 
 The sentence trails off... and then continues.
 
@@ -79,7 +79,7 @@ She replied ‘goodbye’ quietly.
 
 It’s a beautiful day, and they don’t know it won’t last.
 
-“Nested 'single quotes’ inside double quotes” are tricky.
+“Nested ‘single quotes’ inside double quotes” are tricky.
 
 The sentence trails off … and then continues.
 

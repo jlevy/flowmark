@@ -1,0 +1,6 @@
++++
+key = "no closer"
+ordinary trailing prose
+
+ +++
+not a document opener

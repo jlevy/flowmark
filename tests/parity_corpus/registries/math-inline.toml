@@ -1,0 +1,262 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.core.bom"
+change_id = "FM-PRESERVE-CORE-001"
+description = "A leading UTF-8 BOM is restored exactly once around preserved inline math."
+kind = "stdin"
+tags = ["bom", "normalization", "preservation-core", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/core-bom/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/core-bom/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.core.crlf-terminal-lf"
+change_id = "FM-PRESERVE-CORE-001"
+description = "CRLF input and its terminal newline run normalize to one LF before preservation."
+kind = "stdin"
+tags = ["crlf", "normalization", "preservation-core", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/core-crlf/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/core-crlf/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.core.missing-final-lf"
+change_id = "FM-PRESERVE-CORE-001"
+description = "Successful formatting adds exactly one final LF to an unterminated input."
+kind = "stdin"
+tags = ["final-newline", "normalization", "preservation-core", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/core-missing-final-lf/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/core-missing-final-lf/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.core.invalid-utf8"
+change_id = "FM-PRESERVE-CORE-001"
+description = "Invalid UTF-8 fails without stdout or replacement-character corruption."
+kind = "stdin"
+tags = ["error", "invalid-utf8", "preservation-core", "stdin"]
+args = ["-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/core-invalid-utf8/input.bin"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/core-invalid-utf8/expected.stdout"
+expected_stderr = "tests/parity_corpus/cases/preservation/math-inline/core-invalid-utf8/expected.stderr"
+expected_exit = 2
+idempotent = false
+
+[[case]]
+id = "preservation.core.sentinel-collision"
+change_id = "FM-PRESERVE-CORE-001"
+description = "Authored supplementary private-use token controls survive reversible escaping."
+kind = "stdin"
+tags = ["collision", "preservation-core", "stdin", "unicode"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/sentinel-collision/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/sentinel-collision/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.issue-70-wrap-corruption"
+change_id = "FM-MATH-INLINE-001"
+description = "Issue 70's wrap-boundary reproduction moves complete math and code spans without inserting escapes."
+kind = "stdin"
+tags = ["desired-output", "issue-70", "math", "preservation", "regression", "stdin", "wrapping"]
+args = ["--width", "88", "--semantic", "--cleanups", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/issue-70-wrap-corruption/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/issue-70-wrap-corruption/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.dollar-boundaries"
+change_id = "FM-MATH-INLINE-001"
+description = "Broad single and double dollar boundaries remain source exact without dialect configuration."
+kind = "stdin"
+tags = ["boundaries", "dollar", "inline", "math", "stdin", "unicode"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/dollar-boundaries/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/dollar-boundaries/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.escape-parity"
+change_id = "FM-MATH-INLINE-001"
+description = "One through four preceding backslashes determine active dollar openers and closers by parity."
+kind = "stdin"
+tags = ["dollar", "escapes", "inline", "math", "smartquotes", "stdin"]
+args = ["--width", "0", "--smartquotes", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/escape-parity/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/escape-parity/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.alternate-forms"
+change_id = "FM-MATH-INLINE-001"
+description = "Paren, GitLab, MyST, and inline environment forms are preserved as complete regions."
+kind = "stdin"
+tags = ["dialects", "environment", "inline", "math", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/alternate-forms/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/alternate-forms/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.transform-shield"
+change_id = "FM-MATH-INLINE-001"
+description = "Typography and cleanup transforms change prose but never inspect a math body."
+kind = "stdin"
+tags = ["cleanups", "ellipses", "inline", "math", "smartquotes", "stdin"]
+args = ["--width", "0", "--cleanups", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/transform-shield/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/transform-shield/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.markdown-contexts"
+change_id = "FM-MATH-INLINE-001"
+description = "Inline math remains exact in headings, lists, quotes, tables, links, images, and footnotes."
+kind = "stdin"
+tags = ["contexts", "inline", "math", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/markdown-contexts/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/markdown-contexts/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.authored-newlines"
+change_id = "FM-MATH-INLINE-001"
+description = "Permissive inline forms retain authored soft newlines, explicit prefixes, and lazy container continuations."
+kind = "stdin"
+tags = ["blockquote", "inline", "math", "multiline", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/authored-newlines/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/authored-newlines/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.precedence-collisions"
+change_id = "FM-MATH-INLINE-001"
+description = "Code precedence, parser-collision bodies, and table-cell boundaries remain deterministic."
+kind = "stdin"
+tags = ["inline", "math", "parser-collision", "precedence", "stdin", "table"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/precedence-collisions/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/precedence-collisions/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.malformed-fallback"
+change_id = "FM-MATH-INLINE-001"
+description = "Unmatched openers degrade safely without suppressing later complete dollar regions."
+kind = "stdin"
+tags = ["dollar", "fallback", "inline", "malformed", "math", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/malformed-fallback/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/malformed-fallback/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.width-n-minus-one"
+change_id = "FM-MATH-INLINE-001"
+description = "An inline region moves whole when its final column is one past the wrap width."
+kind = "stdin"
+tags = ["inline", "math", "stdin", "width-boundary", "wrapping"]
+args = ["--width", "13", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/width-boundary/input.width-13.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/width-boundary/expected.width-13.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.intraword-cluster"
+change_id = "FM-MATH-INLINE-001"
+description = "Intraword text and its protected math span form one unbreakable wrapping cluster."
+kind = "stdin"
+tags = ["inline", "intraword", "math", "stdin", "wrapping"]
+args = ["--width", "11", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/intraword-cluster/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/intraword-cluster/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.width-n"
+change_id = "FM-MATH-INLINE-001"
+description = "An inline region ending exactly at the wrap width remains intact on that line."
+kind = "stdin"
+tags = ["inline", "math", "stdin", "width-boundary", "wrapping"]
+args = ["--width", "14", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/width-boundary/input.width-14.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/width-boundary/expected.width-14.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.width-n-plus-one"
+change_id = "FM-MATH-INLINE-001"
+description = "An inline region ending one column before the wrap width remains intact on that line."
+kind = "stdin"
+tags = ["inline", "math", "stdin", "width-boundary", "wrapping"]
+args = ["--width", "15", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/width-boundary/input.width-15.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/width-boundary/expected.width-15.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.width-one"
+change_id = "FM-MATH-INLINE-001"
+description = "A protected inline region may exceed width one but is never split."
+kind = "stdin"
+tags = ["inline", "math", "stdin", "width-one", "wrapping"]
+args = ["--width", "1", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/width-one/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/width-one/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.math.inline.semantic-mode"
+change_id = "FM-MATH-INLINE-001"
+description = "Semantic sentence breaks occur around but never inside protected inline math."
+kind = "stdin"
+tags = ["inline", "math", "semantic", "stdin"]
+args = ["--semantic", "--width", "88", "-"]
+stdin = "tests/parity_corpus/cases/preservation/math-inline/semantic-mode/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/math-inline/semantic-mode/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

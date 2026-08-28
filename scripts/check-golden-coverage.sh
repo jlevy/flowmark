@@ -23,14 +23,9 @@ else
 fi
 
 echo ""
-echo "Checking path portability..."
-LEGACY_PATHS=$(grep -rn 'target/debug' "$TESTS_DIR" 2>/dev/null || true)
-if [ -n "$LEGACY_PATHS" ]; then
-  echo "ERROR: Found Rust-specific binary paths in Python tryscript suite:"
-  echo "$LEGACY_PATHS"
+echo "Checking conformance schema and reachability..."
+if ! uv run python -m devtools.conformance coverage; then
   EXIT_CODE=1
-else
-  echo "OK: no Rust-only binary paths"
 fi
 
 echo ""
@@ -41,6 +36,7 @@ REQUIRED_FILES=(
   formatting.tryscript.md
   typography-tests.tryscript.md
   list-spacing.tryscript.md
+  math.tryscript.md
   auto-mode.tryscript.md
   file-ops.tryscript.md
   stdin.tryscript.md

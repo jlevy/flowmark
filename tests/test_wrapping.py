@@ -1,5 +1,7 @@
 from textwrap import dedent
 
+from flowmark.formats.flowmark_markdown import flowmark_markdown
+from flowmark.linewrapping.line_wrappers import line_wrap_by_sentence, line_wrap_to_width
 from flowmark.linewrapping.text_wrapping import (
     _HtmlMdWordSplitter,  # pyright: ignore
     get_html_md_word_splitter,
@@ -8,6 +10,19 @@ from flowmark.linewrapping.text_wrapping import (
     wrap_paragraph,
     wrap_paragraph_lines,
 )
+from flowmark.preservation.bridge import protect_source, restore_source
+from flowmark.preservation.normalization import normalize_source
+from flowmark.preservation.scanner import scan_protected_regions
+
+
+def _format_protected(text: str, *, width: int, semantic: bool = False) -> str:
+    source = normalize_source(text)
+    protected = protect_source(source, scan_protected_regions(source))
+    wrapper_factory = line_wrap_by_sentence if semantic else line_wrap_to_width
+    wrapper = wrapper_factory(width=width, is_markdown=True)
+    markdown = flowmark_markdown(wrapper, _protected_source=protected)
+    document = markdown.parse(protected.text)
+    return restore_source(markdown.render(document), protected)
 
 
 def test_markdown_escape_word_function() -> None:
@@ -100,6 +115,21 @@ def test_wrap_paragraph_lines_markdown_escaping():
         "\\- REBEL EM - more words - accessed April 24, 2025,",
         "<https://rebelem.com/is-ketamine-contraindicated-in-patients-with-psychiatric-disorders/>",
     ]
+
+
+def test_semantic_sentence_break_escapes_a_new_markdown_block_marker() -> None:
+    wrapper = line_wrap_by_sentence(width=88, is_markdown=True)
+    text = (
+        "Testing - : Is Ketamine Contraindicated in Patients with Psychiatric Disorders? "
+        "- REBEL EM - more words - accessed April 24, 2025, "
+        "<https://rebelem.com/is-ketamine-contraindicated-in-patients-with-psychiatric-disorders/>"
+    )
+
+    assert wrapper(text, "[^217]: ", "    ") == (
+        "[^217]: Testing - : Is Ketamine Contraindicated in Patients with Psychiatric Disorders?\n"
+        "    \\- REBEL EM - more words - accessed April 24, 2025,\n"
+        "    <https://rebelem.com/is-ketamine-contraindicated-in-patients-with-psychiatric-disorders/>"
+    )
 
 
 def test_smart_splitter():
@@ -366,6 +396,29 @@ def test_long_template_tags():
     text = f"Before {very_long_tag} after."
     result = splitter(text)
     assert very_long_tag in result
+
+
+def test_protected_wrapping_uses_side_table_width_and_source_adjacency() -> None:
+    assert _format_protected("prefix $a + b$ tail", width=13) == "prefix\n$a + b$ tail\n"
+    assert _format_protected("prefix $a + b$ tail", width=14) == "prefix $a + b$\ntail\n"
+    assert _format_protected("prefix $a + b$ tail", width=15) == "prefix $a + b$\ntail\n"
+    assert _format_protected("water H$_2$O tail", width=11) == "water\nH$_2$O tail\n"
+
+
+def test_protected_multiline_resets_columns_and_no_wrap_branches_remain_exact() -> None:
+    text = "prefix $abcd\nx$ tail"
+    assert _format_protected(text, width=7) == "prefix\n$abcd\nx$ tail\n"
+    assert _format_protected(text, width=6) == "prefix\n$abcd\nx$\ntail\n"
+    assert _format_protected(text, width=0) == "prefix $abcd\nx$ tail\n"
+    assert _format_protected("$a + b$", width=1) == "$a + b$\n"
+    assert (
+        _format_protected(
+            "First sentence uses $a + b$. Second sentence uses $c + d$.",
+            width=88,
+            semantic=True,
+        )
+        == "First sentence uses $a + b$. Second sentence uses $c + d$.\n"
+    )
 
 
 def test_long_html_tags():

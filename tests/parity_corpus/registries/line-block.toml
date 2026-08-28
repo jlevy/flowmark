@@ -1,0 +1,80 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.extension.line-block.inline-content"
+change_id = "FM-EXT-LINE-BLOCK-001"
+description = "Pandoc line blocks preserve authored Unicode, indentation, math, code, hard breaks, and typography-shaped text."
+kind = "stdin"
+tags = ["desired-output", "extension", "line-block", "pandoc", "preservation", "stdin", "unicode"]
+args = ["--width", "18", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/line-block/inline-content/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/line-block/inline-content/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.line-block.containers"
+change_id = "FM-EXT-LINE-BLOCK-001"
+description = "Line blocks retain blank marker lines and exact quote/list container prefixes."
+kind = "stdin"
+tags = ["blank-line", "container", "desired-output", "extension", "line-block", "pandoc", "preservation", "stdin"]
+args = ["--width", "12", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/line-block/containers/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/line-block/containers/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.line-block.adjacency"
+change_id = "FM-EXT-LINE-BLOCK-001"
+description = "Line-block termination leaves adjacent ordinary paragraphs formatter-owned without swallowing either side."
+kind = "stdin"
+tags = ["adjacency", "desired-output", "extension", "line-block", "pandoc", "preservation", "stdin"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/line-block/adjacency/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/line-block/adjacency/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.line-block.list-item-adjacency"
+change_id = "FM-EXT-LINE-BLOCK-001"
+description = "A line block that follows a paragraph line inside a list item keeps its authored bytes, exactly as one at the root does."
+tags = ["adjacency", "container", "desired-output", "extension", "line-block", "list", "pandoc", "preservation", "regression", "stdin"]
+kind = "stdin"
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/line-block/list-item-adjacency/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/line-block/list-item-adjacency/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.line-block.fallback"
+change_id = "FM-EXT-LINE-BLOCK-001"
+description = "Multi- and single-column pipe tables, escaped bars, missing marker spaces, and indented code do not become line blocks."
+kind = "stdin"
+tags = ["extension", "fallback", "line-block", "malformed", "pandoc", "preservation", "stdin", "table"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/line-block/fallback/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/line-block/fallback/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.line-block.wrapped-pipe-continuation"
+change_id = "FM-EXT-LINE-BLOCK-001"
+description = "A wrapped list continuation that begins with a pipe stays paragraph text and reaches a fixed point."
+kind = "stdin"
+tags = ["desired-output", "fixed-point", "line-block", "list", "preservation", "regression", "stdin", "wrapping"]
+args = ["--width", "40", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/line-block/wrapped-pipe-continuation/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/line-block/wrapped-pipe-continuation/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

@@ -1,0 +1,67 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.extension.callout.fold-title"
+change_id = "FM-EXT-OBSIDIAN-CALLOUT-001"
+description = "An Obsidian callout retains its type, fold marker, title, quote prefixes, and body bytes."
+kind = "stdin"
+tags = ["blockquote", "callout", "desired-output", "extension", "obsidian", "preservation", "stdin"]
+args = ["--width", "24", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/callout/fold-title/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/callout/fold-title/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.callout.nested-lazy"
+change_id = "FM-EXT-OBSIDIAN-CALLOUT-001"
+description = "Nested callouts and a lazy outer quote continuation remain part of one exact callout block."
+kind = "stdin"
+tags = ["callout", "container", "desired-output", "extension", "lazy", "nested", "obsidian", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/callout/nested-lazy/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/callout/nested-lazy/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.callout.list-container"
+change_id = "FM-EXT-OBSIDIAN-CALLOUT-001"
+description = "A callout inside a list item retains list and quote prefixes plus inner Markdown extensions."
+kind = "stdin"
+tags = ["callout", "container", "desired-output", "extension", "list", "obsidian", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/callout/list-container/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/callout/list-container/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.callout.malformed"
+change_id = "FM-EXT-OBSIDIAN-CALLOUT-001"
+description = "A spaced or unterminated marker remains an ordinary block quote."
+kind = "stdin"
+tags = ["blockquote", "callout", "extension", "fallback", "malformed", "obsidian", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/callout/malformed/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/callout/malformed/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.callout.adjacent-inline"
+change_id = "FM-EXT-OBSIDIAN-CALLOUT-001"
+description = "Callout-like markers adjacent to protected inline forms never lose content or abort."
+kind = "stdin"
+tags = ["blockquote", "callout", "desired-output", "extension", "fallback", "inline", "obsidian", "preservation", "stdin"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/callout/adjacent-inline/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/callout/adjacent-inline/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

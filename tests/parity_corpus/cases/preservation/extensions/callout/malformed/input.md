@@ -1,0 +1,4 @@
+> [! note] Not a callout
+> ordinary quote
+
+> [!broken ordinary quote

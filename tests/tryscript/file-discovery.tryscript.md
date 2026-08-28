@@ -4,13 +4,10 @@ env:
   NO_COLOR: "1"
   LC_ALL: C
 path:
-  - $TRYSCRIPT_GIT_ROOT/.venv/bin
+  - $FLOWMARK_BIN_DIR
 before: |
   cp -r $TRYSCRIPT_TEST_DIR/fixtures/. fixtures/
-  # Ignore any local untracked fixture artifacts so this suite stays deterministic.
-  rm -rf fixtures/project/.venv fixtures/project/build fixtures/project/skip fixtures/project/nested/generated
 ---
-
 # File Discovery Tests
 
 Tests for --list-files, extend-include, extend-exclude, gitignore, flowmarkignore,
@@ -138,7 +135,24 @@ $ flowmark --list-files --exclude "docs/" fixtures/project/ | xargs -I{} basenam
 README.md
 README.md
 README.md
+README.md
 file.md
 lib.md
+output.md
 wip.md
+```
+
+## D12: Nested gitignore is respected by default
+
+```console
+$ flowmark --list-files fixtures/project/nested/ | xargs -I{} basename {} | sort
+file.md
+```
+
+## D13: --no-respect-gitignore includes nested generated files
+
+```console
+$ flowmark --list-files --no-respect-gitignore fixtures/project/nested/ | xargs -I{} basename {} | sort
+file.md
+output.md
 ```

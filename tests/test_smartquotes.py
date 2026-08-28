@@ -18,6 +18,14 @@ def test_basic_single_quotes():
     assert smart_quotes("X is 'foo'") == "X is \u2018foo\u2019"
 
 
+def test_differently_quoted_nested_pairs_reach_a_fixed_point_in_one_call() -> None:
+    text = "\"It was known as the 'Corporate Accountability Act' and--\""
+
+    assert smart_quotes(text) == (
+        "\u201cIt was known as the \u2018Corporate Accountability Act\u2019 and--\u201d"
+    )
+
+
 def test_apostrophes_and_contractions():
     """Test apostrophe and contraction conversion."""
     assert smart_quotes("I'm there") == "I\u2019m there"

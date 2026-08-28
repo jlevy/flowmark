@@ -1,0 +1,17 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "fixture.kind-conflict"
+change_id = "FM-CONFORMANCE-001"
+description = "A stdin case cannot declare file trees."
+kind = "stdin"
+tags = ["fixture"]
+args = ["-"]
+stdin = "tests/parity_corpus/runner-fixtures/payloads/input.md"
+before_tree = "tests/parity_corpus/runner-fixtures/payloads"
+after_tree = "tests/parity_corpus/runner-fixtures/payloads"
+expected_stdout = "tests/parity_corpus/runner-fixtures/payloads/expected.stdout"
+expected_stderr = "tests/parity_corpus/runner-fixtures/payloads/expected.stderr"
+expected_exit = 0
+idempotent = true

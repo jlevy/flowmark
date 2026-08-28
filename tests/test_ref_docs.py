@@ -1,86 +1,68 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+import pytest
+
 from flowmark.linewrapping.markdown_filling import fill_markdown
 
-testdoc_dir = Path("tests/testdocs")
+TESTDOC_DIR = Path(__file__).parent / "testdocs"
 
 
-def test_reference_doc_formats():
-    """
-    Test that the reference document is formatted correctly with both plain and semantic formats.
-    """
-    orig_path = testdoc_dir / "testdoc.orig.md"
+@dataclass(frozen=True)
+class ReferenceCase:
+    name: str
+    filename: str
+    semantic: bool
+    cleanups: bool
+    smartquotes: bool
+    ellipses: bool = False
 
-    # Check that original file exists
-    assert orig_path.exists(), f"Original test document not found at {orig_path}"
 
-    # Read the original content
-    with open(orig_path) as f:
-        orig_content = f.read()
+REFERENCE_CASES = (
+    ReferenceCase(
+        name="plain",
+        filename="testdoc.expected.plain.md",
+        semantic=False,
+        cleanups=False,
+        smartquotes=False,
+    ),
+    ReferenceCase(
+        name="semantic",
+        filename="testdoc.expected.semantic.md",
+        semantic=True,
+        cleanups=False,
+        smartquotes=False,
+    ),
+    ReferenceCase(
+        name="cleaned",
+        filename="testdoc.expected.cleaned.md",
+        semantic=True,
+        cleanups=True,
+        smartquotes=False,
+    ),
+    ReferenceCase(
+        name="auto",
+        filename="testdoc.expected.auto.md",
+        semantic=True,
+        cleanups=True,
+        smartquotes=True,
+        ellipses=True,
+    ),
+)
 
-    @dataclass(frozen=True)
-    class TestCase:
-        name: str
-        filename: str
-        semantic: bool
-        cleanups: bool
-        smartquotes: bool
-        ellipses: bool = False
 
-    test_cases: list[TestCase] = [
-        TestCase(
-            name="plain",
-            filename="testdoc.expected.plain.md",
-            semantic=False,
-            cleanups=False,
-            smartquotes=False,
-        ),
-        TestCase(
-            name="semantic",
-            filename="testdoc.expected.semantic.md",
-            semantic=True,
-            cleanups=False,
-            smartquotes=False,
-        ),
-        TestCase(
-            name="cleaned",
-            filename="testdoc.expected.cleaned.md",
-            semantic=True,
-            cleanups=True,
-            smartquotes=False,
-        ),
-        TestCase(
-            name="auto",
-            filename="testdoc.expected.auto.md",
-            semantic=True,
-            cleanups=True,
-            smartquotes=True,
-            ellipses=True,
-        ),
-    ]
+@pytest.mark.parametrize("case", REFERENCE_CASES, ids=lambda case: case.name)
+def test_reference_doc_formats(case: ReferenceCase) -> None:
+    """Keep the readable Python integration on the shared reference truth."""
+    source = (TESTDOC_DIR / "testdoc.orig.md").read_text(encoding="utf-8")
+    expected = (TESTDOC_DIR / case.filename).read_text(encoding="utf-8")
 
-    expecteds: list[str] = []
-    actuals: list[str] = []
-    for case in test_cases:
-        test_doc = testdoc_dir / case.filename
-        expected = test_doc.read_text()
+    actual = fill_markdown(
+        source,
+        semantic=case.semantic,
+        cleanups=case.cleanups,
+        smartquotes=case.smartquotes,
+        ellipses=case.ellipses,
+    )
 
-        actual = fill_markdown(
-            orig_content,
-            semantic=case.semantic,
-            cleanups=case.cleanups,
-            smartquotes=case.smartquotes,
-            ellipses=case.ellipses,
-        )
-        if actual != expected:
-            actual_path = testdoc_dir / f"testdoc.actual.{case.name}.md"
-            print(f"actual was different from expected for {case.name}!")
-            print(f"Saving actual to: {actual_path}")
-            actual_path.write_text(actual)
-
-        expecteds.append(expected)
-        actuals.append(actual)
-
-    for expected, actual in zip(expecteds, actuals, strict=True):
-        assert expected == actual
+    assert actual == expected, f"reference output differs for {case.name}"

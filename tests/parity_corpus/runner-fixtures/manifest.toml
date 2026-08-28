@@ -1,0 +1,85 @@
+schema_version = 1
+
+[[fixture]]
+id = "schema.unknown-field"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/unknown-field.toml"
+outcome = "manifest-error"
+code = "unknown-field"
+
+[[fixture]]
+id = "schema.unsupported-version"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/unsupported-version.toml"
+outcome = "manifest-error"
+code = "unsupported-schema-version"
+
+[[fixture]]
+id = "schema.duplicate-case-id"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/duplicate-case-id.toml"
+outcome = "manifest-error"
+code = "duplicate-case-id"
+
+[[fixture]]
+id = "schema.duplicate-before-path"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/duplicate-before-path.toml"
+outcome = "manifest-error"
+code = "duplicate-case-id"
+
+[[fixture]]
+id = "schema.kind-field-conflict"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/kind-field-conflict.toml"
+outcome = "manifest-error"
+code = "invalid-kind-fields"
+
+[[fixture]]
+id = "schema.parent-traversal"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/parent-traversal.toml"
+outcome = "manifest-error"
+code = "invalid-path"
+
+[[fixture]]
+id = "schema.missing-payload"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/missing-payload.toml"
+outcome = "manifest-error"
+code = "missing-path"
+
+[[fixture]]
+id = "schema.symlink-payload"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/symlink-payload.toml"
+outcome = "manifest-error"
+code = "symlink-path"
+
+[[fixture]]
+id = "schema.duplicate-case-registry"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/duplicate-case-registry.toml"
+outcome = "manifest-error"
+code = "duplicate-case-registry"
+
+[[fixture]]
+id = "schema.nested-case-registry"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/nested-case-registry.toml"
+outcome = "manifest-error"
+code = "nested-case-registry"
+
+[[fixture]]
+id = "schema.registry-defaults"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/registry-defaults.toml"
+outcome = "manifest-error"
+code = "invalid-case-registry"
+
+[[fixture]]
+id = "schema.registry-empty-defaults"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/registry-empty-defaults.toml"
+outcome = "manifest-error"
+code = "invalid-case-registry"
+
+[[fixture]]
+id = "comparison.stdout-mismatch"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/stdout-mismatch.toml"
+outcome = "case-failure"
+code = "stdout-mismatch"
+
+[[fixture]]
+id = "comparison.file-tree-mismatch"
+manifest = "tests/parity_corpus/runner-fixtures/manifests/file-tree-mismatch.toml"
+outcome = "case-failure"
+code = "file-tree-mismatch"

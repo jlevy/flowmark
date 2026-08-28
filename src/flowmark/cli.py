@@ -25,6 +25,7 @@ from pathlib import Path
 
 from flowmark.config import find_config_file, load_config, merge_cli_with_config
 from flowmark.formats.flowmark_markdown import ListSpacing
+from flowmark.preservation.model import PreservationError
 from flowmark.reformat_api import reformat_files
 
 
@@ -533,6 +534,10 @@ def main(args: list[str] | None = None) -> int:
             list_spacing=options.list_spacing,
             check=options.check,
         )
+    except PreservationError as e:
+        # Invalid UTF-8 and internal restoration failures are processing errors.
+        print(f"Error: {e}", file=sys.stderr)
+        return 2
     except ValueError as e:
         # Handle errors reported by reformat_file, like using --inplace with stdin.
         print(f"Error: {e}", file=sys.stderr)

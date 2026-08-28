@@ -2,9 +2,10 @@ import re
 from re import Pattern
 
 ELLIPSIS_PATTERN: Pattern[str] = re.compile(
-    r"(^|[\w\"\'“‘])(\s*)(\.\.\.)([.,:;?!)\-—\"\'”’]?)(\s*)",
+    r"(^|[\w\"\'“”‘’])(\s*)(\.\.\.)([.,:;?!)\-—\"\'”’]?)(\s*)",
     re.MULTILINE,
 )
+ELLIPSIS_FOLLOW_BOUNDARY_PATTERN: Pattern[str] = re.compile(r"[\w,:;?!)\-—\"'”’>]")
 
 
 def ellipses(text: str) -> str:
@@ -16,7 +17,7 @@ def ellipses(text: str) -> str:
     - `...` must be followed by word character (with optional space) OR punctuation OR end of line
     - If immediately before the `...` is a word character (no whitespace), a space is inserted before it.
     - If immediately after the `...` is a word character (no whitespace), a space is inserted after it.
-    - If the punctuation [\"\'“‘] immediately precedes the ellipsis, there is no space between the
+    - If quote punctuation immediately precedes the ellipsis, there is no space between the
       punctuation and the ellipsis.
     - If punctuation [.,:;?!)\-—] follows the ellipsis, there is no space between the ellipsis and
       the punctuation.
@@ -33,8 +34,8 @@ def ellipses(text: str) -> str:
         remaining = text[end_pos:] if end_pos < len(text) else ""
         next_char = remaining[0] if remaining else ""
 
-        # Check boundary - must be followed by word or end of line
-        if remaining and not re.match(r"\w|$", next_char):
+        # Check boundary: allow prose or punctuation, but not a longer dot run.
+        if remaining and not ELLIPSIS_FOLLOW_BOUNDARY_PATTERN.match(next_char):
             return match.group(0)
 
         result = prefix

@@ -108,11 +108,14 @@ a - b a – b a — b.
 
 This is a display formula:
 
-$$ L = \frac{1}{2} \rho v^2 S C_L $$
+$$
+L = \frac{1}{2} \rho v^2 S C_L
+$$
 
 And here is a formula in inline form as $L = \frac{1}{2} \rho v^2 S C_L$ with more text
-following. If the noteholders had converted their $420K at the 20% discount, they would
-be paying $\$0.55116 \times \$0.80$ per share, or $0.44093 per share.
+following. If the noteholders had converted their
+$420K at the 20% discount, they would be paying $\$0.55116 \times
+\$0.80$ per share, or $0.44093 per share.
 And $\$420K \div 0.44093$ is $952{,}532$ shares.
 
 ## Legalese
@@ -979,7 +982,7 @@ And let's try some links with angle brackets.
 [^53]: <https://www.fastcompany.com/90216464/the-29-billion-battle-to-own-how-america-sleeps>
 
 [^217]: Testing - : Is Ketamine Contraindicated in Patients with Psychiatric Disorders?
-    - REBEL EM - more words - accessed April 24, 2025,
+    \- REBEL EM - more words - accessed April 24, 2025,
     <https://rebelem.com/is-ketamine-contraindicated-in-patients-with-psychiatric-disorders/>
 
 [^multiline]: The distinction between “hiring” and “recruiting” isn’t universally agreed
@@ -1011,9 +1014,12 @@ This is
 another.
 ```
 
-<div align="center"> <img src="images/rounds.png" alt="awesome"> <br> Example of company
-valuation, shares, fundraising, and dilution
-(<a href="http://ownyourventure.com/equitySim.html">source</a>) <br> </div>
+<div align="center">
+	<img src="images/rounds.png" alt="awesome">
+  <br>
+  Example of company valuation, shares, fundraising, and dilution (<a href="http://ownyourventure.com/equitySim.html">source</a>)
+  <br>
+</div>
 
 | Specific AWS Services | Basics | Tips | Gotchas |
 | --- | --- | --- | --- |
@@ -1257,14 +1263,14 @@ information.
 
 > [!TIP]
 > First paragraph of the tip.
-> 
+>
 > Second paragraph with more details.
 
 ### Alert with Code Block
 
 > [!WARNING]
 > Be careful with this code:
-> 
+>
 > ```python
 > dangerous_operation()
 > ```
@@ -1273,35 +1279,41 @@ information.
 
 > [!IMPORTANT]
 > Remember these items:
-> 
+>
 > - First item
 > - Second item
 > - Third item
 
-### Lowercase Alert Type (normalized to uppercase)
+### Lowercase Callout Type (preserved exactly)
 
-> [!NOTE]
-> This lowercase alert should be normalized to uppercase.
+> [!note]
+> This lowercase type spelling should remain unchanged.
 
-### Non-standard Alert Types (preserved as regular quotes)
+### Custom Callout Types (preserved exactly)
 
-Non-standard alert types like `[!FOO]` are not recognized by GitHub but should be
-preserved as regular block quotes without losing any content.
+Obsidian accepts custom callout types even though GitHub alerts do not.
+Flowmark should preserve their exact type spelling and content without deciding whether
+a type is standard.
 
-> [!FOO] This uses a non-standard alert type.
-> It should be preserved as a regular quote.
+> [!FOO]
+> This uses a custom callout type.
+> It should be preserved exactly.
 
-> [!CUSTOM] Another non-standard type that should be preserved.
+> [!CUSTOM]
+> Another custom type that should be preserved.
 
-> [!INFO] Info is not a standard GitHub alert type.
+> [!INFO]
+> Info is not a standard GitHub alert type but is valid custom syntax.
 
-### Misspelled Alert Types (preserved as regular quotes)
+### Unknown Callout Types (preserved exactly)
 
-Misspelled standard types should also be preserved as regular quotes.
+Flowmark should not treat unknown type names as spelling errors.
 
-> [!NOOT] This misspelled NOTE should be a regular quote.
+> [!NOOT]
+> This possible misspelling should remain unchanged.
 
-> [!WARNNG] This misspelled WARNING should be a regular quote.
+> [!WARNNG]
+> This possible misspelling should also remain unchanged.
 
 ### Malformed Alert Syntax (preserved as regular quotes)
 
@@ -1443,11 +1455,9 @@ Closing tags should NOT be merged onto list item lines:
 {% /field %}
 
 <!-- f:field kind="select" id="choice" -->
-
 - Option 1 <!-- #opt1 -->
 - Option 2 <!-- #opt2 -->
 - Option 3 <!-- #opt3 -->
-
 <!-- /f:field -->
 
 ### Issue 3: Same-Line Tag Pairs
@@ -1515,12 +1525,10 @@ lines):
 Tables inside HTML comment tags without blank lines:
 
 <!-- f:table id="comparison" -->
-
 | Feature | Product A | Product B |
 | --- | --- | --- |
 | Speed | Fast | Faster |
 | Cost | Low | Medium |
-
 <!-- /f:table -->
 
 Tables inside Jinja variable tags (edge case):
@@ -1601,11 +1609,9 @@ Self-closing tags with tables:
 {% spacer height="20" /%}
 
 <!-- separator -->
-
 | Item | Value |
 | --- | --- |
 | X | 1 |
-
 <!-- end-section -->
 
 ### Issue 7: Multi-Line Opening Tags (GitHub Issue #17)

@@ -84,6 +84,15 @@ jobs:
         # Check-only mode so CI fails on unformatted code instead of fixing it.
         run: uv run python devtools/lint.py --check
 
+      - name: Check pinned CommonMark corpus
+        run: uv run python scripts/import-commonmark-spec.py check
+
+      - name: Check conformance schema and reachability
+        run: uv run python -m devtools.conformance coverage
+
+      - name: Run installed-binary conformance corpus
+        run: uv run python -m devtools.conformance run --executable "$PWD/.venv/bin/flowmark"
+
       - name: Run tests
         run: uv run pytest
       - name: Audit dependencies (pip-audit)
@@ -100,6 +109,8 @@ jobs:
         run: bash scripts/check-golden-coverage.sh
 
       - name: Run golden tests
+        env:
+          FLOWMARK_BIN_DIR: ${{ github.workspace }}/.venv/bin
         run: npx tryscript@0.1.7 run tests/tryscript/*.tryscript.md
 
       - name: Validate published skill frontmatter

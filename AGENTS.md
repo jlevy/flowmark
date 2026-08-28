@@ -23,7 +23,7 @@ Or call uv directly with the checked-in configuration:
 `UV_CONFIG_FILE=uv.toml uv add --exclude-newer "14 days" some-package`, or
 `UV_CONFIG_FILE=uv.toml uv run python -m flowmark`.
 
-<!-- BEGIN TBD INTEGRATION format=f06 surface=agents-md -->
+<!-- BEGIN TBD INTEGRATION format=f08 surface=agents-md -->
 ## tbd
 
 This repository uses **tbd** for git-native issue tracking (beads), spec-driven

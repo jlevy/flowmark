@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Protocol
 
 from flowmark.linewrapping.protocols import LineWrapper
@@ -13,9 +14,12 @@ from flowmark.linewrapping.tag_handling import (
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
 from flowmark.linewrapping.text_wrapping import (
     DEFAULT_LEN_FUNCTION,
+    markdown_escape_word,
+    measure_protected_text,
     wrap_paragraph,
     wrap_paragraph_lines,
 )
+from flowmark.preservation.bridge import ProtectedSource
 
 DEFAULT_MIN_LINE_LEN = 20
 """Default minimum line length for sentence breaking."""
@@ -25,6 +29,29 @@ class SentenceSplitter(Protocol):
     """Takes a text string and returns a list of sentences."""
 
     def __call__(self, text: str) -> list[str]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class _BindableLineWrapper:
+    """Existing callable interface plus an internal immutable protection binder."""
+
+    callback: LineWrapper
+    binder: Callable[[ProtectedSource], LineWrapper]
+
+    def __call__(self, text: str, initial_indent: str, subsequent_indent: str) -> str:
+        return self.callback(text, initial_indent, subsequent_indent)
+
+    def bind_protected_source(self, protected_source: ProtectedSource) -> LineWrapper:
+        return self.binder(protected_source)
+
+
+def bind_protected_source(
+    line_wrapper: LineWrapper, protected_source: ProtectedSource | None
+) -> LineWrapper:
+    """Bind side-table widths to built-in wrappers without changing the public callable."""
+    if protected_source is not None and isinstance(line_wrapper, _BindableLineWrapper):
+        return line_wrapper.bind_protected_source(protected_source)
+    return line_wrapper
 
 
 def split_sentences_no_min_length(text: str) -> list[str]:
@@ -82,29 +109,32 @@ def line_wrap_to_width(
     width: int = DEFAULT_WRAP_WIDTH,
     len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
     is_markdown: bool = False,
+    protected_source: ProtectedSource | None = None,
 ) -> LineWrapper:
     """
     Wrap lines of text to a given width.
     """
 
-    def line_wrapper(text: str, initial_indent: str, subsequent_indent: str) -> str:
-        return wrap_paragraph(
-            text,
-            width=width,
-            initial_indent=initial_indent,
-            subsequent_indent=subsequent_indent,
-            len_fn=len_fn,
-            is_markdown=is_markdown,
-        )
+    def build(bound_source: ProtectedSource | None) -> LineWrapper:
+        def line_wrapper(text: str, initial_indent: str, subsequent_indent: str) -> str:
+            return wrap_paragraph(
+                text,
+                width=width,
+                initial_indent=initial_indent,
+                subsequent_indent=subsequent_indent,
+                len_fn=len_fn,
+                is_markdown=is_markdown,
+                protected_source=bound_source,
+            )
 
-    if is_markdown:
-        # Apply tag newline handling first, then hard break handling
-        # Order matters: tag handling should operate on original newlines
-        # before hard break handling normalizes explicit breaks
-        enhanced = add_tag_newline_handling(line_wrapper)
-        return _add_markdown_hard_break_handling(enhanced)
-    else:
-        return line_wrapper
+        callback: LineWrapper = line_wrapper
+        if is_markdown:
+            # Apply tag newline handling first, then hard break handling. Order matters:
+            # tags operate on authored newlines before hard-break normalization.
+            callback = _add_markdown_hard_break_handling(add_tag_newline_handling(callback))
+        return _BindableLineWrapper(callback, build)
+
+    return build(protected_source)
 
 
 def line_wrap_by_sentence(
@@ -113,6 +143,7 @@ def line_wrap_by_sentence(
     min_line_len: int = DEFAULT_MIN_LINE_LEN,
     len_fn: Callable[[str], int] = DEFAULT_LEN_FUNCTION,
     is_markdown: bool = False,
+    protected_source: ProtectedSource | None = None,
 ) -> LineWrapper:
     """
     Wrap lines of text to a given width but also keep sentences on their own lines.
@@ -120,64 +151,82 @@ def line_wrap_by_sentence(
     next sentence.
     """
 
-    def line_wrapper(text: str, initial_indent: str, subsequent_indent: str) -> str:
-        text = text.replace("\n", " ")
+    def build(bound_source: ProtectedSource | None) -> LineWrapper:
+        def logical_final_width(text: str) -> int:
+            if bound_source is None:
+                return len_fn(text)
+            return measure_protected_text(text, bound_source, len_fn).final_width
 
-        # Handle width <= 0 as "no wrapping". Collapse internal whitespace (not just
-        # strip ends) so the output is normalized and idempotent, matching the
-        # whitespace handling of the width > 0 path.
-        if width <= 0:
-            return initial_indent + " ".join(text.split())
+        def line_wrapper(text: str, initial_indent: str, subsequent_indent: str) -> str:
+            text = text.replace("\n", " ")
 
-        lines: list[str] = []
-        first_line = True
-        length = len_fn
-        initial_indent_len = len_fn(initial_indent)
-        subsequent_indent_len = len_fn(subsequent_indent)
+            # Handle width <= 0 as "no wrapping". Tokens contain no whitespace, so
+            # authored whitespace inside protected source remains exclusively side-table data.
+            if width <= 0:
+                return initial_indent + " ".join(text.split())
 
-        sentences = split_sentences(text)
+            lines: list[str] = []
+            first_line = True
+            initial_indent_len = len_fn(initial_indent)
+            subsequent_indent_len = len_fn(subsequent_indent)
 
-        for sentence in sentences:
-            current_column = initial_indent_len if first_line else subsequent_indent_len
-            if len(lines) > 0 and length(lines[-1]) < min_line_len:
-                current_column += length(lines[-1])
+            sentences = split_sentences(text)
 
-            wrapped = wrap_paragraph_lines(
-                sentence,
-                width=width,
-                initial_column=current_column,
-                subsequent_offset=subsequent_indent_len,
-                is_markdown=is_markdown,
-            )
-            # If last line is shorter than min_line_len, combine with next line.
-            # Also handles if the first word doesn't fit.
-            if (
-                len(lines) > 0
-                and wrapped
-                and length(lines[-1]) < min_line_len
-                and length(lines[-1]) + 1 + length(wrapped[0]) <= width
-            ):
-                lines[-1] += " " + wrapped[0]
-                wrapped.pop(0)
+            for sentence in sentences:
+                starts_new_output_line = bool(lines)
+                current_column = initial_indent_len if first_line else subsequent_indent_len
+                if lines and logical_final_width(lines[-1]) < min_line_len:
+                    current_column += logical_final_width(lines[-1])
 
-            lines.extend(wrapped)
+                wrapped = wrap_paragraph_lines(
+                    sentence,
+                    width=width,
+                    initial_column=current_column,
+                    subsequent_offset=subsequent_indent_len,
+                    is_markdown=is_markdown,
+                    len_fn=len_fn,
+                    protected_source=bound_source,
+                )
+                # If the last line is short, combine it with the next sentence's first line.
+                next_first_width = (
+                    measure_protected_text(wrapped[0], bound_source, len_fn).first_width
+                    if bound_source is not None and wrapped
+                    else len_fn(wrapped[0])
+                    if wrapped
+                    else 0
+                )
+                if (
+                    lines
+                    and wrapped
+                    and logical_final_width(lines[-1]) < min_line_len
+                    and logical_final_width(lines[-1]) + 1 + next_first_width <= width
+                ):
+                    lines[-1] += " " + wrapped[0]
+                    wrapped.pop(0)
+                    starts_new_output_line = False
 
-            first_line = False
+                if is_markdown and starts_new_output_line and wrapped:
+                    first_word, separator, remainder = wrapped[0].partition(" ")
+                    wrapped[0] = markdown_escape_word(first_word) + separator + remainder
 
-        # Now insert the indents and assemble the paragraph.
-        if initial_indent and len(lines) > 0:
-            lines[0] = initial_indent + lines[0]
-        if subsequent_indent and len(lines) > 1:
-            lines[1:] = [subsequent_indent + line for line in lines[1:]]
+                lines.extend(wrapped)
 
-        result = "\n".join(lines)
+                first_line = False
 
-        # Restore original adjacency for paired tags (remove spaces added during tokenization)
-        return denormalize_adjacent_tags(result)
+            # Now insert the indents and assemble the paragraph.
+            if initial_indent and lines:
+                lines[0] = initial_indent + lines[0]
+            if subsequent_indent and len(lines) > 1:
+                lines[1:] = [subsequent_indent + line for line in lines[1:]]
 
-    if is_markdown:
-        # Apply tag newline handling first, then hard break handling
-        enhanced = add_tag_newline_handling(line_wrapper)
-        return _add_markdown_hard_break_handling(enhanced)
-    else:
-        return line_wrapper
+            result = "\n".join(lines)
+
+            # Restore original adjacency for paired tags added during tokenization.
+            return denormalize_adjacent_tags(result)
+
+        callback: LineWrapper = line_wrapper
+        if is_markdown:
+            callback = _add_markdown_hard_break_handling(add_tag_newline_handling(callback))
+        return _BindableLineWrapper(callback, build)
+
+    return build(protected_source)

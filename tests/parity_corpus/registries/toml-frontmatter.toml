@@ -1,0 +1,41 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.extension.toml-frontmatter.basic"
+change_id = "FM-EXT-TOML-FRONTMATTER-001"
+description = "Leading TOML frontmatter stays exact while typography still applies to following prose."
+kind = "stdin"
+tags = ["desired-output", "extension", "frontmatter", "preservation", "stdin", "toml", "typography"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/toml-frontmatter/basic/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/toml-frontmatter/basic/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.toml-frontmatter.bom"
+change_id = "FM-EXT-TOML-FRONTMATTER-001"
+description = "A UTF-8 BOM is restored once around exact TOML frontmatter."
+kind = "stdin"
+tags = ["bom", "desired-output", "extension", "frontmatter", "normalization", "preservation", "stdin", "toml"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/toml-frontmatter/bom/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/toml-frontmatter/bom/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.toml-frontmatter.malformed"
+change_id = "FM-EXT-TOML-FRONTMATTER-001"
+description = "Missing closers and indented opening lines remain ordinary Markdown and do not own the document."
+kind = "stdin"
+tags = ["extension", "fallback", "frontmatter", "malformed", "stdin", "toml"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/toml-frontmatter/malformed/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/toml-frontmatter/malformed/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

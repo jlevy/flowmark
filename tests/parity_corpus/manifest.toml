@@ -1,0 +1,209 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+case_registry = [
+    "tests/parity_corpus/registries/math-inline.toml",
+    "tests/parity_corpus/registries/math-block.toml",
+    "tests/parity_corpus/registries/code-span.toml",
+    "tests/parity_corpus/registries/fenced-code.toml",
+    "tests/parity_corpus/registries/pandoc-multiline-table.toml",
+    "tests/parity_corpus/registries/obsidian-callout.toml",
+    "tests/parity_corpus/registries/colon-container.toml",
+    "tests/parity_corpus/registries/toml-frontmatter.toml",
+    "tests/parity_corpus/registries/definition-list.toml",
+    "tests/parity_corpus/registries/grid-table.toml",
+    "tests/parity_corpus/registries/raw-html.toml",
+    "tests/parity_corpus/registries/attribute-group.toml",
+    "tests/parity_corpus/registries/line-block.toml",
+    "tests/parity_corpus/registries/myst-wikilink.toml",
+    "tests/parity_corpus/registries/gitlab.toml",
+    "tests/parity_corpus/registries/link-reference-definition.toml",
+    "tests/parity_corpus/spec/commonmark-0.31.2/manifest.toml",
+]
+
+[defaults.env]
+NO_COLOR = "1"
+LC_ALL = "C"
+TZ = "UTC"
+
+[[case]]
+id = "cli.stdin.wrap"
+change_id = "FM-CONFORMANCE-001"
+description = "Stdin formatting captures exact output and reaches a fixed point."
+kind = "stdin"
+tags = ["cli", "current-behavior", "stdin", "wrapping"]
+args = ["--width", "36", "-"]
+stdin = "tests/parity_corpus/cases/cli/stdin-wrap/input.md"
+expected_stdout = "tests/parity_corpus/cases/cli/stdin-wrap/expected.stdout"
+expected_stderr = "tests/parity_corpus/cases/cli/stdin-wrap/expected.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "cli.files.inplace-backup"
+change_id = "FM-CONFORMANCE-001"
+description = "In-place formatting writes the formatted file and an exact original backup."
+kind = "files"
+tags = ["backup", "cli", "current-behavior", "files", "inplace"]
+args = ["--inplace", "workspace/input.md"]
+before_tree = "tests/parity_corpus/cases/cli/inplace-backup/before"
+after_tree = "tests/parity_corpus/cases/cli/inplace-backup/after"
+expected_stdout = "tests/parity_corpus/cases/cli/inplace-backup/expected.stdout"
+expected_stderr = "tests/parity_corpus/cases/cli/inplace-backup/expected.stderr"
+expected_exit = 0
+idempotent = false
+
+[[case]]
+id = "reference.testdoc.plain"
+change_id = "FM-CONFORMANCE-001"
+description = "The reference document matches its reviewed plain-mode output."
+kind = "stdin"
+tags = ["current-behavior", "reference", "stdin", "whole-document"]
+args = ["-"]
+stdin = "tests/testdocs/testdoc.orig.md"
+expected_stdout = "tests/testdocs/testdoc.expected.plain.md"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "parity.corner-cases.default"
+change_id = "FM-PARITY-BASELINE-001"
+description = "Historical cross-language corner cases match the reviewed default-mode output."
+kind = "stdin"
+tags = ["current-behavior", "historical", "parity", "stdin"]
+args = ["--width", "88", "-"]
+stdin = "tests/tryscript/fixtures/content/parity-corner-cases.md"
+expected_stdout = "tests/parity_corpus/cases/parity/corner-cases/default.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "parity.corner-cases.auto"
+change_id = "FM-PARITY-BASELINE-001"
+description = "Historical cross-language corner cases match the reviewed automatic-mode output."
+kind = "stdin"
+tags = ["auto", "current-behavior", "historical", "parity", "stdin"]
+args = ["--width", "88", "--semantic", "--cleanups", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/tryscript/fixtures/content/parity-corner-cases.md"
+expected_stdout = "tests/parity_corpus/cases/parity/corner-cases/auto.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = false
+
+[[case]]
+id = "parity.corner-cases.tight"
+change_id = "FM-PARITY-BASELINE-001"
+description = "Historical cross-language corner cases match the reviewed tight-list output."
+kind = "stdin"
+tags = ["current-behavior", "historical", "list-spacing", "parity", "stdin", "tight"]
+args = ["--width", "88", "--semantic", "--list-spacing", "tight", "-"]
+stdin = "tests/tryscript/fixtures/content/parity-corner-cases.md"
+expected_stdout = "tests/parity_corpus/cases/parity/corner-cases/tight.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "parity.corner-cases.loose"
+change_id = "FM-PARITY-BASELINE-001"
+description = "Historical cross-language corner cases match the reviewed loose-list output."
+kind = "stdin"
+tags = ["current-behavior", "historical", "list-spacing", "loose", "parity", "stdin"]
+args = ["--width", "88", "--semantic", "--list-spacing", "loose", "-"]
+stdin = "tests/tryscript/fixtures/content/parity-corner-cases.md"
+expected_stdout = "tests/parity_corpus/cases/parity/corner-cases/loose.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "parity.corner-cases.plaintext"
+change_id = "FM-PARITY-BASELINE-001"
+description = "Historical cross-language corner cases match the reviewed plaintext output."
+kind = "stdin"
+tags = ["current-behavior", "historical", "parity", "plaintext", "stdin"]
+args = ["--width", "88", "--plaintext", "-"]
+stdin = "tests/tryscript/fixtures/content/parity-corner-cases.md"
+expected_stdout = "tests/parity_corpus/cases/parity/corner-cases/plaintext.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "reference.testdoc.semantic"
+change_id = "FM-CONFORMANCE-001"
+description = "The reference document matches its reviewed semantic-mode output."
+kind = "stdin"
+tags = ["current-behavior", "reference", "semantic", "stdin", "whole-document"]
+args = ["--semantic", "-"]
+stdin = "tests/testdocs/testdoc.orig.md"
+expected_stdout = "tests/testdocs/testdoc.expected.semantic.md"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = false
+
+[[case]]
+id = "reference.testdoc.cleaned"
+change_id = "FM-CONFORMANCE-001"
+description = "The reference document matches its reviewed cleanup-mode output."
+kind = "stdin"
+tags = ["cleanups", "current-behavior", "reference", "semantic", "stdin", "whole-document"]
+args = ["--semantic", "--cleanups", "-"]
+stdin = "tests/testdocs/testdoc.orig.md"
+expected_stdout = "tests/testdocs/testdoc.expected.cleaned.md"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = false
+
+[[case]]
+id = "reference.testdoc.auto"
+change_id = "FM-CONFORMANCE-001"
+description = "The reference document matches its reviewed full-typography output."
+kind = "stdin"
+tags = ["cleanups", "current-behavior", "reference", "semantic", "stdin", "typography", "whole-document"]
+args = ["--semantic", "--cleanups", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/testdocs/testdoc.orig.md"
+expected_stdout = "tests/testdocs/testdoc.expected.auto.md"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = false
+
+[[case]]
+id = "reference.testdoc.semantic.fixed-point"
+change_id = "FM-REFERENCE-IDEMPOTENCE-001"
+description = "The semantic reference-document output reaches a fixed point."
+kind = "stdin"
+tags = ["fixed-point", "reference", "semantic", "stdin", "whole-document"]
+args = ["--semantic", "-"]
+stdin = "tests/testdocs/testdoc.orig.md"
+expected_stdout = "tests/testdocs/testdoc.expected.semantic.md"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "reference.testdoc.cleaned.fixed-point"
+change_id = "FM-REFERENCE-IDEMPOTENCE-001"
+description = "The cleanup reference-document output reaches a fixed point."
+kind = "stdin"
+tags = ["cleanups", "fixed-point", "reference", "semantic", "stdin", "whole-document"]
+args = ["--semantic", "--cleanups", "-"]
+stdin = "tests/testdocs/testdoc.orig.md"
+expected_stdout = "tests/testdocs/testdoc.expected.cleaned.md"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "reference.testdoc.auto.fixed-point"
+change_id = "FM-REFERENCE-IDEMPOTENCE-001"
+description = "The full-typography reference-document output reaches a fixed point."
+kind = "stdin"
+tags = ["cleanups", "fixed-point", "reference", "semantic", "stdin", "typography", "whole-document"]
+args = ["--semantic", "--cleanups", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/testdocs/testdoc.orig.md"
+expected_stdout = "tests/testdocs/testdoc.expected.auto.md"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

@@ -1,0 +1,15 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "fixture.symlink-payload"
+change_id = "FM-CONFORMANCE-001"
+description = "Payload paths cannot traverse repository symlinks."
+kind = "stdin"
+tags = ["fixture"]
+args = ["-"]
+stdin = "tests/parity_corpus/runner-fixtures/payloads/input-link.md"
+expected_stdout = "tests/parity_corpus/runner-fixtures/payloads/expected.stdout"
+expected_stderr = "tests/parity_corpus/runner-fixtures/payloads/expected.stderr"
+expected_exit = 0
+idempotent = false

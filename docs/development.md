@@ -40,6 +40,15 @@ make lint-check
 # Run tests:
 make test
 
+# Run the shared installed-binary corpus and reachability checks only:
+make test-conformance
+
+# Verify the offline CommonMark extraction, registry, license, and pinned checksums:
+uv run python scripts/import-commonmark-spec.py check
+
+# Explicitly preview and accept only these exact conformance case IDs:
+make accept-conformance CASES=cli.stdin.wrap,cli.files.inplace-backup
+
 # Run tryscript golden tests only:
 make test-golden
 
@@ -55,7 +64,7 @@ make upgrade
 # To run tests by hand:
 uv run pytest   # all tests
 uv run pytest -s tests/test_cleanups.py  # one test file, showing output
-npx tryscript@0.1.7 run tests/tryscript/*.tryscript.md  # tryscript suite (pinned; matches CI/Makefile)
+FLOWMARK_BIN_DIR="$PWD/.venv/bin" npx tryscript@0.1.7 run tests/tryscript/*.tryscript.md
 bash scripts/check-golden-coverage.sh  # quality/coverage checks
 
 # Build and install current dev executables, to let you use your dev copies
@@ -76,6 +85,11 @@ uv lock --upgrade-package package_name
 uv venv
 source .venv/bin/activate
 ```
+
+The tryscript files resolve `flowmark` through `FLOWMARK_BIN_DIR` so the same upstream
+suite can run against another installed implementation without editing test documents.
+`make test-golden` supplies the local Python virtual environment by default; override
+the make variable to exercise another binary directory.
 
 See [uv docs](https://docs.astral.sh/uv/) for details.
 

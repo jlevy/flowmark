@@ -1,0 +1,3 @@
+- Bead: fmr-hr43 | Scope: Phase 8.5/8.6 | Repo: playbook
+- Depends on: WI-1, WI-4
+- Findings: F1-F12 (12 lessons + anti-patterns)

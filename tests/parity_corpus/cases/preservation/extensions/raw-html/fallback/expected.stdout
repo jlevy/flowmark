@@ -1,0 +1,5 @@
+Inline <span>"text"…</span> stays ordinary.
+
+Broken < custom tag “text”…
+
+Paragraph immediately before <x-card> is not a type-seven interruption.

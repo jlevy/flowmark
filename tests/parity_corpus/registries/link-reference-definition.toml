@@ -1,0 +1,15 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "link-reference-definition.title-delimiters"
+change_id = "FM-LINK-REF-DEF-001"
+description = "A link reference definition keeps its authored title delimiters, and a link that has one is written as a reference rather than duplicated as an inline link."
+kind = "stdin"
+tags = ["desired-output", "link-reference-definition", "regression", "stdin", "title"]
+args = ["-"]
+stdin = "tests/parity_corpus/cases/link-reference-definition/title-delimiters/input.md"
+expected_stdout = "tests/parity_corpus/cases/link-reference-definition/title-delimiters/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

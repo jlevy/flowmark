@@ -1,0 +1,15 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.fenced-code.false-opener-escaped-dollar"
+change_id = "FM-FENCED-CODE-001"
+description = "A backtick fence opener whose info string holds a backtick is ordinary text, so its escapes survive and the output is a fixed point."
+kind = "stdin"
+tags = ["code-block", "desired-output", "escape", "fallback", "fenced-code", "idempotence", "preservation", "regression", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/fenced-code/false-opener-escaped-dollar/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/fenced-code/false-opener-escaped-dollar/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

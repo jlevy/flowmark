@@ -1,0 +1,54 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.extension.colon-container.nested"
+change_id = "FM-EXT-COLON-CONTAINER-001"
+description = "Nested colon containers retain unequal fence lengths, attributes, and all body bytes."
+kind = "stdin"
+tags = ["colon-container", "desired-output", "extension", "nested", "preservation", "stdin"]
+args = ["--width", "24", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/colon-container/nested/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/colon-container/nested/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.colon-container.code-containers"
+change_id = "FM-EXT-COLON-CONTAINER-001"
+description = "A colon container in list and quote prefixes ignores closer-looking lines inside fenced code."
+kind = "stdin"
+tags = ["code-fence", "colon-container", "container", "desired-output", "extension", "preservation", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/colon-container/code-containers/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/colon-container/code-containers/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.colon-container.unmatched-outer"
+change_id = "FM-EXT-COLON-CONTAINER-001"
+description = "An unmatched outer opener does not suppress a later complete nested container or own trailing prose."
+kind = "stdin"
+tags = ["colon-container", "extension", "fallback", "malformed", "nested", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/colon-container/unmatched-outer/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/colon-container/unmatched-outer/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.colon-container.inline-fallback"
+change_id = "FM-EXT-COLON-CONTAINER-001"
+description = "Inline colon runs and bare unmatched closer lines remain ordinary Markdown."
+kind = "stdin"
+tags = ["colon-container", "extension", "fallback", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/colon-container/inline-fallback/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/colon-container/inline-fallback/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

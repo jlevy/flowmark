@@ -1,0 +1,12 @@
+| Header | Value |
+| --- | --- |
+| one | two |
+
+| Single |
+| --- |
+| "There's..." |
+
+\| escaped bar
+|no required space
+
+    | indented code

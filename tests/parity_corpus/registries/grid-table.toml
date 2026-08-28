@@ -1,0 +1,54 @@
+schema_version = 1
+corpus = "flowmark-language-neutral-conformance"
+
+[[case]]
+id = "preservation.extension.grid-table.headered"
+change_id = "FM-EXT-GRID-TABLE-001"
+description = "A headered grid table retains multiline/list cells, Unicode, math, code, and a following caption."
+kind = "stdin"
+tags = ["desired-output", "extension", "grid-table", "math", "pandoc", "preservation", "stdin"]
+args = ["--width", "24", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/grid-table/headered/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/grid-table/headered/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.grid-table.spans"
+change_id = "FM-EXT-GRID-TABLE-001"
+description = "Interior border signatures may differ for row and column spans while the outer border closes exactly."
+kind = "stdin"
+tags = ["desired-output", "extension", "grid-table", "pandoc", "preservation", "spans", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/grid-table/spans/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/grid-table/spans/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.grid-table.containers"
+change_id = "FM-EXT-GRID-TABLE-001"
+description = "Grid tables preserve exact source inside quote and list containers without cross-container closure."
+kind = "stdin"
+tags = ["container", "desired-output", "extension", "grid-table", "pandoc", "preservation", "stdin"]
+args = ["--width", "18", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/grid-table/containers/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/grid-table/containers/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.extension.grid-table.fallback"
+change_id = "FM-EXT-GRID-TABLE-001"
+description = "Missing bottoms, broken widths, and border-shaped ASCII art remain ordinary Markdown."
+kind = "stdin"
+tags = ["extension", "fallback", "grid-table", "malformed", "pandoc", "stdin"]
+args = ["--width", "0", "--smartquotes", "--ellipses", "-"]
+stdin = "tests/parity_corpus/cases/preservation/extensions/grid-table/fallback/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/extensions/grid-table/fallback/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

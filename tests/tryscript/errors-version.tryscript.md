@@ -4,11 +4,12 @@ env:
   NO_COLOR: "1"
   LC_ALL: C
 path:
-  - $TRYSCRIPT_GIT_ROOT/.venv/bin
+  - $FLOWMARK_BIN_DIR
+patterns:
+  VERSION: '(?:v\d+\.\d+\.\d+[^\r\n]*|flowmark \d+\.\d+\.\d+[^\r\n]*)'
 before: |
   cp -r $TRYSCRIPT_TEST_DIR/fixtures/. fixtures/
 ---
-
 # Error Cases and Version
 
 Tests for error handling and version output.

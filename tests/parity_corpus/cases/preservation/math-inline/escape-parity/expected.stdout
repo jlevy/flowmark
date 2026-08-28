@@ -1,0 +1,9 @@
+Odd \$x’y$ stays ordinary.
+
+Even \\$x'y$ opens.
+
+Odd \\\$x’y$ stays ordinary.
+
+Even \\\\$x'y$ opens.
+
+Inside $x'y\$ + c$ the escaped dollar is body text, while $x'y\\$ closes at the active dollar.

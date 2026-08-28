@@ -1,0 +1,715 @@
+# Documents that do not reach a formatting fixed point in one pass.
+#
+# Asserted exactly by tests/test_idempotence_corpus.py: an unlisted failure fails the
+# build, and an entry here that now passes also fails it, so this list shrinks and cannot
+# rot. Every entry names the bead tracking its defect.
+#
+# Every entry predates the preservation work: each one also fails on the branch base
+# 195b5ce. flowmark-rs keeps the same ledger at tests/idempotence_known_divergences.toml,
+# and the two are deliberately separate — a defect one port carries and the other does
+# not is exactly what the pair is meant to make visible. Today Rust carries 67 entries to
+# this file's 138; defects E and F below are the Python-only difference.
+#
+# See the epic fm-sk2n.
+
+schema_version = 1
+
+# wrapped line beginning with '=' is reparsed as a setext underline (fm-kv5i)
+
+[[divergence]]
+document = "tests/parity_corpus/cases/preservation/extensions/raw-html/angle-comparisons/input.md"
+mode = "narrow"
+bead = "fm-kv5i"
+
+[[divergence]]
+document = "tests/testdocs/testdoc.expected.auto.md"
+mode = "narrow"
+bead = "fm-kv5i"
+
+[[divergence]]
+document = "tests/testdocs/testdoc.expected.cleaned.md"
+mode = "narrow"
+bead = "fm-kv5i"
+
+[[divergence]]
+document = "tests/testdocs/testdoc.expected.plain.md"
+mode = "narrow"
+bead = "fm-kv5i"
+
+[[divergence]]
+document = "tests/testdocs/testdoc.expected.semantic.md"
+mode = "narrow"
+bead = "fm-kv5i"
+
+[[divergence]]
+document = "tests/testdocs/testdoc.orig.md"
+mode = "narrow"
+bead = "fm-kv5i"
+
+# setext heading with multi-line content splits on the second pass (fm-k7yk)
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/expected.default.md"
+mode = "default"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/expected.default.md"
+mode = "semantic"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/expected.default.md"
+mode = "cleanups"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/expected.default.md"
+mode = "typography"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/expected.default.md"
+mode = "nowrap"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/expected.default.md"
+mode = "narrow"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/input.md"
+mode = "default"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/input.md"
+mode = "semantic"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/input.md"
+mode = "cleanups"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/input.md"
+mode = "typography"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/input.md"
+mode = "nowrap"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0081/input.md"
+mode = "narrow"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/expected.default.md"
+mode = "default"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/expected.default.md"
+mode = "semantic"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/expected.default.md"
+mode = "cleanups"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/expected.default.md"
+mode = "typography"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/expected.default.md"
+mode = "nowrap"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/expected.default.md"
+mode = "narrow"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/input.md"
+mode = "default"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/input.md"
+mode = "semantic"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/input.md"
+mode = "cleanups"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/input.md"
+mode = "typography"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/input.md"
+mode = "nowrap"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0082/input.md"
+mode = "narrow"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/expected.default.md"
+mode = "default"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/expected.default.md"
+mode = "semantic"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/expected.default.md"
+mode = "cleanups"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/expected.default.md"
+mode = "typography"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/expected.default.md"
+mode = "nowrap"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/expected.default.md"
+mode = "narrow"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/input.md"
+mode = "default"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/input.md"
+mode = "semantic"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/input.md"
+mode = "cleanups"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/input.md"
+mode = "typography"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/input.md"
+mode = "nowrap"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0095/input.md"
+mode = "narrow"
+bead = "fm-k7yk"
+
+# empty ordered-list item is dropped, then the list renumbers (fm-k7yk)
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/expected.default.md"
+mode = "default"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/expected.default.md"
+mode = "semantic"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/expected.default.md"
+mode = "cleanups"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/expected.default.md"
+mode = "typography"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/expected.default.md"
+mode = "nowrap"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/expected.default.md"
+mode = "narrow"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/input.md"
+mode = "default"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/input.md"
+mode = "semantic"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/input.md"
+mode = "cleanups"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/input.md"
+mode = "typography"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/input.md"
+mode = "nowrap"
+bead = "fm-k7yk"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0283/input.md"
+mode = "narrow"
+bead = "fm-k7yk"
+
+# blockquote holding a heading then prose splits and rejoins across passes (fm-82mg)
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/expected.default.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/expected.default.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/expected.default.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/expected.default.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/expected.default.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/expected.default.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/input.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/input.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/input.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/input.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/input.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0228/input.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/expected.default.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/expected.default.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/expected.default.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/expected.default.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/expected.default.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/expected.default.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/input.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/input.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/input.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/input.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/input.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0229/input.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/expected.default.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/expected.default.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/expected.default.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/expected.default.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/expected.default.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/expected.default.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/input.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/input.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/input.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/input.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/input.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0230/input.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/expected.default.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/expected.default.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/expected.default.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/expected.default.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/expected.default.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/expected.default.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/input.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/input.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/input.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/input.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/input.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0232/input.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+# nested list gains a blank line on the second pass, turning tight loose (fm-82mg)
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/expected.default.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/expected.default.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/expected.default.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/expected.default.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/expected.default.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/expected.default.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/input.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/input.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/input.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/input.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/input.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/input.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/expected.default.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/expected.default.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/expected.default.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/expected.default.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/expected.default.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/expected.default.md"
+mode = "narrow"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/input.md"
+mode = "default"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/input.md"
+mode = "semantic"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/input.md"
+mode = "cleanups"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/input.md"
+mode = "typography"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/input.md"
+mode = "nowrap"
+bead = "fm-82mg"
+
+[[divergence]]
+document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0319/input.md"
+mode = "narrow"
+bead = "fm-82mg"
