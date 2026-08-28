@@ -1,3 +1,3 @@
-[foo*bar\]]: my_(url) "'title (with parens)'"
+[foo*bar\]]: my_(url) 'title (with parens)'
 
-[Foo*bar\]](my_(url) "title (with parens)")
+[Foo*bar\]][foo*bar\]]

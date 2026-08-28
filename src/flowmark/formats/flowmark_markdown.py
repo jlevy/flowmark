@@ -64,6 +64,31 @@ def _normalize_title_quotes(title: str) -> str:
     return f'"{escaped}"'
 
 
+# CommonMark 0.31.2 section 4.7 allows a link title in double quotes, single quotes, or
+# parentheses, and section 6.3 allows a destination in angle brackets. Marko stores both
+# on `LinkRefDef` exactly as authored, delimiters included, while an inline `Link` carries
+# the parsed inner text. Comparing the two forms directly never matches for a single-quoted
+# or parenthesized title, so a link that has a definition was written out as an inline link
+# and the now-orphaned definition was emitted alongside it: the same destination twice, with
+# `'title'` re-quoted as `"'title'"`. Unwrap the stored form before comparing.
+_TITLE_DELIMITERS = (('"', '"'), ("'", "'"), ("(", ")"))
+
+
+def _ref_def_title_text(title: str) -> str:
+    """Return a link reference definition's title without its authored delimiters."""
+    for opener, closer in _TITLE_DELIMITERS:
+        if len(title) >= 2 and title.startswith(opener) and title.endswith(closer):
+            return title[1:-1]
+    return title
+
+
+def _ref_def_dest_text(dest: str) -> str:
+    """Return a link reference definition's destination without its angle brackets."""
+    if len(dest) >= 2 and dest.startswith("<") and dest.endswith(">"):
+        return dest[1:-1]
+    return dest
+
+
 def _min_fence_length(code_content: str, fence_char: str = "`") -> int:
     """
     Calculate the minimum fence length needed for code content.
@@ -710,7 +735,12 @@ class MarkdownNormalizer(Renderer):
         """
         link_text = element.dest
         if element.title:
-            link_text += f" {_normalize_title_quotes(element.title)}"
+            # Keep an authored `\'…\'` or `(…)` title verbatim. Re-quoting it was how the
+            # delimiters ended up inside the title text.
+            title = element.title
+            if _ref_def_title_text(title) == title:
+                title = _normalize_title_quotes(title)
+            link_text += f" {title}"
         result = f"{self._prefix}[{element.label}]: {link_text}\n"
         self._prefix = self._second_prefix
         self._suppress_item_break = True
@@ -730,7 +760,13 @@ class MarkdownNormalizer(Renderer):
         link_title = _normalize_title_quotes(element.title) if element.title else None
         assert self.root_node
         label = next(
-            (k for k, v in self.root_node.link_ref_defs.items() if v == (element.dest, link_title)),
+            (
+                k
+                for k, (dest, title) in self.root_node.link_ref_defs.items()
+                if _ref_def_dest_text(dest) == element.dest
+                and (_normalize_title_quotes(_ref_def_title_text(title)) if title else None)
+                == link_title
+            ),
             None,
         )
         if label is not None:

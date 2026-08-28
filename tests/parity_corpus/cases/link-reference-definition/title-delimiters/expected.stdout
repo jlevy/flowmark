@@ -1,0 +1,5 @@
+[foo]: <my url> 'title'
+[bar]: /url (paren title)
+[baz]: /url "plain title"
+
+[Foo][foo], [Bar][bar], and [Baz][baz]
