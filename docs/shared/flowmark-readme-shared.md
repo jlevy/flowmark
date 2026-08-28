@@ -78,11 +78,11 @@ The key differences from
   frontmatter**, **template tags** (Markdoc, Jinja, Nunjucks), and **inline HTML** and
   HTML comments.
 
-- [**Source-exact preservation**](#source-exact-preservation) of syntax a formatter
-  should not touch, with **LaTeX math** as the headline case.
-  Math, inline code, and a range of Pandoc, Obsidian and MyST constructs come back byte
-  for byte, while the prose around them is still wrapped and cleaned up normally.
-  No dialect flags to set.
+- [**Source-exact preservation**](#source-exact-preservation) of syntax that is not safe
+  to re-render, including **LaTeX math**, **Pandoc**, **Obsidian**, **MyST**, and
+  **GitLab** syntax. These come back byte for byte, while the prose around them is
+  wrapped and cleaned up normally.
+  There are no dialect flags to set.
 
 - All line wrapping is Markdown-aware.
   Flowmark offers advanced and customizable line-wrapping capabilities, including
@@ -228,44 +228,42 @@ has corrupted the document, even if the result still parses.
 
 Flowmark recognizes these constructs before parsing, formats everything around them
 normally, and restores the authored bytes exactly.
-Nothing needs to be enabled and there are no dialect flags:
+Nothing needs to be enabled and there are no dialect flags.
+Given `notes.md`:
 
 ```markdown
-Prose "here" gets smart quotes... and is wrapped to your chosen width.
+Prose "here" gets smart quotes... and this sentence is long enough that Flowmark rewraps it.
 
 Let $x_i = "a"...$ stay exactly as written.
 ```
 
-With `--smartquotes --ellipses --width 40`, the prose is rewrapped and its quotes and
-ellipsis are converted, while `$x_i = "a"...$` is returned untouched — straight quotes,
-literal dots, original spacing.
+`flowmark --auto notes.md` rewraps the prose and applies smart quotes and an ellipsis,
+while the math keeps its straight quotes, literal dots, and spacing:
+
+```markdown
+Prose “here” gets smart quotes … and this sentence is long enough that Flowmark rewraps
+it.
+
+Let $x_i = "a"...$ stay exactly as written.
+```
 
 What is preserved:
 
-- **Math.** Inline `$...$`, display `$$...$$`, bracket forms `\(...\)` and `\[...\]`,
+- **Math:** Inline `$...$`, display `$$...$$`, bracket forms `\(...\)` and `\[...\]`,
   and LaTeX environments such as `\begin{align}`.
 
-- **Inline code.** The authored backtick run and body, including awkward cases like
+- **Inline code:** The authored backtick run and body, including awkward cases like
   ``` ``a `b` "c"...`` ```.
 
-- **Pandoc constructs.** Grid tables, multiline tables, definition lists, and line
-  blocks.
+- **Pandoc:** Grid tables, multiline tables, definition lists, and line blocks.
 
-- **Extension syntax.** Obsidian callouts (`> [!NOTE]`), fenced divs and colon
-  containers (`:::`), TOML frontmatter (`+++`), attribute groups (`{#id .class}`), MyST
-  roles (`` {ref}`target` ``), and wikilinks (`[[Page]]`).
+- **Obsidian and MyST:** Callouts (`> [!NOTE]`), roles (`` {ref}`target` ``), and
+  wikilinks (`[[Page]]`).
 
-- **Raw HTML blocks**, whose contents are left alone rather than reflowed.
+- **GitLab:** Multiline blockquotes (`>>>`) and references such as `[issue:_123_]`.
 
-> [!NOTE]
-> Preservation is deliberately selective, not a blanket freeze.
-> Ordinary Markdown is still normalized and wrapped, because that is the point of a
-> formatter.
-> Exact treatment is reserved for syntax where re-rendering is unsafe or clearly worse.
-
-Restoration is fail-closed: if the recognized regions cannot be put back byte for byte,
-Flowmark returns your input unchanged rather than writing a document it cannot vouch
-for.
+- **Other syntax:** Fenced divs and colon containers (`:::`), TOML frontmatter (`+++`),
+  attribute groups (`{#id .class}`), and raw HTML blocks.
 
 ## Usage
 
