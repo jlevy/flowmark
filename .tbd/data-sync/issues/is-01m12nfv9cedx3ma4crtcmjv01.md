@@ -5,13 +5,17 @@ title: Document and fix idempotence gaps in the Python reference implementation
 kind: epic
 status: open
 priority: 1
-version: 1
+version: 4
 labels:
   - idempotence
   - parity
 dependencies: []
+child_order_hints:
+  - is-01m135dyh38v8whtb1fj2xd3sd
+  - is-01m135dywj8pqath8a0g6cm9y9
+  - is-01m135e7k98zx426ydf35nhtg9
 created_at: 2026-08-27T22:29:45.387Z
-updated_at: 2026-08-27T22:29:45.387Z
+updated_at: 2026-08-28T03:08:29.673Z
 ---
 Idempotence audit of the Python reference implementation, run alongside the same audit
 of flowmark-rs so the two can be compared directly.
