@@ -90,6 +90,12 @@ The key differences from
   frontmatter**, **template tags** (Markdoc, Jinja, Nunjucks), and **inline HTML** and
   HTML comments.
 
+- [**Source-exact preservation**](#source-exact-preservation) of syntax that is not safe
+  to re-render, including **LaTeX math**, **Pandoc**, **Obsidian**, **MyST**, and
+  **GitLab** syntax. These come back byte for byte, while the prose around them is
+  wrapped and cleaned up normally.
+  There are no dialect flags to set.
+
 - All line wrapping is Markdown-aware.
   Flowmark offers advanced and customizable line-wrapping capabilities, including
   [semantic line breaks](#semantic-line-breaks), a feature that is especially helpful in
@@ -225,6 +231,51 @@ YAML is not normalized.
 > [!TIP]
 > See the [frontmatter format](https://github.com/jlevy/frontmatter-format) repo for
 > more discussion of YAML frontmatter and its benefits.
+
+## Source-Exact Preservation
+
+Some Markdown syntax is not safe to re-render.
+A formatter that “normalizes” a LaTeX equation or rewrites the delimiters of a code span
+has corrupted the document, even if the result still parses.
+
+Flowmark recognizes these constructs before parsing, formats everything around them
+normally, and restores the authored bytes exactly.
+Nothing needs to be enabled and there are no dialect flags.
+Given `notes.md`:
+
+```markdown
+Prose "here" gets smart quotes... and this sentence is long enough that Flowmark rewraps it.
+
+Let $x_i = "a"...$ stay exactly as written.
+```
+
+`flowmark --auto notes.md` rewraps the prose and applies smart quotes and an ellipsis,
+while the math keeps its straight quotes, literal dots, and spacing:
+
+```markdown
+Prose “here” gets smart quotes … and this sentence is long enough that Flowmark rewraps
+it.
+
+Let $x_i = "a"...$ stay exactly as written.
+```
+
+What is preserved:
+
+- **Math:** Inline `$...$`, display `$$...$$`, bracket forms `\(...\)` and `\[...\]`,
+  and LaTeX environments such as `\begin{align}`.
+
+- **Inline code:** The authored backtick run and body, including awkward cases like
+  ``` ``a `b` "c"...`` ```.
+
+- **Pandoc:** Grid tables, multiline tables, definition lists, and line blocks.
+
+- **Obsidian and MyST:** Callouts (`> [!NOTE]`), roles (`` {ref}`target` ``), and
+  wikilinks (`[[Page]]`).
+
+- **GitLab:** Multiline blockquotes (`>>>`) and references such as `[issue:_123_]`.
+
+- **Other syntax:** Fenced divs and colon containers (`:::`), TOML frontmatter (`+++`),
+  attribute groups (`{#id .class}`), and raw HTML blocks.
 
 ## Usage
 
