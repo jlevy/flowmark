@@ -50,6 +50,13 @@ COMMON_CASE_FIELDS = frozenset(
 )
 KIND_CASE_FIELDS = frozenset({"stdin", "before_tree", "after_tree"})
 ENV_ALLOWLIST = ("PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "TMPDIR", "TEMP", "TMP")
+# Every deferred case names the bead that owns un-deferring it. Bead records live on the
+# `tbd-sync` Git branch, not in the checkout, so nothing offline can confirm that a named
+# bead is still open; an owner tag pointing at a closed bead reads as tracked work and is
+# not. This allowlist is the enforced invariant in its place: it must name only beads that
+# are open right now, so a reviewer sees the whole ownership of the deferred corpus on one
+# line. When an owner closes, re-point its manifest tags and update this set together.
+DEFERRED_OWNER_TAGS = frozenset({"owner-fm-n0ww"})
 MAX_DIAGNOSTIC_BYTES = 8_192
 
 CaseKind = Literal["stdin", "files"]
@@ -1066,6 +1073,14 @@ def _validate_case_deferrals(manifest: ConformanceManifest, repo_root: Path) -> 
             raise ConformanceError(
                 "invalid-deferral",
                 f"deferred case {case.id!r} must have exactly one owner-fm-* tag",
+            )
+        if owner_tags[0] not in DEFERRED_OWNER_TAGS:
+            allowed = ", ".join(sorted(DEFERRED_OWNER_TAGS)) or "<none>"
+            raise ConformanceError(
+                "invalid-deferral",
+                f"deferred case {case.id!r} names owner tag {owner_tags[0]!r}, which is not an "
+                f"allowed deferred owner (allowed: {allowed}); re-point the case or update "
+                f"DEFERRED_OWNER_TAGS in devtools/conformance.py",
             )
         if "commonmark" in case.tags:
             if case.stdin is None:
