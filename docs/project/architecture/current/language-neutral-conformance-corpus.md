@@ -358,8 +358,9 @@ A deferred case has exactly one `owner-fm-*` tag.
 Deferred CommonMark expectations equal their input bytes so the corpus states
 preservation-safe desired behavior instead of blessing a known defect.
 The live CommonMark default ledger contains 394 active and 258 deferred examples as of
-2026-08-26. `review-report.json` retains the historical import classification and is not
-a current completion report.
+2026-08-26. The manifest is the only live record of that split; the import script's
+per-case `review-report.json` is local reviewer evidence and is not committed, because it
+snapshots one import run and cannot be refreshed without regenerating every golden.
 
 ## Golden authoring and review
 

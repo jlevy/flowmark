@@ -20,11 +20,19 @@ uv run python scripts/import-commonmark-spec.py check
 The one-time `import` mode verifies both download checksums before extracting inputs.
 It refuses to replace an existing corpus.
 Generated formatter expectations are candidate decisions, not CommonMark HTML truth.
-`review-report.json` records the one-time import classification: 363 active default
-cases, 21 active alternate-mode cases, 71 code/backtick deferrals, 10 math-shaped
-deferrals, 102 HTML deferrals, and 106 baseline-behavior deferrals.
+The one-time import classified 363 active default cases, 21 active alternate-mode cases,
+71 code/backtick deferrals, 10 math-shaped deferrals, 102 HTML deferrals, and 106
+baseline-behavior deferrals.
 Each initial deferral committed the source bytes as desired output and named its owning
 bead, never a passing corrupt baseline.
+
+`import` and `reclassify` write a per-case `review-report.json` beside this file for the
+reviewer to read. It is not committed: it is a snapshot of a single run, and the only way
+to refresh it is to re-run the import, which rewrites every golden from the current binary
+and re-derives every deferral. A committed copy can therefore only drift from the manifest,
+and did — it recorded the 363/289 import split long after the manifest had moved on.
+The historical copy remains in Git history at commit `eb500f7` if the per-case import
+measurements are ever needed.
 
 The manifest is the current execution ledger and can advance beyond that initial report
 only through exact golden review.

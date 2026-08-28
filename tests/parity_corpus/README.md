@@ -141,8 +141,9 @@ formatter result. Removing the deferral and owner tag is part of implementing th
 change.
 
 The live CommonMark default manifest contains 394 active and 258 deferred cases as of
-2026-08-26. The checked-in `review-report.json` describes the original import split, not
-the current ledger.
+2026-08-26, and is the only record of that split. The import script writes a per-case
+`review-report.json` for the reviewer to read locally; it is not committed, because it
+snapshots a single import run and cannot be refreshed without regenerating every golden.
 A deferred case whose owner is closed or missing is invalid tracking,
 even when the desired output is already correct.
 
