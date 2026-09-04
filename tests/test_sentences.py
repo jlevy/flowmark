@@ -28,3 +28,39 @@ def test_first_sentence():
     assert first_sentence(" ") == " "
     assert first_sentence("hello") == "hello"
     assert first_sentence(" hello\n") == "hello"
+
+
+def test_split_sentences_ends_with_inline_code():
+    """Regression for #68: a sentence may end in a code span terminated by punctuation."""
+    text = (
+        "The first part of this text is long enough here. Now run the deploy `deploy.sh`. "
+        "Then we verify the results together."
+    )
+    sentences = split_sentences_regex(text)
+    assert len(sentences) == 3
+    assert sentences[1] == "Now run the deploy `deploy.sh`."
+    assert sentences[2] == "Then we verify the results together."
+
+
+def test_split_sentences_ends_with_emphasis():
+    """Regression for #68: bold/italic/strikethrough delimiters right after the terminator."""
+    text = (
+        "The first part of this text is long enough here. In the end this is *very important*. "
+        "So we should keep it in mind."
+    )
+    sentences = split_sentences_regex(text)
+    assert len(sentences) == 3
+    assert sentences[1] == "In the end this is *very important*."
+
+    text2 = "The first part of this text is long enough here. Just ~~do it~~. And then move along now."
+    sentences2 = split_sentences_regex(text2)
+    assert len(sentences2) == 3
+    assert sentences2[1] == "Just ~~do it~~."
+
+
+def test_sentence_break_with_trailing_asterisk():
+    """A lone asterisk after a terminator still allows the break (#68)."""
+    text = "The first part of this text is long enough here. This little trick works.* And the rest goes on here."
+    sentences = split_sentences_regex(text)
+    assert len(sentences) == 3
+    assert sentences[1] == "This little trick works.*"
