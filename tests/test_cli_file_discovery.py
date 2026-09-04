@@ -291,6 +291,21 @@ def test_explicit_file_without_exclusions_is_formatted(
 # --- Issue #44: --check mode (no writes; non-zero exit if a file would change) ---
 
 
+@pytest.mark.parametrize("extra_args", [[], ["--check"]])
+def test_named_invalid_utf8_reports_its_path(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], extra_args: list[str]
+) -> None:
+    source = tmp_path / "invalid.md"
+    invalid = b"before\xffafter\n"
+    source.write_bytes(invalid)
+
+    assert main([*extra_args, str(source)]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == f"Error: {source}: input is not valid UTF-8\n"
+    assert source.read_bytes() == invalid
+
+
 def test_check_reports_and_does_not_write(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

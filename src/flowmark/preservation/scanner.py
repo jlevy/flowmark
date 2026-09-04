@@ -36,6 +36,9 @@ _GITLAB_REFERENCE_TYPES = frozenset(
         "work_item",
     }
 )
+_GITLAB_REFERENCE_MARKERS = tuple(
+    f"[{reference_type}:" for reference_type in sorted(_GITLAB_REFERENCE_TYPES)
+)
 _BEGIN_PREFIX = "\\begin{"
 _END_PREFIX = "\\end{"
 _TABLE_DELIMITER_CELL = re.compile(r":?-{3,}:?\Z")
@@ -93,6 +96,10 @@ class ContainerLine:
     end: int
     content_start: int
     content_end: int
+    scalar_start: int
+    scalar_end: int
+    scalar_content_start: int
+    scalar_content_end: int
     logical_column: int
     context: ContainerContext
     container_key: tuple[tuple[str, int, int], ...]
@@ -104,6 +111,12 @@ class ContainerLine:
             raise InvalidRegionError("container line offsets are out of order")
         if self.content_end > self.end:
             raise InvalidRegionError("container line content ends outside its raw line")
+        if (
+            self.scalar_start > self.scalar_content_start
+            or self.scalar_content_start > self.scalar_content_end
+            or self.scalar_content_end > self.scalar_end
+        ):
+            raise InvalidRegionError("container line scalar offsets are out of order")
         if self.logical_column < 0:
             raise InvalidRegionError("container line column must be nonnegative")
 
@@ -266,12 +279,8 @@ def scan_dollar_runs(source: NormalizedSource, start: int, end: int) -> tuple[Ca
 def _backtick_runs(text: str, start: int, end: int) -> tuple[ScalarRun, ...]:
     runs: list[ScalarRun] = []
     index = start
-    while index < end:
-        if text[index] != "`":
-            index += 1
-            continue
-        run_start = index
-        index += 1
+    while (run_start := text.find("`", index, end)) >= 0:
+        index = run_start + 1
         while index < end and text[index] == "`":
             index += 1
         runs.append((run_start, index))
@@ -281,6 +290,8 @@ def _backtick_runs(text: str, start: int, end: int) -> tuple[ScalarRun, ...]:
 def scan_backtick_runs(source: NormalizedSource, start: int, end: int) -> tuple[Candidate, ...]:
     """Pair general code spans by exact delimiter-run length."""
     start_index, end_index = _scope_scalar_indexes(source, start, end)
+    if source.text.find("`", start_index, end_index) < 0:
+        return ()
     pending: dict[int, int] = {}
     candidates: list[Candidate] = []
     for run_start, run_end in _backtick_runs(source.text, start_index, end_index):
@@ -340,6 +351,8 @@ def scan_composite_math(source: NormalizedSource, start: int, end: int) -> tuple
 def scan_myst_roles(source: NormalizedSource, start: int, end: int) -> tuple[Candidate, ...]:
     """Pair general MyST role/backtick spans by exact delimiter-run length."""
     start_index, end_index = _scope_scalar_indexes(source, start, end)
+    if source.text.find("`", start_index, end_index) < 0:
+        return ()
     pending: dict[int, int] = {}
     candidates: list[Candidate] = []
     text = source.text
@@ -364,6 +377,8 @@ def scan_wikilinks(source: NormalizedSource, start: int, end: int) -> tuple[Cand
     """Recognize balanced single-line wikilinks, embeds, aliases, and anchors."""
     start_index, end_index = _scope_scalar_indexes(source, start, end)
     text = source.text
+    if text.find("[[", start_index, end_index) < 0:
+        return ()
     closable: list[int] = []
     summary_plus_one = (0, 0)
     summary_plus_two = (0, 0)
@@ -457,6 +472,10 @@ def scan_gitlab_references(source: NormalizedSource, start: int, end: int) -> tu
     """Recognize source-exact bracketed references from the GLFM reference family."""
     start_index, end_index = _scope_scalar_indexes(source, start, end)
     text = source.text
+    if not any(
+        text.find(marker, start_index, end_index) >= 0 for marker in _GITLAB_REFERENCE_MARKERS
+    ):
+        return ()
     candidates: list[Candidate] = []
     index = start_index
     while index < end_index:
@@ -497,6 +516,8 @@ def scan_angle_spans(source: NormalizedSource, start: int, end: int) -> tuple[Ca
     """Protect balanced inline HTML, autolink, and declaration-like angle spans."""
     start_index, end_index = _scope_scalar_indexes(source, start, end)
     text = source.text
+    if text.find("<", start_index, end_index) < 0:
+        return ()
     candidates: list[Candidate] = []
     quote_free_close: int | None = None
     single_quoted_close: int | None = None
@@ -867,21 +888,80 @@ def scan_inline_scope(
     container: ContainerContext | None = None,
 ) -> tuple[Candidate, ...]:
     """Propose and arbitrate every built-in inline recognizer in one scope."""
-    candidates = (
-        *scan_composite_math(source, start, end),
-        *scan_myst_roles(source, start, end),
-        *scan_wikilinks(source, start, end),
-        *scan_gitlab_references(source, start, end),
-        *scan_backtick_runs(source, start, end),
-        *scan_paren_math(source, start, end),
-        *scan_inline_environments(source, start, end),
-        *scan_attribute_groups(source, start, end),
-        *scan_dollar_runs(source, start, end),
-    )
-    selected = arbitrate_candidates(candidates, start=start, end=end)
+    start_index, end_index = _scope_scalar_indexes(source, start, end)
+    scope = source.text[start_index:end_index]
+    has_backtick = "`" in scope
+    has_backslash = "\\" in scope
+    has_brace = "{" in scope
+    has_dollar = "$" in scope
+
+    candidates: list[Candidate] = []
+    if has_backtick:
+        if has_dollar or _MYST_ROLE in scope:
+            candidates.extend(scan_composite_math(source, start, end))
+        if has_brace:
+            candidates.extend(scan_myst_roles(source, start, end))
+        candidates.extend(scan_backtick_runs(source, start, end))
+    if "[[" in scope:
+        candidates.extend(scan_wikilinks(source, start, end))
+    if any(marker in scope for marker in _GITLAB_REFERENCE_MARKERS):
+        candidates.extend(scan_gitlab_references(source, start, end))
+    if has_backslash:
+        if "\\(" in scope or "\\)" in scope:
+            candidates.extend(scan_paren_math(source, start, end))
+        if _BEGIN_PREFIX in scope or _END_PREFIX in scope:
+            candidates.extend(scan_inline_environments(source, start, end))
+    if has_brace:
+        candidates.extend(scan_attribute_groups(source, start, end))
+    if has_dollar:
+        candidates.extend(scan_dollar_runs(source, start, end))
+
+    selected = arbitrate_candidates(tuple(candidates), start=start, end=end)
     if container is None:
         return selected
     return tuple(replace(candidate, container=container) for candidate in selected)
+
+
+def _may_contain_protected_syntax(text: str) -> bool:
+    """Return whether `text` can contain syntax handled by the preservation scanner."""
+    # Definition markers may follow nested quote and list scaffolding. This accepts a
+    # deliberate superset of valid scaffolds while keeping ordinary prose containing
+    # colons or tildes on the formatter's established fast path.
+    scaffold_prefix = True
+    scaffold_characters = " \t>-+*0123456789.)"
+    for index, scalar in enumerate(text):
+        if scalar in "`$<{|":
+            return True
+        if scalar == "\\" and (
+            text.startswith("\\(", index)
+            or text.startswith("\\[", index)
+            or text.startswith(_BEGIN_PREFIX, index)
+        ):
+            return True
+        if scalar == "[" and (
+            text.startswith("[[", index)
+            or text.startswith("[!", index)
+            or any(text.startswith(marker, index) for marker in _GITLAB_REFERENCE_MARKERS)
+        ):
+            return True
+        if scalar == ":" and text.startswith(":::", index):
+            return True
+        if scalar == "+" and text.startswith("+++", index):
+            return True
+        if scalar == ">" and text.startswith(">>>", index):
+            return True
+        if scalar == "-" and text.startswith("---", index):
+            return True
+        if scalar in ":~" and scaffold_prefix:
+            next_index = index + 1
+            if next_index == len(text) or text[next_index] in " \t":
+                return True
+
+        if scalar == "\n":
+            scaffold_prefix = True
+        elif scaffold_prefix and scalar not in scaffold_characters:
+            scaffold_prefix = False
+    return False
 
 
 def _line_scalar_ranges(text: str) -> tuple[ScalarRun, ...]:
@@ -1136,6 +1216,10 @@ def build_container_view(source: NormalizedSource) -> tuple[ContainerLine, ...]:
             end=source.byte_offset(line_end),
             content_start=source.byte_offset(index),
             content_end=source.byte_offset(content_end),
+            scalar_start=line_start,
+            scalar_end=line_end,
+            scalar_content_start=index,
+            scalar_content_end=content_end,
             logical_column=column,
             context=_container_context(frame_tuple),
             container_key=_container_key(frame_tuple),
@@ -1159,10 +1243,8 @@ def build_container_view(source: NormalizedSource) -> tuple[ContainerLine, ...]:
     return tuple(views)
 
 
-def _scalar_line_bounds(source: NormalizedSource, line: ContainerLine) -> tuple[int, int]:
-    start = source.scalar_index(line.start)
-    end = source.scalar_index(line.content_end)
-    return start, end
+def _scalar_line_bounds(line: ContainerLine) -> tuple[int, int]:
+    return line.scalar_start, line.scalar_content_end
 
 
 def _content_under_frames(
@@ -1170,7 +1252,7 @@ def _content_under_frames(
     line: ContainerLine,
     frames: tuple[_ContainerFrame, ...],
 ) -> tuple[int, int, int] | None:
-    start, end = _scalar_line_bounds(source, line)
+    start, end = _scalar_line_bounds(line)
     index = start
     column = 0
     for frame_index, frame in enumerate(frames):
@@ -1193,8 +1275,8 @@ def _line_payload_bounds(
     frames: tuple[_ContainerFrame, ...] | None = None,
 ) -> tuple[int, int]:
     if frames is None:
-        start = source.scalar_index(line.content_start)
-        end = source.scalar_index(line.content_end)
+        start = line.scalar_content_start
+        end = line.scalar_content_end
         column = line.logical_column
     else:
         content = _content_under_frames(source, line, frames)
@@ -1217,13 +1299,11 @@ def _line_payload(
 
 def _scaffold_prefix(source: NormalizedSource, line: ContainerLine) -> str:
     """Return the exact opening-line prefix needed to retain parser placement."""
-    line_start = source.scalar_index(line.start)
-    content_start = source.scalar_index(line.content_start)
-    return source.text[line_start:content_start]
+    return source.text[line.scalar_start : line.scalar_content_start]
 
 
 def _raw_line_content(source: NormalizedSource, line: ContainerLine) -> str:
-    start, end = _scalar_line_bounds(source, line)
+    start, end = _scalar_line_bounds(line)
     return source.text[start:end]
 
 
@@ -1250,8 +1330,8 @@ def _fence_closes(payload: str, character: str, length: int) -> bool:
 
 
 def _line_indent_width(source: NormalizedSource, line: ContainerLine) -> int:
-    start = source.scalar_index(line.content_start)
-    end = source.scalar_index(line.content_end)
+    start = line.scalar_content_start
+    end = line.scalar_content_end
     index = start
     column = line.logical_column
     while index < end and source.text[index] in " \t":
@@ -2159,6 +2239,8 @@ def scan_pandoc_line_blocks(
     opaque_blocks: tuple[OpaqueBlock, ...] = (),
 ) -> tuple[Candidate, ...]:
     """Recognize contiguous Pandoc line-block lines without consuming pipe tables."""
+    if "|" not in source.text:
+        return ()
     views = build_container_view(source) if lines is None else lines
     opaque = _opaque_line_flags(views, opaque_blocks)
     gfm_table_lines = [False] * len(views)
@@ -2167,8 +2249,8 @@ def scan_pandoc_line_blocks(
         if (
             not opaque[table_index]
             and not opaque[table_index + 1]
-            and _has_structural_pipe(source, views[table_index])
             and _is_table_delimiter(_line_payload(source, views[table_index + 1]))
+            and _has_structural_pipe(source, views[table_index])
         ):
             table_end = table_index + 2
             while (
@@ -2270,8 +2352,8 @@ def _plain_block_scopes(
     paragraph_start: int | None = None
     paragraph_end = 0
     for line in lines:
-        line_start = source.scalar_index(line.content_start)
-        line_end = source.scalar_index(line.end)
+        line_start = line.scalar_content_start
+        line_end = line.scalar_end
         payload = _line_payload(source, line)
         if _ATX_HEADING.match(payload):
             if paragraph_start is not None:
@@ -2331,12 +2413,15 @@ def _table_cell_ranges(
 
 
 def _has_structural_pipe(source: NormalizedSource, line: ContainerLine) -> bool:
-    start = source.scalar_index(line.content_start)
-    end = source.scalar_index(line.content_end)
+    start = line.scalar_content_start
+    end = line.scalar_content_end
     if start >= end:
         return False
+    payload = source.text[start:end]
+    if "|" not in payload:
+        return False
     cells = _table_cell_ranges(source, start, end)
-    return len(cells) > 1 or source.text[start:end].lstrip(" \t").startswith("|")
+    return len(cells) > 1 or payload.lstrip(" \t").startswith("|")
 
 
 def _block_inline_scopes(
@@ -2354,8 +2439,8 @@ def _block_inline_scopes(
     while index < len(lines):
         is_table_start = (
             index + 1 < len(lines)
-            and _has_structural_pipe(source, lines[index])
             and _is_table_delimiter(_line_payload(source, lines[index + 1]))
+            and _has_structural_pipe(source, lines[index])
         )
         if not is_table_start:
             plain_lines.append(lines[index])
@@ -2367,8 +2452,8 @@ def _block_inline_scopes(
         while table_end < len(lines) and _has_structural_pipe(source, lines[table_end]):
             table_end += 1
         for table_line in lines[index:table_end]:
-            line_start = source.scalar_index(table_line.content_start)
-            line_end = source.scalar_index(table_line.content_end)
+            line_start = table_line.scalar_content_start
+            line_end = table_line.scalar_content_end
             scalar_scopes.extend(_table_cell_ranges(source, line_start, line_end))
         index = table_end
 
@@ -2510,40 +2595,62 @@ def scan_protected_regions(
     inline_scopes: tuple[ByteRange, ...] | None = None,
 ) -> tuple[ProtectedRegion, ...]:
     """Scan block precedence and inline scopes into source-exact math regions."""
+    text = source.text
+    if inline_scopes is None and not _may_contain_protected_syntax(text):
+        return ()
+
     lines = build_container_view(source)
     opaque_blocks = scan_existing_opaque_blocks(source, lines)
+    block_candidates_unresolved: list[Candidate] = []
+    block_candidates_unresolved.extend(scan_toml_frontmatter(source, lines))
+    if "---" in text:
+        block_candidates_unresolved.extend(
+            scan_pandoc_multiline_tables(source, lines, opaque_blocks)
+        )
+    if "[!" in text:
+        block_candidates_unresolved.extend(scan_obsidian_callouts(source, lines, opaque_blocks))
+    if ":::" in text:
+        block_candidates_unresolved.extend(scan_colon_containers(source, lines, opaque_blocks))
+    if ":" in text or "~" in text:
+        block_candidates_unresolved.extend(scan_definition_lists(source, lines, opaque_blocks))
+    if "+" in text:
+        block_candidates_unresolved.extend(scan_pandoc_grid_tables(source, lines, opaque_blocks))
+    if "<" in text:
+        block_candidates_unresolved.extend(scan_raw_html_blocks(source, lines, opaque_blocks))
+    if "{" in text:
+        block_candidates_unresolved.extend(
+            scan_attribute_group_blocks(source, lines, opaque_blocks)
+        )
+    if "|" in text:
+        block_candidates_unresolved.extend(scan_pandoc_line_blocks(source, lines, opaque_blocks))
+    if ">>>" in text:
+        block_candidates_unresolved.extend(
+            scan_gitlab_multiline_blockquotes(source, lines, opaque_blocks)
+        )
+    if "$" in text or "\\[" in text:
+        block_candidates_unresolved.extend(scan_display_math(source, lines, opaque_blocks))
+    if _BEGIN_PREFIX in text:
+        block_candidates_unresolved.extend(scan_environment_blocks(source, lines, opaque_blocks))
     block_candidates = resolve_candidate_tree(
         source,
-        (
-            *scan_toml_frontmatter(source, lines),
-            *scan_pandoc_multiline_tables(source, lines, opaque_blocks),
-            *scan_obsidian_callouts(source, lines, opaque_blocks),
-            *scan_colon_containers(source, lines, opaque_blocks),
-            *scan_definition_lists(source, lines, opaque_blocks),
-            *scan_pandoc_grid_tables(source, lines, opaque_blocks),
-            *scan_raw_html_blocks(source, lines, opaque_blocks),
-            *scan_attribute_group_blocks(source, lines, opaque_blocks),
-            *scan_pandoc_line_blocks(source, lines, opaque_blocks),
-            *scan_gitlab_multiline_blockquotes(source, lines, opaque_blocks),
-            *scan_display_math(source, lines, opaque_blocks),
-            *scan_environment_blocks(source, lines, opaque_blocks),
-        ),
+        tuple(block_candidates_unresolved),
     )
     excluded_ranges = _merge_ranges(
         tuple((block.start, block.end) for block in opaque_blocks),
         tuple((candidate.start, candidate.end) for candidate in block_candidates),
     )
-    scopes = (
-        _default_inline_scopes(source, lines, excluded_ranges)
-        if inline_scopes is None
-        else tuple(InlineScope(start, end, ContainerContext()) for start, end in inline_scopes)
-    )
+    has_inline_syntax = any(marker in text for marker in "`[\\{$")
+    if inline_scopes is None:
+        scopes = _default_inline_scopes(source, lines, excluded_ranges) if has_inline_syntax else ()
+    else:
+        scopes = tuple(InlineScope(start, end, ContainerContext()) for start, end in inline_scopes)
     inline_candidates: list[Candidate] = []
-    for scope in _angle_inline_scopes(source, lines, excluded_ranges):
-        inline_candidates.extend(
-            replace(candidate, container=scope.context)
-            for candidate in scan_angle_spans(source, scope.start, scope.end)
-        )
+    if "<" in text:
+        for scope in _angle_inline_scopes(source, lines, excluded_ranges):
+            inline_candidates.extend(
+                replace(candidate, container=scope.context)
+                for candidate in scan_angle_spans(source, scope.start, scope.end)
+            )
     previous_scope_end = 0
     excluded_index = 0
     for scope in scopes:
@@ -2559,7 +2666,8 @@ def scan_protected_regions(
             and excluded_ranges[excluded_index][0] < end
         ):
             raise InvalidRegionError("inline scope overlaps an opaque or protected block")
-        inline_candidates.extend(scan_inline_scope(source, start, end, container=scope.context))
+        if inline_scopes is not None or has_inline_syntax:
+            inline_candidates.extend(scan_inline_scope(source, start, end, container=scope.context))
         previous_scope_end = end
 
     selected_inline = arbitrate_candidates(

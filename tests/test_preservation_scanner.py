@@ -2,6 +2,7 @@ from flowmark.preservation.model import Candidate, RegionForm, RegionKind
 from flowmark.preservation.normalization import normalize_source
 from flowmark.preservation.registry import BlockRuleKind
 from flowmark.preservation.scanner import (
+    _may_contain_protected_syntax,  # pyright: ignore[reportPrivateUsage]
     arbitrate_candidates,
     build_container_view,
     escape_is_even,
@@ -20,6 +21,31 @@ def _sources(text: str) -> list[str]:
         candidate.to_region(source, index=index).source
         for index, candidate in enumerate(scan_inline_scope(source, 0, source.byte_length))
     ]
+
+
+def test_preservation_admission_filter_covers_every_syntax_family() -> None:
+    for source in (
+        "`code`",
+        "$math$",
+        r"\(math\)",
+        "[[page]]",
+        "> [!NOTE] callout",
+        "<span>raw</span>",
+        "text{#id}",
+        "header | cell\n--- | ---",
+        "::: note\n:::",
+        "+++\ntitle = 'x'\n+++",
+        ">>>\nquote\n>>>",
+        "---\nvalue\n---",
+        "term\n: definition",
+        "> 1. ~ definition",
+        "[issue:123]",
+    ):
+        assert _may_contain_protected_syntax(source), source
+
+    assert not _may_contain_protected_syntax(
+        "ordinary prose: punctuation, [links](target), and hyphen-words"
+    )
 
 
 def test_escape_parity_uses_the_immediately_preceding_backslash_run() -> None:

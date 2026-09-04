@@ -13,3 +13,42 @@ expected_stdout = "tests/parity_corpus/cases/preservation/fenced-code/false-open
 expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
 expected_exit = 0
 idempotent = true
+
+[[case]]
+id = "preservation.fenced-code.info-extra-escapes"
+change_id = "FM-FENCED-CODE-002"
+description = "Fence info-string whitespace is normalized while escapes after the language token remain source-exact."
+kind = "stdin"
+tags = ["code-block", "desired-output", "escape", "fenced-code", "idempotence", "parity", "regression", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/fenced-code/info-extra-escapes/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/fenced-code/info-extra-escapes/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.fenced-code.literal-numbered-content"
+change_id = "FM-FENCED-CODE-003"
+description = "Numbered-list-shaped text inside a fence retains every authored space across repeated formatting."
+kind = "stdin"
+tags = ["code-block", "desired-output", "fenced-code", "idempotence", "parity", "regression", "stdin", "whitespace"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/fenced-code/literal-numbered-content/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/fenced-code/literal-numbered-content/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true
+
+[[case]]
+id = "preservation.fenced-code.container-info-and-content"
+change_id = "FM-FENCED-CODE-004"
+description = "Container-nested fences decode the language token, preserve suffix escapes, normalize their separator, and retain literal content."
+kind = "stdin"
+tags = ["blockquote", "code-block", "desired-output", "escape", "fenced-code", "idempotence", "parity", "regression", "stdin", "whitespace"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/fenced-code/container-info-and-content/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/fenced-code/container-info-and-content/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

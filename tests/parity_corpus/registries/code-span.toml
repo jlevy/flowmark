@@ -104,3 +104,16 @@ expected_stdout = "tests/parity_corpus/cases/preservation/code-span/topic-width-
 expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
 expected_exit = 0
 idempotent = true
+
+[[case]]
+id = "preservation.code-span.setext-boundary"
+change_id = "FM-CODE-SPAN-002"
+description = "A setext underline ends the inline scope before a later matching backtick run."
+kind = "stdin"
+tags = ["code-span", "desired-output", "parity", "preservation", "regression", "setext", "stdin"]
+args = ["--width", "0", "-"]
+stdin = "tests/parity_corpus/cases/preservation/code-span/setext-boundary/input.md"
+expected_stdout = "tests/parity_corpus/cases/preservation/code-span/setext-boundary/expected.stdout"
+expected_stderr = "tests/parity_corpus/spec/commonmark-0.31.2/empty.stderr"
+expected_exit = 0
+idempotent = true

@@ -61,6 +61,26 @@ def _escape_authored_markers(text: str) -> str:
     return "".join(parts)
 
 
+def decode_authored_marker_escapes(text: str) -> str:
+    """Decode canonical authored-marker escapes for logical text measurement."""
+    if ESCAPE_MARKER not in text:
+        return text
+    parts: list[str] = []
+    previous = 0
+    position = text.find(ESCAPE_MARKER)
+    while position >= 0:
+        if position + 1 >= len(text):
+            raise InvalidTokenError("malformed preservation marker escape")
+        decoded = _UNESCAPE_CODES.get(text[position + 1])
+        if decoded is None:
+            raise InvalidTokenError("malformed preservation marker escape")
+        parts.extend((text[previous:position], decoded))
+        previous = position + 2
+        position = text.find(ESCAPE_MARKER, previous)
+    parts.append(text[previous:])
+    return "".join(parts)
+
+
 def encode_token(index: int) -> str:
     """Encode one protected-region index as a fixed-width private-use token."""
     if isinstance(index, bool) or index < 0 or index >= _MAX_INDEX:
