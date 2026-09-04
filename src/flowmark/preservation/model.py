@@ -16,8 +16,10 @@ class PreservationError(ValueError):
 class InvalidUtf8Error(PreservationError):
     """Input cannot be represented as valid UTF-8."""
 
-    def __init__(self) -> None:
-        super().__init__("input is not valid UTF-8")
+    def __init__(self, path: str | None = None) -> None:
+        self.path: str | None = path
+        prefix = f"{path}: " if path is not None else ""
+        super().__init__(f"{prefix}input is not valid UTF-8")
 
 
 class InvalidRegionError(PreservationError):
@@ -114,14 +116,24 @@ def _validate_kind_form(kind: RegionKind, form: RegionForm) -> None:
 
 
 def build_scalar_byte_offsets(text: str) -> tuple[int, ...]:
+    if text.isascii():
+        return tuple(range(len(text) + 1))
+
     offsets = [0]
     byte_offset = 0
-    try:
-        for scalar in text:
-            byte_offset += len(scalar.encode("utf-8"))
-            offsets.append(byte_offset)
-    except UnicodeEncodeError as error:
-        raise InvalidUtf8Error() from error
+    for scalar in text:
+        codepoint = ord(scalar)
+        if codepoint <= 0x7F:
+            byte_offset += 1
+        elif codepoint <= 0x7FF:
+            byte_offset += 2
+        elif 0xD800 <= codepoint <= 0xDFFF:
+            raise InvalidUtf8Error()
+        elif codepoint <= 0xFFFF:
+            byte_offset += 3
+        else:
+            byte_offset += 4
+        offsets.append(byte_offset)
     return tuple(offsets)
 
 
@@ -156,7 +168,13 @@ class NormalizedSource:
     text: str
     utf8: bytes
     had_bom: bool
-    scalar_byte_offsets: tuple[int, ...]
+    scalar_byte_offsets: tuple[int, ...] = ()
+    _scalar_index_cache: dict[int, int] = field(
+        default_factory=dict,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
         if "\r" in self.text:
@@ -169,7 +187,10 @@ class NormalizedSource:
             raise InvalidUtf8Error() from error
         if encoded != self.utf8:
             raise InvalidRegionError("normalized UTF-8 bytes do not match text")
-        if self.scalar_byte_offsets != build_scalar_byte_offsets(self.text):
+        expected_offsets = build_scalar_byte_offsets(self.text)
+        if not self.scalar_byte_offsets:
+            object.__setattr__(self, "scalar_byte_offsets", expected_offsets)
+        elif self.scalar_byte_offsets != expected_offsets:
             raise InvalidRegionError("scalar byte offsets do not match normalized text")
 
     @property
@@ -190,11 +211,17 @@ class NormalizedSource:
 
     def scalar_index(self, byte_offset: int) -> int:
         """Translate a UTF-8 byte boundary to its Unicode-scalar index."""
-        if not _nonnegative_integer(byte_offset) or byte_offset > self.byte_length:
+        if not _nonnegative_integer(byte_offset):
+            raise InvalidRegionError("byte offset is outside normalized source")
+        cached = self._scalar_index_cache.get(byte_offset)
+        if cached is not None:
+            return cached
+        if byte_offset > self.byte_length:
             raise InvalidRegionError("byte offset is outside normalized source")
         index = bisect_left(self.scalar_byte_offsets, byte_offset)
         if index == len(self.scalar_byte_offsets) or self.scalar_byte_offsets[index] != byte_offset:
             raise InvalidRegionError("byte offset is not a UTF-8 scalar boundary")
+        self._scalar_index_cache[byte_offset] = index
         return index
 
     def slice_text(self, start: int, end: int) -> str:

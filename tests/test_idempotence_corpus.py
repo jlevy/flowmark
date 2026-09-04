@@ -24,6 +24,7 @@ from __future__ import annotations
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from flowmark import reformat_text
@@ -35,6 +36,17 @@ else:
     import tomli as tomllib  # type: ignore[no-redef]  # pyright: ignore[reportUnreachable]
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _test_corpus_documents(tests: Path) -> list[Path]:
+    """Return the Markdown documents that belong to the shipped test corpus."""
+    generated_testdocs = tests / "testdocs"
+    return sorted(
+        path
+        for path in tests.rglob("*.md")
+        if not (path.parent == generated_testdocs and path.name.startswith("testdoc.actual."))
+    )
+
 
 # Modes covering the option space's independent axes rather than its combinations.
 # Width earns two entries: instability that only appears when wrapping pushes a hazardous
@@ -72,13 +84,26 @@ def corpus_documents() -> list[Path]:
     """
     tests = REPO_ROOT / "tests"
     assert tests.is_dir(), f"corpus missing at {tests}"
-    documents = sorted(tests.rglob("*.md"))
+    documents = _test_corpus_documents(tests)
     documents += sorted((REPO_ROOT / "docs").rglob("*.md"))
     readme = REPO_ROOT / "README.md"
     if readme.is_file():
         documents.append(readme)
     assert len(documents) > 1000, f"expected the full corpus, found only {len(documents)}"
     return documents
+
+
+def test_generated_reference_outputs_are_not_corpus_documents() -> None:
+    """Local ignored review output must not change the fixed-point gate."""
+    with TemporaryDirectory() as directory:
+        tests = Path(directory)
+        testdocs = tests / "testdocs"
+        testdocs.mkdir()
+        expected = testdocs / "testdoc.expected.auto.md"
+        expected.write_text("expected\n", encoding="utf-8")
+        (testdocs / "testdoc.actual.auto.md").write_text("actual\n", encoding="utf-8")
+
+        assert _test_corpus_documents(tests) == [expected]
 
 
 def load_ledger() -> set[str]:

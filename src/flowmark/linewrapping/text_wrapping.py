@@ -16,6 +16,7 @@ from flowmark.preservation.bridge import (
     TOKEN_START,
     InvalidTokenError,
     ProtectedSource,
+    decode_authored_marker_escapes,
 )
 from flowmark.preservation.model import ProtectedRegion, RegionForm
 
@@ -122,7 +123,7 @@ def _measure_fragments(
     has_authored_break = False
     for fragment in fragments:
         if fragment.region is None:
-            column += len_fn(fragment.text)
+            column += len_fn(decode_authored_marker_escapes(fragment.text))
             continue
         widths = fragment.region.logical_widths
         if not widths:

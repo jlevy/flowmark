@@ -5,7 +5,6 @@ from __future__ import annotations
 from flowmark.preservation.model import (
     InvalidUtf8Error,
     NormalizedSource,
-    build_scalar_byte_offsets,
 )
 
 UTF8_BOM = b"\xef\xbb\xbf"
@@ -43,7 +42,6 @@ def normalize_source(source: str | bytes) -> NormalizedSource:
         text=text,
         utf8=utf8,
         had_bom=had_bom,
-        scalar_byte_offsets=build_scalar_byte_offsets(text),
     )
 
 

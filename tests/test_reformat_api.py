@@ -35,8 +35,9 @@ def test_invalid_utf8_and_restoration_failure_cannot_mutate_an_inplace_file(
     invalid = b"before\xffafter\n"
     source.write_bytes(invalid)
 
-    with pytest.raises(InvalidUtf8Error, match="input is not valid UTF-8"):
+    with pytest.raises(InvalidUtf8Error, match="input is not valid UTF-8") as invalid_error:
         reformat_file(source, None, inplace=True, nobackup=True)
+    assert str(invalid_error.value) == f"{source}: input is not valid UTF-8"
     assert source.read_bytes() == invalid
 
     original = b"before $x$ after\n"

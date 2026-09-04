@@ -11,6 +11,7 @@ from flowmark.formats.flowmark_markdown import (
     ProtectedInline,
     flowmark_markdown,
 )
+from flowmark.linewrapping.text_wrapping import measure_protected_text
 from flowmark.preservation.bridge import (
     ESCAPE_MARKER,
     TOKEN_END,
@@ -48,6 +49,15 @@ def test_authored_markers_round_trip_with_bounded_parser_text() -> None:
     assert len(protected.regions) == 2048
     assert len(protected.text) <= 5 * len(normalized.text)
     assert restore_source(protected.text, protected) == normalized.text
+
+
+def test_authored_marker_escapes_retain_one_logical_column_each() -> None:
+    collision = f"a{ESCAPE_MARKER}{TOKEN_START}{TOKEN_END}b"
+    protected = _protected(collision)
+
+    assert protected.regions == ()
+    parser_text = protected.text.removesuffix("\n")
+    assert measure_protected_text(parser_text, protected).final_width == len(collision)
 
 
 @pytest.mark.parametrize("index", [0, 1, 255, 256, (1 << 64) - 1])

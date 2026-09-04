@@ -10,11 +10,11 @@ from flowmark.linewrapping.text_wrapping import get_html_md_word_splitter
 from flowmark.preservation.model import InvalidUtf8Error
 
 
-def _decode_utf8(data: bytes) -> str:
+def _decode_utf8(data: bytes, path: str | None = None) -> str:
     try:
         return data.decode("utf-8")
     except UnicodeDecodeError as error:
-        raise InvalidUtf8Error() from error
+        raise InvalidUtf8Error(path) from error
 
 
 def _read_stdin_bytes() -> bytes:
@@ -123,7 +123,7 @@ def reformat_file(
         input_bytes = _read_stdin_bytes()
     else:
         input_bytes = Path(path).read_bytes()
-    text = _decode_utf8(input_bytes)
+    text = _decode_utf8(input_bytes, None if read_stdin else str(path))
 
     result = reformat_text(
         text, width, plaintext, semantic, cleanups, smartquotes, ellipses, list_spacing
