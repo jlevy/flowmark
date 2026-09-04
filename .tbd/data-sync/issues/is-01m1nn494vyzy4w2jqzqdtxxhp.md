@@ -3,9 +3,9 @@ type: is
 id: is-01m1nn494vyzy4w2jqzqdtxxhp
 title: Prepare and release next synchronized minor version
 kind: epic
-status: in_progress
+status: closed
 priority: 1
-version: 13
+version: 14
 labels:
   - release
 dependencies: []
@@ -21,6 +21,10 @@ child_order_hints:
   - is-01m1nt8rag398wg2s3ztz2wz0p
   - is-01m1nvc7n7n2kdjwrany1hkff0
 created_at: 2026-09-04T07:29:00.561Z
-updated_at: 2026-09-04T09:18:12.616Z
+updated_at: 2026-09-04T11:41:59.107Z
+closed_at: 2026-09-04T11:41:59.106Z
+close_reason: "Completed end-to-end synchronized release: flowmark 0.8.0 and flowmark-rs 0.4.0 passed adversarial source, parity, package, platform, security, performance, and hosted gates; prep PRs merged; all documented publication channels released and independently verified; every release child bead closed."
+resolution: null
+duplicate_of: null
 ---
 Audit all changes since the latest published flowmark release, preserve backward compatibility, fix verified blockers, validate source and packaged artifacts, open and land release-prep work, and publish the next minor release in sync with flowmark-rs only when all local and hosted gates pass.
