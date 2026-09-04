@@ -5,7 +5,7 @@ title: Prepare flowmark 0.8.0 release metadata and PR
 kind: task
 status: closed
 priority: 1
-version: 4
+version: 5
 labels:
   - release
 dependencies:
@@ -13,9 +13,9 @@ dependencies:
     target: is-01m1npp7a9x2vf2ch09tm1542k
 parent_id: is-01m1nn494vyzy4w2jqzqdtxxhp
 created_at: 2026-09-04T07:56:16.794Z
-updated_at: 2026-09-04T10:13:17.254Z
-closed_at: 2026-09-04T10:13:17.253Z
-close_reason: "The reviewed and fully green flowmark 0.8.0 release-prep change is merged to main in PR #76."
+updated_at: 2026-09-04T16:03:38.530Z
+closed_at: 2026-09-04T11:41:33.401Z
+close_reason: "Completed: release-prep PR #76 merged to main as 7dfd0421d483a42dee29edef999f866b04294720; hosted CI run 33862038889 passed Python 3.10-3.14; exact 0.8.0 release pin guard and clean package validation passed."
 resolution: null
 duplicate_of: null
 ---
