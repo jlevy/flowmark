@@ -5,7 +5,7 @@ title: Prepare and release next synchronized minor version
 kind: epic
 status: in_progress
 priority: 1
-version: 13
+version: 14
 labels:
   - release
 dependencies: []
@@ -20,7 +20,8 @@ child_order_hints:
   - is-01m1nqy6dxb2wyjp59wavy69ff
   - is-01m1nt8rag398wg2s3ztz2wz0p
   - is-01m1nvc7n7n2kdjwrany1hkff0
+  - is-01m1nxzm47fshd23bnkv510x04
 created_at: 2026-09-04T07:29:00.561Z
-updated_at: 2026-09-04T09:18:12.616Z
+updated_at: 2026-09-04T10:03:45.158Z
 ---
 Audit all changes since the latest published flowmark release, preserve backward compatibility, fix verified blockers, validate source and packaged artifacts, open and land release-prep work, and publish the next minor release in sync with flowmark-rs only when all local and hosted gates pass.
