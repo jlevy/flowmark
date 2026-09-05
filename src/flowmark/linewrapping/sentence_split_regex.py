@@ -17,7 +17,11 @@ from flowmark.linewrapping.atomic_patterns import (
 # may need to rethink the 2-letter restriction for some languages.
 # See also:
 # https://github.com/jlevy/atom-flowmark/blob/master/lib/remark-smart-word-wrap.js#L17-L33
-SENTENCE_END_RE = regex.compile(r"(\b\p{L}+[\p{Ll}])([.?!]['\"’”)]?|['\"’”)][.?!]) *$")
+# The optional delimiter run before the terminator covers sentences whose last
+# word ends in a code span, emphasis, or strikethrough (`word`. / *word*. / ~~word~~.)
+# and the trailing run covers a delimiter after the terminator (word.* / word.") —
+# restricted to delimiters adjacent to the terminator to avoid false positives (#68).
+SENTENCE_END_RE = regex.compile(r"(\b\p{L}+[\p{Ll}])([`*_~]*[.?!][`*_~'\"’”)]*|[.?!]['\"’”)`*_~]*) *$")
 
 # Second heuristic: Very short sentences often not so useful.
 SENTENCE_MIN_LENGTH = 15
