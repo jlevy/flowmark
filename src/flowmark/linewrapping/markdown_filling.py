@@ -13,7 +13,11 @@ from __future__ import annotations
 
 from textwrap import dedent
 
-from flowmark.formats.flowmark_markdown import ListSpacing, flowmark_markdown
+from flowmark.formats.flowmark_markdown import (
+    ListSpacing,
+    attach_preserve_list_boundaries,
+    flowmark_markdown,
+)
 from flowmark.formats.frontmatter import split_frontmatter
 from flowmark.linewrapping.line_wrappers import (
     line_wrap_by_sentence,
@@ -91,6 +95,8 @@ def fill_markdown(
     # Parse and render.
     marko = flowmark_markdown(line_wrapper, list_spacing, _protected_source=protected)
     document = marko.parse(parser_text)
+    if list_spacing == ListSpacing.preserve:
+        attach_preserve_list_boundaries(document, parser_text)
     if cleanups:
         doc_cleanups(document)
     if smartquotes:

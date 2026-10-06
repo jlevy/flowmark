@@ -377,9 +377,7 @@ First sentence of a multi-sentence paragraph. Second sentence that follows the f
 one. Third sentence that wraps up the paragraph.
 
 - Tight item one
-
 - Tight item two
-
 - Tight item three
 
 - Loose item one
@@ -392,7 +390,6 @@ one. Third sentence that wraps up the paragraph.
   - Second level
     - Third level deep
   - Back to second level
-
 - Back to first level
 
 1. Ordered item one

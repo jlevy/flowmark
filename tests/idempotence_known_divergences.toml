@@ -8,7 +8,7 @@
 # 195b5ce. flowmark-rs keeps the same ledger at tests/idempotence_known_divergences.toml,
 # and the two are deliberately separate — a defect one port carries and the other does
 # not is exactly what the pair is meant to make visible. Today Rust carries 66 entries to
-# this file's 90; the nested-list spacing defect below is the Python-only difference.
+# this file's 78; the nested-list spacing defect below is the Python-only difference.
 #
 # See the epic fm-sk2n.
 
@@ -349,66 +349,6 @@ bead = "fm-82mg"
 
 [[divergence]]
 document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0307/input.md"
-mode = "narrow"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
-mode = "default"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
-mode = "semantic"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
-mode = "cleanups"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
-mode = "typography"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
-mode = "nowrap"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/expected.default.md"
-mode = "narrow"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
-mode = "default"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
-mode = "semantic"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
-mode = "cleanups"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
-mode = "typography"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
-mode = "nowrap"
-bead = "fm-82mg"
-
-[[divergence]]
-document = "tests/parity_corpus/spec/commonmark-0.31.2/examples/0315/input.md"
 mode = "narrow"
 bead = "fm-82mg"
 

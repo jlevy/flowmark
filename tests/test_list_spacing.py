@@ -408,3 +408,75 @@ def test_multi_paragraph_spacing_loose_mode():
     assert (
         fill_markdown(input_doc, semantic=True, list_spacing=ListSpacing.loose) == expected_output
     )
+
+
+def test_mixed_list_preserved():
+    """Mixed lists (blank lines between only some items) keep their authored spacing."""
+    input_doc = dedent(
+        """
+        - All lowercase.
+        - No Title Case.
+
+        - Uppercase reserved.
+        - Last one.
+        """
+    ).strip()
+    expected_output = input_doc + "\n"
+
+    assert fill_markdown(input_doc, list_spacing=ListSpacing.preserve) == expected_output
+
+
+def test_mixed_list_not_flattened_to_loose():
+    """A single blank between groups must not loosen every item (regression)."""
+    input_doc = dedent(
+        """
+        - one
+        - two
+
+        - three
+        - four
+        """
+    ).strip()
+
+    output = fill_markdown(input_doc, list_spacing=ListSpacing.preserve)
+    # Tight groups stay tight; only the authored blank remains.
+    assert output == "- one\n- two\n\n- three\n- four\n"
+
+
+def test_tight_list_with_blank_line_inside_code_block_stays_tight():
+    """A blank line inside an item's fenced code block does not loosen the list."""
+    input_doc = dedent(
+        """
+        - one
+
+          ```
+          a
+
+          b
+          ```
+        - two
+        """
+    ).strip()
+    tight_doc = dedent(
+        """
+        - one
+          ```
+          a
+
+          b
+          ```
+        - two
+        """
+    ).strip()
+
+    assert fill_markdown(tight_doc, list_spacing=ListSpacing.preserve) == tight_doc + "\n"
+    assert "- one\n\n" in fill_markdown(input_doc, list_spacing=ListSpacing.preserve)
+
+
+def test_whitespace_only_blank_between_item_blocks_loosens_list():
+    """A blank line containing only spaces between an item's paragraphs still loosens the list."""
+    input_doc = "- first para\n  \n  second para\n- two\n"
+
+    assert fill_markdown(input_doc, list_spacing=ListSpacing.preserve) == (
+        "- first para\n\n  second para\n\n- two\n"
+    )

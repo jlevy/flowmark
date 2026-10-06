@@ -25,6 +25,7 @@ from flowmark.linewrapping.line_wrappers import (
 )
 from flowmark.linewrapping.protocols import LineWrapper
 from flowmark.linewrapping.text_filling import DEFAULT_WRAP_WIDTH
+from flowmark.markdown_ast import block_span, walk_elements
 from flowmark.preservation.bridge import (
     INDEX_SCALAR_END,
     INDEX_SCALAR_START,
@@ -444,6 +445,52 @@ class Paragraph(gfm_elements.Paragraph):
 Paragraph.override = True
 
 
+def attach_preserve_list_boundaries(document: block.Document, parser_text: str) -> None:
+    """
+    Record per-item loose boundaries for every list so preserve mode can keep
+    mixed lists (blank lines between only some items) as authored.
+
+    marko flags a list as loose when ANY item boundary has a blank line,
+    losing the per-item spacing. Every block element carries a `span` (half-open
+    offsets into the parsed source), so the exact gaps between adjacent items
+    can be recovered. Attaches to each list:
+
+    - `element.loose_boundaries`: indices of items whose preceding boundary
+      was blank in the source.
+    - `element.any_item_internal_blank`: whether any item contains a blank
+      line between its own block elements. CommonMark then requires the whole
+      list to render loose, even where the source has no blank between items.
+    """
+    for element in walk_elements(document):
+        if isinstance(element, block.List):
+            items = [child for child in element.children if isinstance(child, block.ListItem)]
+            boundaries: set[int] = set()
+            any_internal_blank = False
+            for item in items:
+                # Only blank lines between the item's own sibling blocks count;
+                # blank lines inside a code block or a nested list do not.
+                children = [
+                    c
+                    for c in item.children
+                    if isinstance(c, block.BlockElement) and not isinstance(c, block.BlankLine)
+                ]
+                for j in range(1, len(children)):
+                    gap = parser_text[block_span(children[j - 1])[1] : block_span(children[j])[0]]
+                    if "\n" in gap:
+                        any_internal_blank = True
+            for i in range(1, len(items)):
+                # Each item span includes its trailing newline, so a blank line
+                # between items shows up as a gap containing a further "\n".
+                prev_end = block_span(items[i - 1])[1]
+                curr_start = block_span(items[i])[0]
+                gap = parser_text[prev_end:curr_start]
+                if "\n" in gap:
+                    boundaries.add(i)
+            # Dynamic attributes: marko's List class has no declared fields for these.
+            cast(Any, element).loose_boundaries = boundaries
+            cast(Any, element).any_item_internal_blank = any_internal_blank
+
+
 class CustomParser(Parser):
     def __init__(self, protected_source: ProtectedSource | None = None) -> None:
         super().__init__()
@@ -610,13 +657,20 @@ class MarkdownNormalizer(Renderer):
         # Reset the skip flag since we're not rendering a blank line
         self._skip_next_blank_line = False
 
+        # Per-item loose boundaries recorded from the source (see
+        # attach_preserve_list_boundaries). In preserve mode, a mixed list
+        # (blank lines between only some items) must keep its tight segments
+        # tight; the parser's whole-list `tight` flag treats it as fully loose.
+        loose_boundaries: set[int] | None = getattr(element, "loose_boundaries", None)
+        any_internal_blank: bool | None = getattr(element, "any_item_internal_blank", None)
+
         # Determine effective tightness based on mode
-        if self._list_spacing == ListSpacing.preserve:
-            is_tight = element.tight
-        elif self._list_spacing == ListSpacing.tight:
+        if self._list_spacing == ListSpacing.tight:
             # Only make tight if the list can be tight (no multi-paragraph items)
             is_tight = self._can_be_tight(element)
-        else:  # loose
+        elif self._list_spacing == ListSpacing.loose or loose_boundaries is None:
+            is_tight = False if self._list_spacing == ListSpacing.loose else element.tight
+        else:  # preserve with recorded boundaries: decided per item below
             is_tight = False
 
         # Save and set the tightness for this list
@@ -634,6 +688,15 @@ class MarkdownNormalizer(Renderer):
             else:
                 prefix = f"{element.bullet} "
                 subsequent_indent = "  "
+
+            if self._list_spacing == ListSpacing.preserve and loose_boundaries is not None:
+                # Item `i` gets a leading blank line where the source had one.
+                # If any item contains its own blank line (multi-block item),
+                # CommonMark requires the whole list to render loose.
+                if any_internal_blank:
+                    self._current_list_tight = False
+                else:
+                    self._current_list_tight = i not in loose_boundaries
 
             with self.container(prefix, subsequent_indent):
                 rendered_item = self.render(child)

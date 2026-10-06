@@ -342,7 +342,6 @@ eye on.
   options?* *Are all employees on the same vesting schedule?* *Is there any acceleration
   of my vesting if the company is acquired?* *Do you have a policy regarding follow-on
   stock grants?* *Does the company have any repurchase right to vested shares?*
-
 - Finally, consider the [common scenarios](#common-scenarios) for exercising options,
   discussed below.
 
@@ -1071,7 +1070,6 @@ Technical terms with underscores should not be escaped in normal text:
 - x86_64 architecture
 
 - ARM64 (aarch64) platforms
-
 - Linux x86_64 (glibc and musl/static)
 
 - macOS Intel (x86_64)
