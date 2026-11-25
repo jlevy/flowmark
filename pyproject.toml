@@ -188,6 +188,5 @@ testpaths = [
 ]
 norecursedirs = []
 filterwarnings = []
-# Delete a passing run's temp files when it ends; keep only failing tests' (latest run).
+# Delete passing tests' temp files when they finish; keep failing tests' for debugging.
 tmp_path_retention_policy = "failed"
-tmp_path_retention_count = 1
